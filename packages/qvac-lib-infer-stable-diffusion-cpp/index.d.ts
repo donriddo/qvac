@@ -133,9 +133,14 @@ export interface ImgStableDiffusionArgs {
   opts?: { stats?: boolean }
   diskPath?: string
   modelName: string
+  /** FLUX.1 / SD3: separate CLIP-L text encoder */
   clipLModel?: string
+  /** SDXL / SD3: separate CLIP-G text encoder */
   clipGModel?: string
+  /** FLUX.1 / SD3: separate T5-XXL text encoder */
   t5XxlModel?: string
+  /** FLUX.2 [klein]: Qwen3 8B text encoder (llm_path) */
+  llmModel?: string
   vaeModel?: string
 }
 

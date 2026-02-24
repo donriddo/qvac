@@ -24,9 +24,10 @@ class ImgStableDiffusion extends BaseInference {
    * @param {object} [args.opts] - Optional inference options
    * @param {string} [args.diskPath='.'] - Local directory for downloaded weights
    * @param {string} args.modelName - Model file name (e.g. 'flux1-dev-q4_0.gguf')
-   * @param {string} [args.clipLModel] - Optional CLIP-L model file name
-   * @param {string} [args.clipGModel] - Optional CLIP-G model file name
-   * @param {string} [args.t5XxlModel] - Optional T5-XXL text encoder file name
+   * @param {string} [args.clipLModel] - Optional CLIP-L model file name (FLUX.1 / SD3)
+   * @param {string} [args.clipGModel] - Optional CLIP-G model file name (SDXL / SD3)
+   * @param {string} [args.t5XxlModel] - Optional T5-XXL text encoder file name (FLUX.1 / SD3)
+   * @param {string} [args.llmModel] - Optional LLM text encoder file name (FLUX.2 klein → Qwen3 8B)
    * @param {string} [args.vaeModel] - Optional VAE file name
    * @param {object} config - SD context configuration (threads, device, wtype, etc.)
    */
@@ -40,6 +41,7 @@ class ImgStableDiffusion extends BaseInference {
       clipLModel,
       clipGModel,
       t5XxlModel,
+      llmModel,
       vaeModel
     },
     config
@@ -51,6 +53,7 @@ class ImgStableDiffusion extends BaseInference {
     this._clipLModel = clipLModel || null
     this._clipGModel = clipGModel || null
     this._t5XxlModel = t5XxlModel || null
+    this._llmModel = llmModel || null
     this._vaeModel = vaeModel || null
     this.weightsProvider = new WeightsProvider(loader, this.logger)
     this._lastJobResult = Promise.resolve()
@@ -69,6 +72,7 @@ class ImgStableDiffusion extends BaseInference {
       if (this._clipLModel) filesToDownload.push(this._clipLModel)
       if (this._clipGModel) filesToDownload.push(this._clipGModel)
       if (this._t5XxlModel) filesToDownload.push(this._t5XxlModel)
+      if (this._llmModel) filesToDownload.push(this._llmModel)
       if (this._vaeModel) filesToDownload.push(this._vaeModel)
 
       await this.weightsProvider.downloadFiles(filesToDownload, this._diskPath, {
@@ -81,6 +85,7 @@ class ImgStableDiffusion extends BaseInference {
         clipLPath: this._clipLModel ? path.join(this._diskPath, this._clipLModel) : '',
         clipGPath: this._clipGModel ? path.join(this._diskPath, this._clipGModel) : '',
         t5XxlPath: this._t5XxlModel ? path.join(this._diskPath, this._t5XxlModel) : '',
+        llmPath: this._llmModel ? path.join(this._diskPath, this._llmModel) : '',
         vaePath: this._vaeModel ? path.join(this._diskPath, this._vaeModel) : '',
         config: this._config
       }
@@ -107,6 +112,7 @@ class ImgStableDiffusion extends BaseInference {
     if (this._clipLModel) filesToDownload.push(this._clipLModel)
     if (this._clipGModel) filesToDownload.push(this._clipGModel)
     if (this._t5XxlModel) filesToDownload.push(this._t5XxlModel)
+    if (this._llmModel) filesToDownload.push(this._llmModel)
     if (this._vaeModel) filesToDownload.push(this._vaeModel)
 
     return this.weightsProvider.downloadFiles(filesToDownload, this._diskPath, {

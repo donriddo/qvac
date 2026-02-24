@@ -32,9 +32,10 @@ public:
 
   /**
    * @param modelPath   Path to the main weights file (.gguf, .safetensors, .ckpt)
-   * @param clipLPath   Optional separate CLIP-L text encoder
-   * @param clipGPath   Optional separate CLIP-G text encoder
-   * @param t5XxlPath   Optional separate T5-XXL text encoder (FLUX / SD3)
+   * @param clipLPath   Optional CLIP-L text encoder  (FLUX.1 / SD3)
+   * @param clipGPath   Optional CLIP-G text encoder  (SDXL / SD3)
+   * @param t5XxlPath   Optional T5-XXL text encoder  (FLUX.1 / SD3)
+   * @param llmPath     Optional LLM text encoder     (FLUX.2 klein → Qwen3 8B)
    * @param vaePath     Optional separate VAE
    * @param configMap   Key/value config options (threads, device, wtype, rng, etc.)
    */
@@ -43,6 +44,7 @@ public:
       std::string clipLPath,
       std::string clipGPath,
       std::string t5XxlPath,
+      std::string llmPath,
       std::string vaePath,
       std::unordered_map<std::string, std::string> configMap);
 
@@ -89,6 +91,7 @@ private:
   const std::string clipLPath_;
   const std::string clipGPath_;
   const std::string t5XxlPath_;
+  const std::string llmPath_;
   const std::string vaePath_;
 
   std::unique_ptr<sd_ctx_t, decltype(&free_sd_ctx)> sdCtx_;

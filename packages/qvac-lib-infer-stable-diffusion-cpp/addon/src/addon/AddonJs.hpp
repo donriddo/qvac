@@ -26,11 +26,12 @@ inline js_value_t* createInstance(js_env_t* env, js_callback_info_t* info) try {
   const string clipLPath        = args.getMapEntry(1, "clipLPath");
   const string clipGPath        = args.getMapEntry(1, "clipGPath");
   const string t5XxlPath        = args.getMapEntry(1, "t5XxlPath");
+  const string llmPath          = args.getMapEntry(1, "llmPath");   // FLUX.2 [klein] Qwen3
   const string vaePath          = args.getMapEntry(1, "vaePath");
   auto configMap                = args.getSubmap(1, "config");
 
   auto model = make_unique<SdModel>(
-      modelPath, clipLPath, clipGPath, t5XxlPath, vaePath, std::move(configMap));
+      modelPath, clipLPath, clipGPath, t5XxlPath, llmPath, vaePath, std::move(configMap));
 
   // Register output handlers for both progress strings and image byte arrays
   out_handl::OutputHandlers<out_handl::JsOutputHandlerInterface> outHandlers;

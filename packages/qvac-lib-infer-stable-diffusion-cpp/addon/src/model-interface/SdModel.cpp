@@ -57,12 +57,14 @@ SdModel::SdModel(
     std::string clipLPath,
     std::string clipGPath,
     std::string t5XxlPath,
+    std::string llmPath,
     std::string vaePath,
     std::unordered_map<std::string, std::string> configMap)
     : modelPath_(std::move(modelPath)),
       clipLPath_(std::move(clipLPath)),
       clipGPath_(std::move(clipGPath)),
       t5XxlPath_(std::move(t5XxlPath)),
+      llmPath_(std::move(llmPath)),
       vaePath_(std::move(vaePath)),
       sdCtx_(nullptr, &free_sd_ctx) {
 
@@ -73,10 +75,11 @@ SdModel::SdModel(
   sd_ctx_params_t params{};
   sd_ctx_params_init(&params);
 
-  params.model_path = modelPath_.empty() ? nullptr : modelPath_.c_str();
-  params.clip_l_path = clipLPath_.empty() ? nullptr : clipLPath_.c_str();
-  params.clip_g_path = clipGPath_.empty() ? nullptr : clipGPath_.c_str();
-  params.t5xxl_path  = t5XxlPath_.empty() ? nullptr : t5XxlPath_.c_str();
+  params.model_path  = modelPath_.empty()  ? nullptr : modelPath_.c_str();
+  params.clip_l_path = clipLPath_.empty()  ? nullptr : clipLPath_.c_str();
+  params.clip_g_path = clipGPath_.empty()  ? nullptr : clipGPath_.c_str();
+  params.t5xxl_path  = t5XxlPath_.empty()  ? nullptr : t5XxlPath_.c_str();
+  params.llm_path    = llmPath_.empty()    ? nullptr : llmPath_.c_str();    // FLUX.2 (Qwen3)
   params.vae_path    = vaePath_.empty()    ? nullptr : vaePath_.c_str();
   params.free_params_immediately = true;
 
