@@ -1,7 +1,7 @@
-# on:
-#   workflow_dispatch:
+on:
+  workflow_dispatch:
 
-# jobs:
+jobs:
 #   build-win11-nvidia-image:
 #     runs-on:  generator-windows11
 #     snapshot: win11-nvidia-grid-image
