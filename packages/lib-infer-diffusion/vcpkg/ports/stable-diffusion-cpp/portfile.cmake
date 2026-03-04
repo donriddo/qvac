@@ -82,18 +82,34 @@ file(WRITE "${_reg_file}" "${_reg_contents}")
 
 # 2. pthread_cancel is not available in the Android NDK.
 #    ggml-backend-reg.cpp calls pthread_cancel to stop loader threads; on
-#    Android we guard the call with a runtime no-op.  The loader thread
-#    terminates naturally once its work is complete.
+#    Android we provide a no-op inline stub.  The loader thread terminates
+#    naturally once its work is complete.
+#
+#    The stub must appear AFTER <pthread.h> so that pthread_t is defined.
+#    We insert it right after the #include <pthread.h> line rather than
+#    prepending to the file (which broke because pthread_t was unknown).
 if(VCPKG_TARGET_IS_ANDROID)
     set(_reg_file "${SOURCE_PATH}/ggml/src/ggml-backend-reg.cpp")
     file(READ "${_reg_file}" _reg_contents)
-    # Prepend a portable stub so the symbol resolves without NDK support.
-    string(PREPEND _reg_contents
-        "#if defined(__ANDROID__)\n"
-        "// pthread_cancel is unavailable on Android NDK; provide a no-op stub.\n"
-        "static inline int pthread_cancel(pthread_t) { return 0; }\n"
-        "#endif\n"
+
+    # Insert inline stub immediately after #include <pthread.h>
+    string(REPLACE
+        "#include <pthread.h>"
+        "#include <pthread.h>\n#if defined(__ANDROID__)\nstatic inline int pthread_cancel(pthread_t /*unused*/) { return 0; }\n#endif"
+        _reg_contents "${_reg_contents}"
     )
+
+    # Fallback: if the file does not include <pthread.h> directly, prepend
+    # our own include + stub so the symbol is always available.
+    if(NOT _reg_contents MATCHES "static inline int pthread_cancel")
+        string(PREPEND _reg_contents
+            "#if defined(__ANDROID__)\n"
+            "#include <pthread.h>\n"
+            "static inline int pthread_cancel(pthread_t /*unused*/) { return 0; }\n"
+            "#endif\n"
+        )
+    endif()
+
     file(WRITE "${_reg_file}" "${_reg_contents}")
 endif()
 
@@ -118,6 +134,8 @@ if(VCPKG_TARGET_IS_ANDROID)
         -DGGML_BACKEND_DL=ON
         -DGGML_CPU_ALL_VARIANTS=ON
         -DGGML_CPU_REPACK=ON
+        -DHAVE_PTHREAD_CANCEL=0
+        -DGGML_HAVE_PTHREAD_CANCEL=OFF
     )
 else()
     set(DL_BACKENDS OFF)
@@ -165,6 +183,7 @@ endif()
 
 vcpkg_cmake_configure(
     SOURCE_PATH "${SOURCE_PATH}"
+    DISABLE_PARALLEL_CONFIGURE
     OPTIONS
         ${BUILD_SHARED_LIBS_OPTION}
         -DSD_BUILD_EXAMPLES=OFF
@@ -176,6 +195,8 @@ vcpkg_cmake_configure(
         ${SD_CUDA_COMPILER_OPTION}
     MAYBE_UNUSED_VARIABLES
         SD_FLASH_ATTN
+        HAVE_PTHREAD_CANCEL
+        GGML_HAVE_PTHREAD_CANCEL
 )
 
 vcpkg_cmake_install()
