@@ -197,6 +197,22 @@ vcpkg_cmake_configure(
 
 vcpkg_cmake_install()
 
+# --- Install ggml backend MODULE .so files for Android ---
+# When GGML_BACKEND_DL is ON, ggml builds each backend as a MODULE target
+# but does NOT install them via cmake's install(). They sit in the build
+# output directory (bin/).  Copy them into the vcpkg packages lib/ so the
+# consuming addon CMakeLists can find_library() them.
+if(DL_BACKENDS)
+    file(GLOB _backend_sos_rel "${CURRENT_BUILDTREES_DIR}/${TARGET_TRIPLET}-rel/bin/libqvac-diffusion-ggml-*.so")
+    if(_backend_sos_rel)
+        file(INSTALL ${_backend_sos_rel} DESTINATION "${CURRENT_PACKAGES_DIR}/lib")
+    endif()
+    file(GLOB _backend_sos_dbg "${CURRENT_BUILDTREES_DIR}/${TARGET_TRIPLET}-dbg/bin/libqvac-diffusion-ggml-*.so")
+    if(_backend_sos_dbg)
+        file(INSTALL ${_backend_sos_dbg} DESTINATION "${CURRENT_PACKAGES_DIR}/debug/lib")
+    endif()
+endif()
+
 # --- Install stb headers for PNG encode/decode in consumer code ---
 if(EXISTS "${SOURCE_PATH}/thirdparty/stb/stb_image.h")
     file(INSTALL "${SOURCE_PATH}/thirdparty/stb/stb_image.h"

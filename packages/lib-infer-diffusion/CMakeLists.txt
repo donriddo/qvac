@@ -76,10 +76,23 @@ message("Building qvac-lib-inference-addon-sd with BACKENDS_SUBDIR='${BACKENDS_S
 # On Linux/Android, install ggml dynamic backend libraries alongside the addon
 set(BACKEND_DL_LIBS "")
 if((ANDROID OR UNIX) AND NOT APPLE)
-  # ggml backends are built inside stable-diffusion.cpp port
-  foreach(_backend ${GGML_AVAILABLE_BACKENDS})
-    list(APPEND BACKEND_DL_LIBS INSTALL TARGET ggml::${_backend})
-  endforeach()
+  if(GGML_BACKEND_DL)
+    # When GGML_BACKEND_DL is ON, ggml builds backends as MODULE libraries
+    # loaded at runtime. ggml's cmake config does not export them as imported
+    # targets — find the installed .so files and create targets ourselves.
+    foreach(_backend ${GGML_AVAILABLE_BACKENDS})
+      find_library(_${_backend}_LIB "qvac-diffusion-${_backend}" REQUIRED)
+      add_library(ggml::${_backend} SHARED IMPORTED)
+      set_target_properties(ggml::${_backend} PROPERTIES
+        IMPORTED_LOCATION "${_${_backend}_LIB}"
+        IMPORTED_NO_SONAME TRUE)
+      list(APPEND BACKEND_DL_LIBS INSTALL TARGET ggml::${_backend})
+    endforeach()
+  else()
+    foreach(_backend ${GGML_AVAILABLE_BACKENDS})
+      list(APPEND BACKEND_DL_LIBS INSTALL TARGET ggml::${_backend})
+    endforeach()
+  endif()
 endif()
 
 add_bare_module(qvac-lib-inference-addon-sd EXPORTS ${BACKEND_DL_LIBS})
@@ -137,11 +150,11 @@ add_bare_module(qvac-lib-inference-addon-sd EXPORTS ${BACKEND_DL_LIBS})
     endif()
   endif()
 
-  # Link OpenCL on Android
+  # Link OpenCL on Android (if available via vcpkg)
   if(ANDROID)
-    find_package(opencl CONFIG)
-    if(opencl_FOUND)
-      target_link_libraries(${qvac-lib-inference-addon-sd} PRIVATE opencl)
+    find_package(OpenCL QUIET)
+    if(OpenCL_FOUND)
+      target_link_libraries(${qvac-lib-inference-addon-sd} PRIVATE OpenCL::OpenCL)
     endif()
   endif()
 
