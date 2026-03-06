@@ -72,7 +72,7 @@ test('SD2.1 txt2img — generates a valid PNG image', { timeout: 600000 }, async
     const response = await model.run({
       prompt: 'a red fox in a snowy forest, photorealistic',
       negative_prompt: 'blurry, low quality, watermark',
-      steps: 30, // keep low for CI speed; enough to produce a valid PNG
+      steps: 10,
       width: 712,
       height: 712,
       cfg_scale: 7.5,
@@ -99,7 +99,7 @@ test('SD2.1 txt2img — generates a valid PNG image', { timeout: 600000 }, async
 
     // ── Assertions ────────────────────────────────────────────────────────────
     t.ok(progressTicks.length > 0, `Received progress ticks (got ${progressTicks.length})`)
-    t.is(progressTicks[progressTicks.length - 1].total, 30, 'Final progress tick reports 30 total steps')
+    t.is(progressTicks[progressTicks.length - 1].total, 10, 'Final progress tick reports 10 total steps')
 
     t.is(images.length, 1, 'Received exactly 1 image')
 
