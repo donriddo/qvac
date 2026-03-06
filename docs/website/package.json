@@ -9,7 +9,8 @@
     "lint": "next lint",
     "docs:generate": "bun run scripts/run-docs-generate.ts",
     "docs:generate-api": "bun run scripts/generate-api-docs.ts",
-    "docs:update-versions": "bun run scripts/update-versions-list.ts"
+    "docs:update-versions": "bun run scripts/update-versions-list.ts",
+    "docs:compare-versions": "bun run scripts/compare-api-versions.ts"
   },
   "dependencies": {
     "fumadocs-core": "^13.2.1",
