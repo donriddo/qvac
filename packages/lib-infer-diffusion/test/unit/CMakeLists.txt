@@ -12,6 +12,9 @@ add_executable(
   addon-test
   test_backend_selection.cpp
   test_sd_model.cpp
+  test_model_loading.cpp
+  test_single_step_inference.cpp
+  test_full_generation.cpp
   ${CMAKE_SOURCE_DIR}/addon/src/utils/BackendSelection.cpp
   ${CMAKE_SOURCE_DIR}/addon/src/utils/LoggingMacros.cpp
   ${CMAKE_SOURCE_DIR}/addon/src/model-interface/SdModel.cpp
@@ -56,6 +59,7 @@ endif()
 get_filename_component(TEST_BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}" ABSOLUTE)
 target_compile_definitions(addon-test PRIVATE
   TEST_BINARY_DIR="${TEST_BINARY_DIR}"
+  PROJECT_ROOT="${CMAKE_SOURCE_DIR}"
 )
 
 # Optional coverage instrumentation
@@ -80,7 +84,7 @@ target_link_libraries(
     GTest::gmock_main
 )
 
-if(NOT WIN32)
+if(NOT WIN32 AND NOT APPLE)
   target_link_libraries(
     addon-test
     PRIVATE
