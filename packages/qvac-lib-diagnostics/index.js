@@ -16,10 +16,10 @@ if (typeof global !== 'undefined' && global.process) {
   _process = global.process
 } else {
   try {
-    _process = require('bare-process')
+    _process = require('process')
   } catch (e) {
     try {
-      _process = require('process')
+      _process = require('bare-process')
     } catch (e2) {
       _process = null
     }

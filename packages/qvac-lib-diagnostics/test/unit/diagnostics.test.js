@@ -125,3 +125,31 @@ test('REPORT_VERSION is a string', t => {
   t.ok(typeof REPORT_VERSION === 'string', 'REPORT_VERSION is a string')
   t.is(REPORT_VERSION, '1.0.0', 'REPORT_VERSION is 1.0.0')
 })
+
+test('registerAddon throws on invalid inputs', t => {
+  t.exception(() => registerAddon(null), 'throws when addon is null')
+  t.exception(() => registerAddon({}), 'throws when name is missing')
+  t.exception(() => registerAddon({ name: '', version: '1.0.0', getDiagnostics: () => '{}' }), 'throws when name is empty string')
+  t.exception(() => registerAddon({ name: 'a', version: 1, getDiagnostics: () => '{}' }), 'throws when version is not a string')
+  t.exception(() => registerAddon({ name: 'a', version: '1.0.0', getDiagnostics: 'not-a-fn' }), 'throws when getDiagnostics is not a function')
+})
+
+test('registerExtension throws on invalid name', t => {
+  t.exception(() => registerExtension('', { data: 1 }), 'throws when name is empty string')
+  t.exception(() => registerExtension(42, { data: 1 }), 'throws when name is not a string')
+})
+
+test('getDiagnostics throwing is caught and error serialized into diagnostics string', t => {
+  reset()
+  registerAddon({
+    name: 'throwing-addon',
+    version: '1.0.0',
+    getDiagnostics: () => { throw new Error('boom') }
+  })
+  const report = generateReport({ app: { name: 'app', version: '1.0.0' } })
+  t.is(report.addons.length, 1, 'addon entry is present')
+  const diagnostics = report.addons[0].diagnostics
+  t.ok(typeof diagnostics === 'string', 'diagnostics is a string even when getDiagnostics throws')
+  const parsed = JSON.parse(diagnostics)
+  t.ok(parsed.error, 'error field is present in fallback diagnostics')
+})

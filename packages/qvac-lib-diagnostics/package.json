@@ -19,6 +19,12 @@
     "qvac"
   ],
   "license": "Apache-2.0",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./index.js"
+    }
+  },
   "devDependencies": {
     "bare-os": "^3.4.0",
     "bare-process": "^4.2.1",
