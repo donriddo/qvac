@@ -72,6 +72,8 @@ void SdModel::load() {
   if (isLoaded())
     return;
 
+  const auto tLoadStart = std::chrono::steady_clock::now();
+
   sd_ctx_params_t params{};
   sd_ctx_params_init(&params);
 
@@ -161,6 +163,10 @@ void SdModel::load() {
   }
 
   sdCtx_.reset(raw);
+
+  modelLoadMs_ = std::chrono::duration_cast<std::chrono::milliseconds>(
+                     std::chrono::steady_clock::now() - tLoadStart)
+                     .count();
 }
 
 // ---------------------------------------------------------------------------
@@ -173,6 +179,14 @@ void SdModel::unload() {
   sdCtx_.reset(); // calls free_sd_ctx via custom deleter
   lastStats_.clear();
   cancelRequested_.store(false);
+
+  modelLoadMs_ = 0;
+  totalGenerationMs_ = 0;
+  totalWallMs_ = 0;
+  totalSteps_ = 0;
+  totalGenerations_ = 0;
+  totalImages_ = 0;
+  totalPixels_ = 0;
 }
 
 // ---------------------------------------------------------------------------
@@ -299,12 +313,51 @@ std::any SdModel::process(const std::any& input) {
   const double genMs =
       std::chrono::duration<double, std::milli>(t1 - t0).count();
 
+  // ── Accumulate cumulative counters ─────────────────────────────────────────
+  const int64_t genMsI = static_cast<int64_t>(genMs);
+  totalGenerationMs_ += genMsI;
+  totalWallMs_ += genMsI;
+  totalSteps_ += gen.steps;
+  totalGenerations_++;
+  totalImages_ += outputCount;
+  totalPixels_ += static_cast<int64_t>(gen.width) * gen.height * outputCount;
+
+  // ── Derived metrics ────────────────────────────────────────────────────────
+  const double totalTimeSec = totalWallMs_ / 1000.0;
+  const double stepsPerSecond =
+      totalTimeSec > 0.0 ? (static_cast<double>(totalSteps_) / totalTimeSec)
+                         : 0.0;
+  const double msPerStep =
+      totalSteps_ > 0 ? (static_cast<double>(totalWallMs_) / totalSteps_) : 0.0;
+  const double megapixelsPerSecond =
+      totalTimeSec > 0.0
+          ? (static_cast<double>(totalPixels_) / 1e6 / totalTimeSec)
+          : 0.0;
+
+  // ── Build stats ────────────────────────────────────────────────────────────
   lastStats_.clear();
-  lastStats_.push_back({"generation_time", genMs});
-  lastStats_.push_back({"steps", static_cast<int64_t>(gen.steps)});
-  lastStats_.push_back({"width", static_cast<int64_t>(gen.width)});
-  lastStats_.push_back({"height", static_cast<int64_t>(gen.height)});
-  lastStats_.push_back({"output_count", static_cast<int64_t>(outputCount)});
+
+  lastStats_.emplace_back("generation_time", genMs);
+  lastStats_.emplace_back("totalTime", totalTimeSec);
+  lastStats_.emplace_back("stepsPerSecond", stepsPerSecond);
+  lastStats_.emplace_back("msPerStep", msPerStep);
+  lastStats_.emplace_back("megapixelsPerSecond", megapixelsPerSecond);
+
+  lastStats_.emplace_back("totalSteps", totalSteps_);
+  lastStats_.emplace_back("totalGenerations", totalGenerations_);
+  lastStats_.emplace_back("totalImages", totalImages_);
+  lastStats_.emplace_back("totalPixels", totalPixels_);
+
+  lastStats_.emplace_back("modelLoadMs", modelLoadMs_);
+  lastStats_.emplace_back("generationMs", genMsI);
+  lastStats_.emplace_back("totalGenerationMs", totalGenerationMs_);
+  lastStats_.emplace_back("totalWallMs", totalWallMs_);
+
+  lastStats_.emplace_back("steps", static_cast<int64_t>(gen.steps));
+  lastStats_.emplace_back("width", static_cast<int64_t>(gen.width));
+  lastStats_.emplace_back("height", static_cast<int64_t>(gen.height));
+  lastStats_.emplace_back("seed", gen.seed);
+  lastStats_.emplace_back("output_count", static_cast<int64_t>(outputCount));
 
   tl_progressCtx.job = nullptr;
   sd_set_progress_callback(nullptr, nullptr);

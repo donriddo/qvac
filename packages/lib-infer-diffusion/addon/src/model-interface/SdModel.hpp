@@ -126,4 +126,13 @@ private:
   std::unique_ptr<sd_ctx_t, decltype(&free_sd_ctx)> sdCtx_;
   mutable std::atomic<bool> cancelRequested_{false};
   mutable qvac_lib_inference_addon_cpp::RuntimeStats lastStats_{};
+
+  // ── Cumulative stats ──────────────────────────────────────────────────────
+  int64_t modelLoadMs_{0};
+  int64_t totalGenerationMs_{0};
+  int64_t totalWallMs_{0};
+  int64_t totalSteps_{0};
+  int64_t totalGenerations_{0};
+  int64_t totalImages_{0};
+  int64_t totalPixels_{0};
 };
