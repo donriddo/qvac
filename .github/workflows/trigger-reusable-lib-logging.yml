@@ -1,4 +1,4 @@
-name: General CI/CD (logging)
+name: General CI/CD (Qvac-lib-diagnostics)
 # This workflow is used to call the reusable workflows in the qvac-devops repository
 # https://github.com/tetherto/qvac-devops/blob/production-workflows-tag/.github/workflows/public-reusable.yml
 
@@ -16,7 +16,7 @@ on:
       - feature-*
       - tmp-*
     paths:
-      - "packages/logging/**"
+      - "packages/qvac-lib-diagnostics/**"
   workflow_dispatch:
     inputs:
       custom_input_1:
@@ -48,9 +48,9 @@ jobs:
           base-ref: ${{ github.ref_name }}
           base-sha: ${{ github.event.before }}
           head-sha: ${{ github.sha }}
-          package-slug: logging
-          package-json-path: packages/logging/package.json
-          changelog-path: packages/logging/CHANGELOG.md
+          package-slug: qvac-lib-diagnostics
+          package-json-path: packages/qvac-lib-diagnostics/package.json
+          changelog-path: packages/qvac-lib-diagnostics/CHANGELOG.md
 
   publish-logic:
     runs-on: ubuntu-latest
@@ -119,7 +119,7 @@ jobs:
           pat-token: ${{ secrets.PAT_TOKEN }}
           npm-token: ${{ secrets.NPM_TOKEN }}
           tag: ${{ needs.publish-logic.outputs.gpr_tag }}
-          workdir: packages/logging
+          workdir: packages/qvac-lib-diagnostics
           name-suffix: "-mono"
 
   publish-release-npm:
@@ -131,8 +131,8 @@ jobs:
     uses: tetherto/qvac-devops/.github/workflows/public-reusable-npm.yml@monorepo_update
     secrets: inherit
     with:
-      workdir: packages/logging
-      repo_name: logging
+      workdir: packages/qvac-lib-diagnostics
+      repo_name: diagnostics
 
   # Create GitHub release only for actual releases (after NPM publish)
   publish-release:
@@ -143,11 +143,11 @@ jobs:
     uses: ./.github/workflows/create-github-release.yml
     secrets: inherit
     with:
-      repo_name: "logging"
-      release_name: "QVAC logging Lib"
+      repo_name: "diagnostics"
+      release_name: "QVAC diagnostics Lib"
       published_version: ${{ needs.publish-release-npm.outputs.published_version }}
       prev_sha: ${{ github.event.before }}
-      workdir: "packages/logging"
+      workdir: "packages/qvac-lib-diagnostics"
 
   publish-feature-gpr:
     needs: publish-logic
@@ -168,7 +168,7 @@ jobs:
           pat-token: ${{ secrets.PAT_TOKEN }}
           npm-token: ${{ secrets.NPM_TOKEN }}
           tag: ${{ needs.publish-logic.outputs.gpr_tag }}
-          workdir: packages/logging
+          workdir: packages/qvac-lib-diagnostics
           name-suffix: "-mono"
 
   publish-tmp-gpr:
@@ -190,5 +190,5 @@ jobs:
           pat-token: ${{ secrets.PAT_TOKEN }}
           npm-token: ${{ secrets.NPM_TOKEN }}
           tag: ${{ needs.publish-logic.outputs.gpr_tag }}
-          workdir: packages/logging
+          workdir: packages/qvac-lib-diagnostics
           name-suffix: "-mono"
