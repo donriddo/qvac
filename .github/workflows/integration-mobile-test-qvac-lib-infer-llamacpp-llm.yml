@@ -1144,7 +1144,7 @@ jobs:
           APP_ARN="${{ steps.upload_app.outputs.app_upload_arn }}"
           TEST_CONFIG="type=APPIUM_NODE,testPackageArn=${{ steps.upload_test_package.outputs.test_package_upload_arn }},testSpecArn=${{ steps.upload_test_spec.outputs.test_spec_arn }}"
 
-          schedule_run() {
+          schedule_run_with_pool() {
             local pool_arn="$1"
             local name="$2"
             aws devicefarm schedule-run \
@@ -1157,30 +1157,33 @@ jobs:
               --query 'run.arn' --output text
           }
 
-          if [ "${{ matrix.platform }}" == "Android" ]; then
-            SAMSUNG_POOL="${{ secrets.LLM_ANDROID_SAMSUNG_DEVICE_POOL_ARN }}"
-            PIXEL_POOL="${{ secrets.LLM_ANDROID_PIXEL_DEVICE_POOL_ARN }}"
+          schedule_run_with_filter() {
+            local manufacturer="$1"
+            local name="$2"
+            local filter='{"filters":[{"attribute":"MANUFACTURER","operator":"EQUALS","values":["'"$manufacturer"'"]},{"attribute":"AVAILABILITY","operator":"EQUALS","values":["HIGHLY_AVAILABLE"]},{"attribute":"PLATFORM","operator":"EQUALS","values":["ANDROID"]}],"maxDevices":1}'
+            aws devicefarm schedule-run \
+              --project-arn "$PROJECT_ARN" \
+              --device-selection-configuration "$filter" \
+              --app-arn "$APP_ARN" \
+              --name "$name" \
+              --test "$TEST_CONFIG" \
+              --execution-configuration jobTimeoutMinutes=120 \
+              --query 'run.arn' --output text
+          }
 
-            if [ -n "$SAMSUNG_POOL" ] && [ -n "$PIXEL_POOL" ]; then
-              echo "Scheduling parallel Android runs (Samsung + Pixel)..."
-              RUN_ARN_1=$(schedule_run "$SAMSUNG_POOL" "$RUN_NAME-Samsung")
-              echo "Samsung run scheduled: $RUN_ARN_1"
-              RUN_ARN_2=$(schedule_run "$PIXEL_POOL" "$RUN_NAME-Pixel")
-              echo "Pixel run scheduled: $RUN_ARN_2"
-              echo "run_arn_1=$RUN_ARN_1" >> $GITHUB_OUTPUT
-              echo "run_arn_2=$RUN_ARN_2" >> $GITHUB_OUTPUT
-              echo "run_count=2" >> $GITHUB_OUTPUT
-            else
-              echo "Per-device pool secrets not set, using single pool..."
-              POOL_ARN="${{ secrets.LLM_ANDROID_DEVICE_POOL_ARN }}"
-              RUN_ARN_1=$(schedule_run "$POOL_ARN" "$RUN_NAME")
-              echo "run_arn_1=$RUN_ARN_1" >> $GITHUB_OUTPUT
-              echo "run_count=1" >> $GITHUB_OUTPUT
-            fi
+          if [ "${{ matrix.platform }}" == "Android" ]; then
+            echo "Scheduling parallel Android runs (Samsung + Google Pixel)..."
+            RUN_ARN_1=$(schedule_run_with_filter "Samsung" "$RUN_NAME-Samsung")
+            echo "Samsung run scheduled: $RUN_ARN_1"
+            RUN_ARN_2=$(schedule_run_with_filter "Google" "$RUN_NAME-Pixel")
+            echo "Pixel run scheduled: $RUN_ARN_2"
+            echo "run_arn_1=$RUN_ARN_1" >> $GITHUB_OUTPUT
+            echo "run_arn_2=$RUN_ARN_2" >> $GITHUB_OUTPUT
+            echo "run_count=2" >> $GITHUB_OUTPUT
           else
             POOL_ARN="${{ secrets.LLM_IOS_DEVICE_POOL_ARN }}"
             echo "Scheduling iOS run..."
-            RUN_ARN_1=$(schedule_run "$POOL_ARN" "$RUN_NAME")
+            RUN_ARN_1=$(schedule_run_with_pool "$POOL_ARN" "$RUN_NAME")
             echo "run_arn_1=$RUN_ARN_1" >> $GITHUB_OUTPUT
             echo "run_count=1" >> $GITHUB_OUTPUT
           fi
