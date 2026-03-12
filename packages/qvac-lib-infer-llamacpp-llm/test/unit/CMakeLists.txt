@@ -12,6 +12,7 @@ add_executable(
   addon-test
   test_llama_model.cpp
   test_cache_management.cpp
+  test_cache_management_qwen3.cpp
   test_text_llm_context.cpp
   test_addon_cpp.cpp
   test_backend_selection.cpp

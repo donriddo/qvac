@@ -60,15 +60,12 @@ struct BaseTestModelPath {
   }
 
   /**
-   * Default model path: Qwen3-1.7B-Q4_0.gguf if present (for tools_at_end tests),
-   * else Llama-3.2-1B-Instruct-Q4_0.gguf, else test_model.gguf.
+   * Default model path: Llama-3.2-1B-Instruct-Q4_0.gguf if present,
+   * else test_model.gguf, else "Llama-3.2-1B-Instruct-Q4_0.gguf".
    */
   static std::string get() {
     fs::path base = path();
-    fs::path p = base / "Qwen3-1.7B-Q4_0.gguf";
-    if (fs::exists(p))
-      return p.string();
-    p = base / "Llama-3.2-1B-Instruct-Q4_0.gguf";
+    fs::path p = base / "Llama-3.2-1B-Instruct-Q4_0.gguf";
     if (fs::exists(p))
       return p.string();
     p = base / "test_model.gguf";
