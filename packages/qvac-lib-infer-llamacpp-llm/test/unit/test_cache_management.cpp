@@ -52,6 +52,7 @@ protected:
     config_files["ctx_size"] = "2048";
     config_files["gpu_layers"] = test_common::getTestGpuLayers();
     config_files["n_predict"] = "10";
+    config_files["tools"] = "true";
 
     test_model_path = test_common::BaseTestModelPath::get();
     test_projection_path = "";
