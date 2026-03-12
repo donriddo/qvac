@@ -39,6 +39,9 @@ import {
   MMPROJ_SMOLVLM2_500M_MULTIMODAL_Q8_0,
   SALAMANDRATA_2B_INST_Q4,
   AFRICAN_4B_TRANSLATION_Q4_K_M,
+  FLUX_2_KLEIN_4B_Q4_0,
+  FLUX_2_KLEIN_4B_VAE,
+  QWEN3_4B_Q4_K_M,
 } from "@qvac/sdk";
 import * as path from "node:path";
 import { ResourceManager } from "../shared/resource-manager.js";
@@ -62,6 +65,7 @@ import { TtsExecutor } from "../shared/executors/tts-executor.js";
 import { ParakeetExecutor } from "./executors/parakeet-executor.js";
 import { VisionExecutor } from "./executors/vision-executor.js";
 import { DownloadExecutor } from "../shared/executors/download-executor.js";
+import { GenerationExecutor } from "./executors/generation-executor.js";
 
 const resources = new ResourceManager();
 
@@ -321,6 +325,17 @@ resources.define("vision", {
   },
 });
 
+resources.define("diffusion", {
+  constant: FLUX_2_KLEIN_4B_Q4_0,
+  type: "diffusion",
+  config: {
+    device: "gpu",
+    threads: 4,
+    llmModelSrc: QWEN3_4B_Q4_K_M,
+    vaeModelSrc: FLUX_2_KLEIN_4B_VAE,
+  },
+});
+
 export const executor = createExecutor({
   handlers: [
     new ModelLoadingExecutor(resources),
@@ -344,6 +359,7 @@ export const executor = createExecutor({
     new ParakeetExecutor(resources),
     new VisionExecutor(resources),
     new DownloadExecutor(resources),
+    new GenerationExecutor(resources),
   ],
   profiling: {
     init: () => profiler.enable({ mode: "summary", includeServerBreakdown: true }),
