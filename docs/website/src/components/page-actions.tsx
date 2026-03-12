@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Check, ChevronDown, Copy, ExternalLinkIcon, MessageSquare, Sparkles } from 'lucide-react';
+import { Check, ChevronDown, Copy, ExternalLinkIcon, FileText, MessageSquare, Sparkles } from 'lucide-react';
 import { cn } from '../lib/cn';
 import { useCopyButton } from 'fumadocs-ui/utils/use-copy-button';
 import { buttonVariants } from './ui/button';
@@ -8,6 +8,38 @@ import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from './ui/popo
 import { cva } from 'class-variance-authority';
 
 const cache = new Map<string, string>();
+
+function useToastMessage() {
+  const [message, setMessage] = useState<string | null>(null);
+  const timeoutRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) window.clearTimeout(timeoutRef.current);
+    };
+  }, []);
+
+  const show = (text: string) => {
+    setMessage(text);
+    if (timeoutRef.current) window.clearTimeout(timeoutRef.current);
+    timeoutRef.current = window.setTimeout(() => setMessage(null), 2200);
+  };
+
+  return [message, show] as const;
+}
+
+function ToastOverlay({ message }: { message: string | null }) {
+  if (!message) return null;
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 -translate-x-1/2 rounded-xl border bg-fd-popover/60 backdrop-blur-lg px-3 py-2 text-sm text-fd-popover-foreground shadow-lg"
+    >
+      {message}
+    </div>
+  );
+}
 
 export function LLMCopyButton({
   /**
@@ -18,25 +50,13 @@ export function LLMCopyButton({
   markdownUrl: string;
 }) {
   const [isLoading, setLoading] = useState(false);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const toastTimeoutRef = useRef<number | null>(null);
+  const [toastMessage, showToast] = useToastMessage();
 
   const fileLabel = useMemo(() => {
-    const parts = markdownUrl.split('/').filter(Boolean);
+    const pathname = markdownUrl.split('?')[0];
+    const parts = pathname.split('/').filter(Boolean);
     return parts[parts.length - 1] ?? markdownUrl;
   }, [markdownUrl]);
-
-  useEffect(() => {
-    return () => {
-      if (toastTimeoutRef.current) window.clearTimeout(toastTimeoutRef.current);
-    };
-  }, []);
-
-  const showToast = (message: string) => {
-    setToastMessage(message);
-    if (toastTimeoutRef.current) window.clearTimeout(toastTimeoutRef.current);
-    toastTimeoutRef.current = window.setTimeout(() => setToastMessage(null), 2200);
-  };
 
   const [checked, onCopy] = useCopyButton(async () => {
     const cached = cache.get(markdownUrl);
@@ -67,15 +87,7 @@ export function LLMCopyButton({
 
   return (
     <div className="relative inline-flex">
-      {toastMessage ? (
-        <div
-          role="status"
-          aria-live="polite"
-          className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 -translate-x-1/2 rounded-xl border bg-fd-popover/60 backdrop-blur-lg px-3 py-2 text-sm text-fd-popover-foreground shadow-lg"
-        >
-          {toastMessage}
-        </div>
-      ) : null}
+      <ToastOverlay message={toastMessage} />
 
       <button
         type="button"
@@ -139,6 +151,61 @@ export function LLMCopyButton({
 const optionVariants = cva(
   'text-sm p-2 rounded-lg inline-flex items-center gap-2 hover:text-fd-accent-foreground hover:bg-fd-accent [&_svg]:size-4',
 );
+
+export function PageCopyButton({ slug }: { slug: string }) {
+  const [isLoading, setLoading] = useState(false);
+  const [toastMessage, showToast] = useToastMessage();
+
+  const pageTextUrl = `/api/page-text?slug=${encodeURIComponent(slug)}`;
+
+  const [checked, onCopy] = useCopyButton(async () => {
+    const cached = cache.get(pageTextUrl);
+    if (cached) {
+      await navigator.clipboard.writeText(cached);
+      showToast('Copied this page to clipboard');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          'text/plain': fetch(pageTextUrl).then(async (res) => {
+            const content = await res.text();
+            cache.set(pageTextUrl, content);
+            return content;
+          }),
+        }),
+      ]);
+      showToast('Copied this page to clipboard');
+    } finally {
+      setLoading(false);
+    }
+  });
+
+  return (
+    <div className="relative inline-flex">
+      <ToastOverlay message={toastMessage} />
+
+      <button
+        type="button"
+        disabled={isLoading}
+        onClick={onCopy}
+        aria-label="Copy this page"
+        className={cn(
+          buttonVariants({
+            color: 'secondary',
+            size: 'sm',
+            className: 'gap-1.5',
+          }),
+        )}
+      >
+        {checked ? <Check className="size-3.5" /> : <FileText className="size-3.5" />}
+        Copy page
+      </button>
+    </div>
+  );
+}
 
 export function ViewOptions({
   markdownUrl,
