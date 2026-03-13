@@ -107,41 +107,28 @@ const TOOL_REMINDER = {
   }
 }
 
-// Same tools every turn (for scenarios A and B)
-const FIXED_TOOLS = [TOOL_WEATHER, TOOL_SEARCH]
-
 // Different tools per turn (for scenario C — dynamic tools)
 const DYNAMIC_TOOLS_PER_TURN = [
-  [TOOL_WEATHER, TOOL_SEARCH],        // Turn 1: weather + search
-  [TOOL_CALCULATOR],                    // Turn 2: calculator only
-  [TOOL_TRANSLATE],                     // Turn 3: translate only
-  [TOOL_EMAIL, TOOL_REMINDER],          // Turn 4: email + reminder
-  [TOOL_WEATHER],                       // Turn 5: weather only
-  [TOOL_SEARCH, TOOL_CALCULATOR],       // Turn 6: search + calculator
-  [TOOL_TRANSLATE, TOOL_EMAIL],         // Turn 7: translate + email
+  [TOOL_WEATHER, TOOL_SEARCH], // Turn 1: weather + search
+  [TOOL_CALCULATOR], // Turn 2: calculator only
+  [TOOL_TRANSLATE], // Turn 3: translate only
+  [TOOL_EMAIL, TOOL_REMINDER], // Turn 4: email + reminder
+  [TOOL_WEATHER], // Turn 5: weather only
+  [TOOL_SEARCH, TOOL_CALCULATOR], // Turn 6: search + calculator
+  [TOOL_TRANSLATE, TOOL_EMAIL], // Turn 7: translate + email
   [TOOL_REMINDER, TOOL_WEATHER, TOOL_SEARCH], // Turn 8: reminder + weather + search
-  [TOOL_CALCULATOR, TOOL_TRANSLATE],    // Turn 9: calculator + translate
-  [TOOL_EMAIL],                         // Turn 10: email only
-  [TOOL_WEATHER, TOOL_CALCULATOR],      // Turn 11: weather + calculator
-  [TOOL_SEARCH],                        // Turn 12: search only
-  [TOOL_REMINDER, TOOL_TRANSLATE],      // Turn 13: reminder + translate
-  [TOOL_WEATHER, TOOL_EMAIL],           // Turn 14: weather + email
-  [TOOL_CALCULATOR, TOOL_SEARCH],       // Turn 15: calculator + search
-  [TOOL_TRANSLATE],                     // Turn 16: translate only
+  [TOOL_CALCULATOR, TOOL_TRANSLATE], // Turn 9: calculator + translate
+  [TOOL_EMAIL], // Turn 10: email only
+  [TOOL_WEATHER, TOOL_CALCULATOR], // Turn 11: weather + calculator
+  [TOOL_SEARCH], // Turn 12: search only
+  [TOOL_REMINDER, TOOL_TRANSLATE], // Turn 13: reminder + translate
+  [TOOL_WEATHER, TOOL_EMAIL], // Turn 14: weather + email
+  [TOOL_CALCULATOR, TOOL_SEARCH], // Turn 15: calculator + search
+  [TOOL_TRANSLATE], // Turn 16: translate only
   [TOOL_REMINDER, TOOL_EMAIL, TOOL_WEATHER], // Turn 17: reminder + email + weather
-  [TOOL_SEARCH, TOOL_TRANSLATE],        // Turn 18: search + translate
-  [TOOL_CALCULATOR],                    // Turn 19: calculator only
-  [TOOL_WEATHER, TOOL_REMINDER]         // Turn 20: weather + reminder
-]
-
-// Conversation turns — prompts that match the available tools
-const CONVERSATION_TURNS_FIXED = [
-  { user: 'Hello, what tools do you have available?' },
-  { user: 'What is the weather like in Paris?' },
-  { user: 'How about London?' },
-  { user: 'Search for the best restaurants in Tokyo' },
-  { user: 'What is the weather in New York in fahrenheit?' },
-  { user: 'Search for flights from Paris to Tokyo' }
+  [TOOL_SEARCH, TOOL_TRANSLATE], // Turn 18: search + translate
+  [TOOL_CALCULATOR], // Turn 19: calculator only
+  [TOOL_WEATHER, TOOL_REMINDER] // Turn 20: weather + reminder
 ]
 
 const CONVERSATION_TURNS_DYNAMIC = [
@@ -292,8 +279,8 @@ async function runScenario (dirPath, modelName, opts) {
             ? [{ role: 'system', content: 'You are a helpful assistant.' }, { role: 'user', content: turn.user }]
             : [
               ...(lastAssistantResponse ? [{ role: 'assistant', content: lastAssistantResponse }] : []),
-                { role: 'user', content: turn.user }
-              ]),
+              { role: 'user', content: turn.user }
+            ]),
           ...turnTools
         ]
       } else if (dynamicTools) {
