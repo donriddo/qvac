@@ -1,9 +1,20 @@
 import type { Node } from 'fumadocs-core/page-tree';
+import { source } from '@/lib/source';
 import { resolveIcon } from "@/lib/resolveIcon";
 import React from "react";
 import { SiExpo, SiElectron } from '@icons-pack/react-simple-icons';
 
-// Custom tree structure that replicates the GitBook SUMMARY.md structure
+function findFolderChildren(nodes: Node[], indexUrl: string): Node[] {
+  for (const node of nodes) {
+    if (node.type === 'folder') {
+      if (node.index?.url === indexUrl) return node.children;
+      const found = findFolderChildren(node.children, indexUrl);
+      if (found.length > 0) return found;
+    }
+  }
+  return [];
+}
+
 export const customTree: Node[] = [
   {
     name: 'Home',
@@ -18,80 +29,114 @@ export const customTree: Node[] = [
     children: [
       {
         name: 'Welcome',
-        url: '/about-qvac/welcome',
+        url: '/welcome',
         type: 'page',
-        icon: resolveIcon('Sparkles'),
+        icon: resolveIcon('BookOpen'),
       },
       {
-        name: 'How it works',
-        url: '/about-qvac/how-it-works',
+        name: 'Vision',
+        url: '/vision',
         type: 'page',
-        icon: resolveIcon('Cog'),
+        icon: resolveIcon('Telescope'),
       },
       {
-        name: 'Flagship Apps',
-        url: '/about-qvac/flagship-apps',
+        name: 'Flagship apps',
+        url: '/flagship-apps',
         type: 'page',
         icon: resolveIcon('LayoutGrid'),
       },
-    ]
+      {
+        name: 'How it works',
+        url: '/sdk/how-it-works',
+        type: 'page',
+        icon: resolveIcon('Cog'),
+      },
+    ],
   },
   {
-  type: "separator",
-  name: "Build",
+    type: 'separator',
+    name: 'Build',
   },
   {
     name: 'Getting started',
     type: 'folder',
     icon: resolveIcon('Compass'),
-    index: {
-      name: 'Installation',
-      url: '/getting-started',
-      type: 'page',
-    },
     children: [
       {
+        name: 'Overview',
+        url: '/sdk',
+        type: 'page',
+        icon: resolveIcon('Toolbox'),
+      },
+      {
         name: 'Quickstart',
-        url: '/getting-started/quickstart',
+        url: '/sdk/quickstart',
         type: 'page',
         icon: resolveIcon('Rocket'),
       },
       {
         name: 'Installation',
-        url: '/getting-started/install',
+        url: '/sdk/installation',
         type: 'page',
-        icon: resolveIcon('Wrench'),
+        icon: resolveIcon('Package'),
       },
-      { 
+      {
         name: 'Configuration',
-        url: '/getting-started/configuration',
+        url: '/sdk/configuration',
         type: 'page',
         icon: resolveIcon('SlidersHorizontal'),
       },
-    ]
+    ],
   },
   {
-    name: 'How-to guides',
+    name: 'AI tasks',
     type: 'folder',
-    icon: resolveIcon('ListChecks'),
-    children: [      
-      { name: 'Blind relays', url: '/how-tos/blind-relays', type: 'page', icon: resolveIcon('Router') },
-      { name: 'Completion', url: '/how-tos/completion', type: 'page', icon: resolveIcon('MessagesSquare') },
-      { name: 'Delegated inference', url: '/how-tos/delegated-inference', type: 'page', icon: resolveIcon('Share2') },
-      { name: 'Download Lifecycle', url: '/how-tos/download-lifecycle', type: 'page', icon: resolveIcon('Download') },
-      { name: 'Logging', url: '/how-tos/logging', type: 'page', icon: resolveIcon('Activity') },
-      { name: 'Multimodal', url: '/how-tos/multimodal', type: 'page', icon: resolveIcon('GalleryHorizontal') },
-      { name: 'OCR', url: '/how-tos/ocr', type: 'page', icon: resolveIcon('ScanText') },
-      { name: 'Plugin system', type: 'folder', icon: resolveIcon('Plug'), index: {type: 'page', name: 'Plugin system', url: '/how-tos/plugin-system'}, children: [
-        { name: 'Write a custom plugin', url: '/how-tos/write-custom-plugin', type: 'page' },
-      ] },
-      { name: 'RAG', url: '/how-tos/rag', type: 'page', icon: resolveIcon('ScanSearch') },
-      { name: 'Sharded models', url: '/how-tos/sharded-models', type: 'page', icon: resolveIcon('Merge') },
-      { name: 'Text embeddings', url: '/how-tos/text-embeddings', type: 'page', icon: resolveIcon('Hash') },
-      { name: 'Text-to-Speech', url: '/how-tos/text-to-speech', type: 'page', icon: resolveIcon('Volume2') },
-      { name: 'Transcription', url: '/how-tos/transcription', type: 'page', icon: resolveIcon('Mic') },
-      { name: 'Translation', url: '/how-tos/translation', type: 'page', icon: resolveIcon('Languages') },
+    icon: resolveIcon('Sparkles'),
+    children: [
+      { name: 'Completion', url: '/sdk/ai-tasks/completion', type: 'page', icon: resolveIcon('MessagesSquare') },
+      { name: 'Text embeddings', url: '/sdk/ai-tasks/text-embeddings', type: 'page', icon: resolveIcon('Hash') },
+      { name: 'Translation', url: '/sdk/ai-tasks/translation', type: 'page', icon: resolveIcon('Languages') },
+      { name: 'Transcription', url: '/sdk/ai-tasks/transcription', type: 'page', icon: resolveIcon('Mic') },
+      { name: 'Text-to-Speech', url: '/sdk/ai-tasks/text-to-speech', type: 'page', icon: resolveIcon('Volume2') },
+      { name: 'OCR', url: '/sdk/ai-tasks/ocr', type: 'page', icon: resolveIcon('ScanText') },
+      { name: 'Multimodal', url: '/sdk/ai-tasks/multimodal', type: 'page', icon: resolveIcon('GalleryHorizontal') },
+      { name: 'RAG', url: '/sdk/ai-tasks/rag', type: 'page', icon: resolveIcon('ScanSearch') },
     ],
+  },
+  {
+    name: 'P2P capabilities',
+    type: 'folder',
+    icon: resolveIcon('Network'),
+    children: [
+      { name: 'Delegated inference', url: '/sdk/p2p/delegated-inference', type: 'page', icon: resolveIcon('Share2') },
+      { name: 'Blind relays', url: '/sdk/p2p/blind-relays', type: 'page', icon: resolveIcon('Router') },
+    ],
+  },
+  {
+    name: 'Utilities',
+    type: 'folder',
+    icon: resolveIcon('Wrench'),
+    children: [
+      {
+        name: 'Plugin system',
+        type: 'folder',
+        icon: resolveIcon('Plug'),
+        index: { type: 'page', name: 'Plugin system', url: '/sdk/utilities/plugin-system' },
+        children: [
+          { name: 'Write a custom plugin', url: '/sdk/utilities/write-custom-plugin', type: 'page' },
+        ],
+      },
+      { name: 'Logging', url: '/sdk/utilities/logging', type: 'page', icon: resolveIcon('Activity') },
+      { name: 'Download lifecycle', url: '/sdk/utilities/download-lifecycle', type: 'page', icon: resolveIcon('Download') },
+      { name: 'Sharded models', url: '/sdk/utilities/sharded-models', type: 'page', icon: resolveIcon('Merge') },
+    ],
+  },
+  {
+    name: 'API',
+    type: 'folder',
+    icon: resolveIcon('BookA'),
+    index: { type: 'page', name: 'API', url: '/sdk/api' },
+    children: findFolderChildren(source.pageTree.children, '/sdk/api'),
   },
   {
     name: 'Tutorials',
@@ -100,106 +145,44 @@ export const customTree: Node[] = [
     children: [
       {
         name: 'Build on Electron',
-        url: '/tutorials/electron',
+        url: '/sdk/tutorials/electron',
         type: 'page',
         icon: React.createElement(SiElectron, { className: "h-4 w-4" }),
       },
       {
         name: 'Build on Expo',
-        url: '/tutorials/expo',
+        url: '/sdk/tutorials/expo',
         type: 'page',
         icon: React.createElement(SiExpo, { className: "h-4 w-4" }),
-      }, 
-    ]
-  },
-  {
-    type: "separator",
-    name: "References",
-  },
-  {
-    name: 'SDK API',
-    type: 'folder',
-    icon: resolveIcon('Code'),
-    index: {type: 'page', name: 'SDK API', url: '/sdk/api/latest'},
-    children: [
-      { name: 'Latest', url: '/sdk/api/latest', type: 'page', icon: resolveIcon('Tag') },
+      },
     ],
   },
   {
-    name: 'API',
+    type: 'separator',
+    name: 'Miscellaneous',
+  },
+  {
+    name: 'Addons',
     type: 'folder',
-    icon: resolveIcon('BookA'),
-    index: {type: 'page', name: 'API', url: '/references/api'},
+    icon: resolveIcon('Blocks'),
+    index: { type: 'page', name: 'Addons', url: '/addons' },
     children: [
-      { name: 'cancel( )', url: '/references/api/cancel', type: 'page' },
-      { name: 'close( )', url: '/references/api/close', type: 'page' },
-      { name: 'completion( )', url: '/references/api/completion', type: 'page' },
-      { name: 'defineHandler( )', url: '/references/api/defineHandler', type: 'page' },
-      { name: 'definePlugin( )', url: '/references/api/definePlugin', type: 'page' },
-      { name: 'deleteCache( )', url: '/references/api/deleteCache', type: 'page' },
-      { name: 'downloadAsset( )', url: '/references/api/downloadAsset', type: 'page' },
-      { name: 'embed( )', url: '/references/api/embed', type: 'page' },
-      { name: 'Errors', url: '/references/api/errors', type: 'page' },
-      { name: 'getLogger( )', url: '/references/api/getLogger', type: 'page' },
-      { name: 'getModelByName( )', url: '/references/api/getModelByName', type: 'page' },
-      { name: 'getModelBySrc( )', url: '/references/api/getModelBySrc', type: 'page' },
-      { name: 'getModelInfo( )', url: '/references/api/getModelInfo', type: 'page' },
-      { name: 'invokePlugin( )', url: '/references/api/invokePlugin', type: 'page' },
-      { name: 'invokePluginStream( )', url: '/references/api/invokePluginStream', type: 'page' },
-      { name: 'loadModel( )', url: '/references/api/loadModel', type: 'page' },
-      { name: 'loggingStream( )', url: '/references/api/loggingStream', type: 'page' },
-      { name: 'modelRegistryGetModel( )', url: '/references/api/modelRegistryGetModel', type: 'page' },
-      { name: 'modelRegistryList( )', url: '/references/api/modelRegistryList', type: 'page' },
-      { name: 'modelRegistrySearch( )', url: '/references/api/modelRegistrySearch', type: 'page' },
-      { name: 'ocr( )', url: '/references/api/ocr', type: 'page' },
-      { name: 'ping( )', url: '/references/api/ping', type: 'page' },
-      { name: 'ragChunk( )', url: '/references/api/ragChunk', type: 'page' },
-      { name: 'ragCloseWorkspace( )', url: '/references/api/ragCloseWorkspace', type: 'page' },
-      { name: 'ragDeleteEmbeddings( )', url: '/references/api/ragDeleteEmbeddings', type: 'page' },
-      { name: 'ragDeleteWorkspace( )', url: '/references/api/ragDeleteWorkspace', type: 'page' },
-      { name: 'ragIngest( )', url: '/references/api/ragIngest', type: 'page' },
-      { name: 'ragListWorkspaces( )', url: '/references/api/ragListWorkspaces', type: 'page' },
-      { name: 'ragReindex( )', url: '/references/api/ragReindex', type: 'page' },
-      { name: 'ragSaveEmbeddings( )', url: '/references/api/ragSaveEmbeddings', type: 'page' },
-      { name: 'ragSearch( )', url: '/references/api/ragSearch', type: 'page' },
-      { name: 'startQVACProvider( )', url: '/references/api/startQVACProvider', type: 'page' },
-      { name: 'stopQVACProvider( )', url: '/references/api/stopQVACProvider', type: 'page' },
-      { name: 'textToSpeech( )', url: '/references/api/textToSpeech', type: 'page' },
-      { name: 'transcribe( )', url: '/references/api/transcribe', type: 'page' },
-      { name: 'transcribeStream( )', url: '/references/api/transcribeStream', type: 'page' },
-      { name: 'translate( )', url: '/references/api/translate', type: 'page' },
-      { name: 'unloadModel( )', url: '/references/api/unloadModel', type: 'page' },
+      { name: 'embed-llamacpp', url: '/addons/embed-llamacpp', type: 'page' },
+      { name: 'llm-llamacpp', url: '/addons/llm-llamacpp', type: 'page' },
+      { name: 'ocr-onnx', url: '/addons/ocr-onnx', type: 'page' },
+      { name: 'transcription-whispercpp', url: '/addons/transcription-whispercpp', type: 'page' },
+      { name: 'translation-nmtcpp', url: '/addons/translation-nmtcpp', type: 'page' },
+      { name: 'tts-onnx', url: '/addons/tts-onnx', type: 'page' },
     ],
   },
   {
     name: 'Release notes',
-    url: 'https://github.com/tetherto/qvac-sdk/releases/tag/v0.5.0',
+    url: 'https://github.com/tetherto/qvac/tree/main/packages/sdk/changelog',
     type: 'page',
     external: true,
     icon: resolveIcon('Tag'),
   },
-  { 
-    name: 'Addons', type: 'folder', index: {type: 'page', name: 'Addons', url: '/references/addons'}, icon: resolveIcon('Blocks'), children: [
-      { name: 'embed-llamacpp', url: '/references/addons/embed-llamacpp', type: 'page' },
-      { name: 'llm-llamacpp', url: '/references/addons/llm-llamacpp', type: 'page' },
-      { name: 'ocr-onnx', url: '/references/addons/ocr-onnx', type: 'page' },
-      { name: 'transcription-whispercpp', url: '/references/addons/transcription-whispercpp', type: 'page' },
-      { name: 'translation-nmtcpp', url: '/references/addons/translation-nmtcpp', type: 'page' },
-      { name: 'tts-onnx', url: '/references/addons/tts-onnx', type: 'page' },
-    ] 
-  },
   {
-    type: "separator",
-    name: "Help",
-  },
-  {   
-    name: 'SDK FAQ',
-    url: 'https://qvac.tether.dev/products/how-tos/#faq',
-    type: 'page',
-    external: true,
-    icon: resolveIcon('MessageCircleQuestionMark'),
-  },
-  {   
     name: 'Support',
     url: '/#support',
     type: 'page',

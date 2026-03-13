@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Check, ChevronDown, Copy, ExternalLinkIcon, MessageSquare, Sparkles } from 'lucide-react';
+import { Check, ChevronDown, Copy, ExternalLinkIcon, MessageSquare, Sparkles, Tag } from 'lucide-react';
 import { cn } from '../lib/cn';
 import { useCopyButton } from 'fumadocs-ui/utils/use-copy-button';
 import { buttonVariants } from './ui/button';
@@ -228,6 +228,53 @@ export function ViewOptions({
             {item.title}
             <ExternalLinkIcon className="text-fd-muted-foreground size-3.5 ms-auto" />
           </a>
+        ))}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+const VERSIONS = [
+  { value: 'v0.7.0', label: 'v0.7.0 (latest)' },
+  { value: 'v0.6.1', label: 'v0.6.1' },
+] as const;
+
+export function VersionSelector() {
+  const [selected, setSelected] = useState<string>(VERSIONS[0].value);
+
+  return (
+    <Popover>
+      <PopoverTrigger
+        aria-label="Select version"
+        className={cn(
+          buttonVariants({
+            color: 'secondary',
+            size: 'sm',
+            className: 'gap-1.5 font-mono',
+          }),
+        )}
+      >
+        <Tag className="size-3.5 text-fd-muted-foreground" />
+        {selected}
+        <ChevronDown className="size-3.5 text-fd-muted-foreground" />
+      </PopoverTrigger>
+      <PopoverContent className="flex flex-col">
+        {VERSIONS.map((version) => (
+          <PopoverClose asChild key={version.value}>
+            <button
+              type="button"
+              className={cn(optionVariants())}
+              onClick={() => setSelected(version.value)}
+            >
+              <Check
+                className={cn(
+                  'text-fd-muted-foreground',
+                  selected === version.value ? 'opacity-100' : 'opacity-0',
+                )}
+              />
+              {version.label}
+            </button>
+          </PopoverClose>
         ))}
       </PopoverContent>
     </Popover>

@@ -6,7 +6,6 @@ import type { LinkItemType } from 'fumadocs-ui/layouts/shared';
 import { FaGithub, FaDiscord } from 'react-icons/fa6';
 import { SiHuggingface } from '@icons-pack/react-simple-icons';
 import { FeaturebaseIcon } from '@/components/featurebase-icon';
-import { VersionSwitcher } from '@/components/version-switcher';
 
 export default function Layout({ children }: LayoutProps<'/'>) {
 
@@ -66,9 +65,6 @@ export default function Layout({ children }: LayoutProps<'/'>) {
       //{...base}
       //nav={{ ...nav, mode: 'top' }}
       links={linkItems}
-      sidebar={{
-        banner: <VersionSwitcher />,
-      }}
       >
       {children}
     </DocsLayout>
