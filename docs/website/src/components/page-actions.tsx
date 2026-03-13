@@ -247,10 +247,18 @@ export function VersionSelector() {
   const currentVersion = getVersionFromPath(pathname) ?? LATEST_VERSION;
   const currentLabel = VERSIONS.find((v) => v.value === currentVersion)?.label ?? currentVersion;
 
-  function handleVersionChange(targetVersion: string) {
+  async function handleVersionChange(targetVersion: string) {
     if (targetVersion === currentVersion) return;
     const targetUrl = computeVersionedUrl(pathname, targetVersion);
-    window.location.href = targetUrl;
+    const targetIsLatest = VERSIONS.find((v) => v.value === targetVersion)?.isLatest;
+    const homeUrl = targetIsLatest ? '/' : `/${targetVersion}/`;
+
+    try {
+      const res = await fetch(targetUrl, { method: 'HEAD' });
+      window.location.href = res.ok ? targetUrl : homeUrl;
+    } catch {
+      window.location.href = homeUrl;
+    }
   }
 
   return (

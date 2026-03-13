@@ -80,12 +80,6 @@ export const tree: Node[] = [
         type: 'page',
         icon: resolveIcon('Package'),
       },
-      {
-        name: 'Configuration',
-        url: '/v0.6.1/sdk/configuration',
-        type: 'page',
-        icon: resolveIcon('SlidersHorizontal'),
-      },
     ],
   },
   {
