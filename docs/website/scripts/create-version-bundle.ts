@@ -2,9 +2,11 @@
 /**
  * Create a versioned documentation bundle from (latest).
  *
- * Copies the entire content/docs/(latest)/ directory to content/docs/v{version}/,
- * rewrites all internal links to include the version prefix, then refreshes
- * the versions list.
+ * 1. Copies content/docs/(latest)/ to content/docs/v{version}/
+ * 2. Rewrites all internal links in MDX files to add the version prefix
+ * 3. Snapshots src/lib/trees/latest.ts to src/lib/trees/v{version}.ts
+ * 4. Updates src/lib/trees/index.ts to import the new tree
+ * 5. Refreshes src/lib/versions.ts
  *
  * Usage:
  *   bun run scripts/create-version-bundle.ts <version>
@@ -61,6 +63,65 @@ async function rewriteLinksInDir(dir: string, versionPrefix: string): Promise<nu
   return count;
 }
 
+const TREE_URL_PATTERN = /url:\s*'(\/[^']*)'/g;
+
+function rewriteTreeUrls(content: string, versionPrefix: string): string {
+  return content.replace(TREE_URL_PATTERN, (match, urlPath: string) => {
+    if (urlPath === '/') return match;
+    if (urlPath.startsWith('/#')) return match;
+    if (/^\/v\d+\.\d+\.\d+\//.test(urlPath)) return match;
+    return match.replace(urlPath, `${versionPrefix}${urlPath}`);
+  });
+}
+
+function rewriteTreeApiLookup(content: string, versionPrefix: string): string {
+  return content.replace(
+    /findFolderChildren\(source\.pageTree\.children,\s*'([^']*)'\)/g,
+    (match, indexUrl: string) => {
+      if (indexUrl.startsWith('/v')) return match;
+      return match.replace(indexUrl, `${versionPrefix}${indexUrl}`);
+    }
+  );
+}
+
+async function snapshotTree(version: string, versionPrefix: string): Promise<void> {
+  const treesDir = path.join(process.cwd(), "src", "lib", "trees");
+  const latestTree = path.join(treesDir, "latest.ts");
+  const versionTree = path.join(treesDir, `v${version}.ts`);
+
+  let content = await fs.readFile(latestTree, "utf-8");
+  content = rewriteTreeUrls(content, versionPrefix);
+  content = rewriteTreeApiLookup(content, versionPrefix);
+  await fs.writeFile(versionTree, content, "utf-8");
+  console.log(`✓ Snapshotted tree: latest.ts → v${version}.ts`);
+}
+
+async function updateTreesIndex(version: string): Promise<void> {
+  const indexPath = path.join(process.cwd(), "src", "lib", "trees", "index.ts");
+  let content = await fs.readFile(indexPath, "utf-8");
+
+  const safeVar = `v${version.replace(/\./g, "")}`;
+  const importLine = `import { tree as ${safeVar}Tree } from './v${version}';`;
+
+  if (content.includes(importLine)) {
+    console.log(`✓ trees/index.ts already imports v${version}`);
+    return;
+  }
+
+  content = content.replace(
+    /(import { tree as latestTree }[^\n]*\n)/,
+    `$1${importLine}\n`
+  );
+
+  content = content.replace(
+    /return \{(\n\s*'latest': latestTree,)/,
+    `return {\n    'v${version}': ${safeVar}Tree,$1`
+  );
+
+  await fs.writeFile(indexPath, content, "utf-8");
+  console.log(`✓ Updated trees/index.ts with v${version}`);
+}
+
 async function createVersionBundle(version: string) {
   if (!/^\d+\.\d+\.\d+$/.test(version)) {
     throw new Error(
@@ -94,6 +155,9 @@ async function createVersionBundle(version: string) {
   const rewrittenCount = await rewriteLinksInDir(targetDir, versionPrefix);
   console.log(`✓ Rewrote internal links in ${rewrittenCount} files`);
 
+  await snapshotTree(version, versionPrefix);
+  await updateTreesIndex(version);
+
   console.log(`📋 Updating versions list...`);
   execSync(`bun run scripts/update-versions-list.ts v${version}`, {
     stdio: "inherit",
@@ -111,7 +175,8 @@ if (!versionArg || args.includes("--help") || args.includes("-h")) {
   console.log("Usage: bun run scripts/create-version-bundle.ts <version>");
   console.log("");
   console.log("Creates a versioned docs bundle from (latest).");
-  console.log("Copies all content and rewrites internal links with the version prefix.");
+  console.log("Copies all content, rewrites internal links, snapshots the");
+  console.log("sidebar tree, and updates the versions list.");
   console.log("");
   console.log("Examples:");
   console.log("  bun run scripts/create-version-bundle.ts 0.8.0");

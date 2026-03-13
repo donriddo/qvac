@@ -8,7 +8,7 @@
     "build:static": "next build && npx @vahor/next-broken-links",
     "dev": "next dev --turbo -p 3001",
     "start": "next start",
-    "serve": "serve dist -s -p 8080",
+    "serve": "npx http-server dist -p 8080 -c-1",
     "postinstall": "fumadocs-mdx",
     "docs:generate": "bun run scripts/run-docs-generate.ts",
     "docs:generate-api": "bun run scripts/generate-api-docs.ts",
