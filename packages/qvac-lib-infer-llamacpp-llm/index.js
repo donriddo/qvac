@@ -10,6 +10,31 @@ const noop = () => { }
 
 const RUN_BUSY_ERROR_MESSAGE = 'Cannot set new job: a job is already set or being processed'
 
+function normalizeRunOptions (runOptions) {
+  if (runOptions === undefined) {
+    return { prefill: false, generationParams: undefined }
+  }
+
+  if (!runOptions || typeof runOptions !== 'object' || Array.isArray(runOptions)) {
+    throw new TypeError('Run options must be an object when provided')
+  }
+
+  if (runOptions.prefill !== undefined &&
+      typeof runOptions.prefill !== 'boolean') {
+    throw new TypeError('prefill must be a boolean when provided')
+  }
+
+  if (runOptions.generationParams !== undefined &&
+      (typeof runOptions.generationParams !== 'object' || runOptions.generationParams === null || Array.isArray(runOptions.generationParams))) {
+    throw new TypeError('generationParams must be a plain object when provided')
+  }
+
+  return {
+    prefill: runOptions.prefill === true,
+    generationParams: runOptions.generationParams
+  }
+}
+
 /**
  * GGML client implementation for Llama LLM model
  */
@@ -99,6 +124,16 @@ class LlmLlamacpp extends BaseInference {
   }
 
   /**
+   * Public API entrypoint for inference.
+   * @param {Message[]} prompt - Input prompt array of messages
+   * @param {{prefill?: boolean}} [runOptions] - Optional run settings
+   * @returns {Promise<QvacResponse>}
+   */
+  async run (prompt, runOptions = {}) {
+    return await this._runInternal(prompt, runOptions)
+  }
+
+  /**
    * Instantiate the native addon with the given parameters.
    * @param {Object} configurationParams - Configuration parameters for the addon
    * @param {string} configurationParams.path - Local file or directory path
@@ -164,13 +199,19 @@ class LlmLlamacpp extends BaseInference {
   /**
    * Internal method to start inference with a text prompt.
    * @param {Message[]} prompt - Input prompt array of messages
+   * @param {{prefill?: boolean}} [runOptions] - Optional run settings
    * @returns {Promise<QvacResponse>} A QvacResponse representing the inference job
    */
-  async _runInternal (prompt) {
+  async _runInternal (prompt, runOptions = {}) {
     return this._withExclusiveRun(async () => {
       if (this._hasActiveResponse) {
         throw new Error(RUN_BUSY_ERROR_MESSAGE)
       }
+
+      if (!Array.isArray(prompt)) {
+        throw new TypeError('Prompt input must be Message[]')
+      }
+      const { prefill, generationParams } = normalizeRunOptions(runOptions)
 
       this.logger.info('Starting inference with prompt:', prompt)
 
@@ -198,7 +239,12 @@ class LlmLlamacpp extends BaseInference {
       }
 
       // Send text messages
-      promptMessages.push({ type: 'text', input: JSON.stringify(textMessages) })
+      promptMessages.push({
+        type: 'text',
+        input: JSON.stringify(textMessages),
+        prefill,
+        generationParams
+      })
 
       const response = this._createResponse('OnlyOneJob')
 

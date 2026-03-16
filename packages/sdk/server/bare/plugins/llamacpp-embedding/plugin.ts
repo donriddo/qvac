@@ -1,4 +1,5 @@
 import EmbedLlamacpp, {
+  type GGMLConfig,
   type Loader as EmbedLoader,
 } from "@qvac/embed-llamacpp";
 import embedAddonLogging from "@qvac/embed-llamacpp/addonLogging";
@@ -8,40 +9,53 @@ import {
   embedRequestSchema,
   embedResponseSchema,
   ModelType,
+  embedConfigBaseSchema,
+  ADDON_EMBEDDING,
   type CreateModelParams,
   type PluginModelResult,
   type EmbedConfig,
 } from "@/schemas";
-import {
-  ADDON_NAMESPACES,
-  createStreamLogger,
-  registerAddonLogger,
-} from "@/logging";
+import { createStreamLogger, registerAddonLogger } from "@/logging";
 import { parseModelPath } from "@/server/utils";
 import FilesystemDL from "@qvac/dl-filesystem";
 import { asLoader } from "@/server/bare/utils/loader-adapter";
 import { embed } from "@/server/bare/ops/embed";
 
-function transformEmbedConfig(embedConfig: EmbedConfig): string {
-  if (embedConfig.rawConfig) {
-    return embedConfig.rawConfig;
-  }
-
-  const lines: string[] = [];
-
-  lines.push(`-ngl\t${embedConfig.gpuLayers}`);
-  lines.push(`-dev\t${embedConfig.device}`);
-  lines.push(`--batch_size\t${embedConfig.batchSize}`);
-
-  if (embedConfig.ctxSize) {
-    lines.push(`-c\t${embedConfig.ctxSize}`);
-  }
+function transformEmbedConfig(embedConfig: EmbedConfig): GGMLConfig {
+  const config: GGMLConfig = {
+    device: embedConfig.device as "gpu" | "cpu",
+    gpu_layers: `${embedConfig.gpuLayers}` as `${number}`,
+    batch_size: `${embedConfig.batchSize}` as `${number}`,
+  };
 
   if (embedConfig.flashAttention) {
-    lines.push(`-fa\t${embedConfig.flashAttention}`);
+    config.flash_attn = embedConfig.flashAttention;
   }
 
-  return lines.join("\n");
+  if (embedConfig.pooling) {
+    config.pooling = embedConfig.pooling;
+  }
+
+  if (embedConfig.attention) {
+    config.attention = embedConfig.attention;
+  }
+
+  if (typeof embedConfig.embdNormalize === "number") {
+    config.embd_normalize = `${embedConfig.embdNormalize}`;
+  }
+
+  if (embedConfig.mainGpu !== undefined) {
+    config["main-gpu"] =
+      typeof embedConfig.mainGpu === "number"
+        ? `${embedConfig.mainGpu}`
+        : embedConfig.mainGpu;
+  }
+
+  if (typeof embedConfig.verbosity === "number") {
+    config.verbosity = `${embedConfig.verbosity}`;
+  }
+
+  return config;
 }
 
 function createEmbeddingsModel(
@@ -51,8 +65,8 @@ function createEmbeddingsModel(
 ) {
   const { dirPath, basePath } = parseModelPath(modelPath);
   const loader = new FilesystemDL({ dirPath });
-  const logger = createStreamLogger(modelId, ADDON_NAMESPACES.LLAMACPP_EMBED);
-  registerAddonLogger(modelId, ADDON_NAMESPACES.LLAMACPP_EMBED, logger);
+  const logger = createStreamLogger(modelId, ModelType.llamacppEmbedding);
+  registerAddonLogger(modelId, ModelType.llamacppEmbedding, logger);
 
   const config = transformEmbedConfig(embedConfig);
 
@@ -73,7 +87,8 @@ function createEmbeddingsModel(
 export const embeddingsPlugin = definePlugin({
   modelType: ModelType.llamacppEmbedding,
   displayName: "Embeddings (llama.cpp)",
-  addonPackage: "@qvac/embed-llamacpp",
+  addonPackage: ADDON_EMBEDDING,
+  loadConfigSchema: embedConfigBaseSchema,
 
   createModel(params: CreateModelParams): PluginModelResult {
     const embedConfig = (params.modelConfig ?? {}) as EmbedConfig;
@@ -110,6 +125,6 @@ export const embeddingsPlugin = definePlugin({
 
   logging: {
     module: embedAddonLogging,
-    namespace: ADDON_NAMESPACES.LLAMACPP_EMBED,
+    namespace: ModelType.llamacppEmbedding,
   },
 });

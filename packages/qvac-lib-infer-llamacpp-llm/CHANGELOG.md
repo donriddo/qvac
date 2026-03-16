@@ -1,4 +1,118 @@
 # Changelog
+
+## [0.12.2] - 2026-03-13
+
+This release fixes antiprompt (reverse-prompt) detection for short stop sequences like `\n`, which is critical for translation workloads that rely on newline-based early stopping.
+
+## Bug Fixes
+
+### Antiprompt detection for short stop sequences
+
+Fixed a bug where `checkAntiprompt()` in both `TextLlmContext` and `MtmdLlmContext` only searched the last few characters of the decoded output buffer for the antiprompt string. For short antiprompts like `"\n"` (length 1), the search window was limited to 3 characters at the tail. However, a single llama.cpp token can decode to many characters, placing `"\n"` far from the string's tail end — causing the antiprompt to be missed entirely.
+
+The model would then run to `n_predict` (typically 256 tokens) instead of stopping after the first translated line, wasting compute and producing multi-line output that required post-processing to recover.
+
+The fix widens the search to the entire `kNPrev`-token decoded window (32 tokens by default), reliably catching the antiprompt regardless of where it appears in the decoded string. This only affects models that use the `reverse-prompt` configuration — in practice, the AfriqueGemma translation workflow where `"\n"` signals end of translation.
+
+## [0.12.1] - 2026-03-12
+
+### Added
+
+#### Per-request generation parameter overrides
+
+`model.run(prompt, { generationParams: { temp: 0.7, predict: 256 } })` applies sampling parameter overrides for a single inference call without reloading the model. Load-time defaults are automatically restored after each request.
+
+- Supported parameters: `temp`, `top_p`, `top_k`, `predict`, `seed`, `frequency_penalty`, `presence_penalty`, `repeat_penalty`.
+- `generationParams` is passed as a direct property on the addon input (same transport as `prefill`), parsed via N-API in `AddonJs.hpp`.
+- C++ `applyGenerationParams()` returns a restore callable that captures saved state; exception-safe via try/catch in `processPrompt()`.
+- Supported for both text and multimodal (`MtmdLlmContext`) models.
+- Integration tests cover seed reproducibility, predict token limits, and defaults restoration.
+
+
+## [0.12.0] - 2026-03-09
+
+### Added
+
+#### Hot-reload support (`LlamaModel::reload()`)
+
+`LlamaModel` now stores its construction arguments (`modelPath`, `projectionPath`, `configFilemap`) and exposes a `reload()` method that rebuilds the model in-place from the stored args with `IMMEDIATE` loading (synchronous, blocking). This avoids tearing down and reconstructing the entire `LlamaModel` instance when the same model needs to be reloaded — for example, to reclaim GPU memory or recover from a corrupted context state.
+
+All mutable model state (context, cache manager, backends handle, async weights loader, etc.) is grouped into an internal `ReloadableState` struct. On reload, the old state is replaced atomically with a freshly initialized one.
+
+#### Thread-safe reload with `shared_mutex`
+
+`LlamaModel` is now protected by a `std::shared_mutex` (`stateMtx_`):
+
+- **Shared lock** for all read/use operations: `processPrompt`, `process`, `cancel`, `reset`, `runtimeStats`, `isLoaded`, `waitForLoadInitialization`, and `setWeightsForFile`.
+- **Exclusive lock** only in `reload()` via `setInitLoader()`.
+
+This means `reload()` blocks until all in-flight operations complete, while concurrent reads (e.g. multiple inference queries) can proceed in parallel. `cancel()` uses `std::try_to_lock` to gracefully skip cancellation if a reload is already in progress, since there would be nothing to cancel after the reload completes.
+
+#### Streaming-loaded model reload guard
+
+`reload()` now throws `ReloadNotSupportedForStreamedModel` (`StatusError`, error code 24) when called on a model that was loaded via streamed shards (`setWeightsForFile`). The streamed weight buffers are consumed (moved out) by llama.cpp during the initial load and cannot be replayed on reload.
+
+### Changed
+
+- Refactored `LlamaModel` internals: extracted `processPromptImpl` and `cancelImpl` (lock-free implementations) to separate locking concerns from business logic.
+- `initializeBackend()` is now private — it is only called internally during `init()`.
+
+
+## [0.11.1] - 2026-03-09
+
+### Added
+
+#### Prefill mode for context preloading
+
+`model.run(prompt, { prefill: true })` evaluates the prompt into the KV cache without generating tokens. This enables context preloading so that subsequent runs start with a warm cache.
+
+- Prefill runs report `TTFT=0`, `TPS=0`, `generatedTokens=0`, `promptTokens=0`, while `CacheTokens` reflects actual KV cache occupancy.
+- JS `normalizeRunOptions` validates `prefill` as a boolean; a `TypeError` is thrown otherwise.
+- C++ `evalMessage`/`evalMessageWithTools` suppress logits on the last token when prefill is set; `processPrompt` returns immediately after evaluation.
+
+## [0.11.0] - 2026-03-05
+
+Preparation before fully supporting BitNet. Not officially supported yet, but this version already integrates logic necessary to support BitNet models.
+
+### Added
+
+#### Preparation: BitNet-aware backend selection for Adreno GPUs
+
+Backend selection now detects BitNet models (TQ1_0 / TQ2_0 quantization via `hasOneBitQuantization()` and `general.architecture == "bitnet"`) and adjusts GPU routing on Adreno devices:
+
+- **Adreno 800+** (e.g. Adreno 830): Vulkan is preferred over OpenCL, since BitNet TQ kernels are not supported on OpenCL.
+- **Adreno < 800** (e.g. Adreno 740): Falls back to CPU, as TQ kernels run faster on CPU than on older Adreno GPU backends.
+- **Non-Adreno GPUs**: No change — normal GPU selection applies.
+
+This logic only activates when no explicit `main-gpu` is configured.
+
+Adreno version detection works regardless of which backend exposes the GPU. The numeric generation (e.g. 830, 740) is parsed from the device description via `parseAdrenoVersion()` and tracked as `maxAdrenoVersion` during device enumeration for any Adreno device — whether it appears behind OpenCL, Vulkan, or another backend. This ensures the BitNet safety checks (CPU fallback on Adreno <800, Vulkan preference on Adreno 800+) are not bypassed when only Vulkan registers a device, as observed on Adreno 750.
+
+#### Preparation: BitNet-aware config tuning (`tuneConfigMap`)
+
+For BitNet models, `tuneConfigMap` injects default overrides into the config map before argument parsing:
+
+- `flash-attn=off` — disables flash attention (unless the user explicitly set `flash-attn` or `flash_attn`).
+- `ubatch-size=128` — on Adreno 800+ only (unless the user explicitly set `ubatch-size` or `ubatch_size`).
+
+These entries are written to `configFilemap` (not to `common_params` directly), so they flow through the normal llama.cpp arg parser in `commonParamsParse`. The call sits after backend selection (where the Adreno version is known) but before the config map is converted to the arg vector.
+
+#### `ModelMetaData::tryGetString()` method
+
+`ModelMetaData` now exposes `tryGetString(key)` to retrieve string-typed GGUF metadata values. This is used by the BitNet backend selection logic to read `general.architecture`. Both `tryGetString()` and `hasOneBitQuantization()` are now virtual to support test mocking.
+
+#### Unit tests for BitNet backend selection
+
+Added comprehensive unit tests covering BitNet TQ backend selection across Adreno 830/740, non-Adreno GPUs, OpenCL-only scenarios, Vulkan-only scenarios, and mixed GPU/iGPU configurations. `MockModelMetaData` is defined in `test_common.hpp` and shared across test files.
+
+### Changed
+
+- Updated qvac-fabric-llm.cpp dependency from 7248.1.3 to 7248.1.4.
+- Refactored `ModelMetaData` internal getters using a template helper, reducing duplication between `tryGetU32` and `tryGetString`.
+- Added virtual destructor to `ModelMetaData` for correct polymorphic cleanup.
+- Simplified `REQUIRE_MODEL` test macro by removing the `do {} while(false)` wrapper to suppress compiler warnings.
+
+
 ## [0.10.0] - 2026-03-02
 
 ### Added

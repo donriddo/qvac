@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <functional>
 #include <iostream>
+#include <shared_mutex>
 #include <sstream>
 #include <string>
 #include <system_error>
@@ -26,6 +27,8 @@
 #include "qvac-lib-inference-addon-cpp/LlamacppUtils.hpp"
 #include "utils/BackendSelection.hpp"
 #include "utils/LoggingMacros.hpp"
+#include "utils/ScopeGuard.hpp"
+#include "utils/SharedSnapshot.hpp"
 
 using namespace qvac_lib_inference_addon_llama::errors;
 using namespace qvac_lib_inference_addon_cpp::logger;
@@ -75,39 +78,110 @@ void LlamaModel::resolveShardPaths(
   shards.tensors_file = (baseDir / shards.tensors_file).string();
 }
 
+void LlamaModel::tuneConfigMap(
+    std::unordered_map<std::string, std::string>& configFilemap,
+    const ModelMetaData& metadata, const std::optional<int>& adrenoVersion) {
+
+  const bool isBitnet =
+      metadata.hasOneBitQuantization() &&
+      metadata.tryGetString("general.architecture") == "bitnet";
+
+  if (isBitnet && configFilemap.find("flash-attn") == configFilemap.end() &&
+      configFilemap.find("flash_attn") == configFilemap.end()) {
+    configFilemap["flash-attn"] = "off";
+    QLOG_IF(
+        Priority::INFO,
+        "[LlamaModel] BitNet model detected: disabling flash attention\n");
+  }
+
+  constexpr int kAdrenoUbatchThreshold = 800;
+  if (isBitnet && adrenoVersion.has_value() &&
+      adrenoVersion.value() >= kAdrenoUbatchThreshold &&
+      configFilemap.find("ubatch-size") == configFilemap.end() &&
+      configFilemap.find("ubatch_size") == configFilemap.end()) {
+    configFilemap["ubatch-size"] = "128";
+    QLOG_IF(
+        Priority::INFO,
+        "[LlamaModel] BitNet on Adreno 800+: defaulting ubatch-size=128\n");
+  }
+}
+
 LlamaModel::LlamaModel(
     std::string&& modelPath, std::string&& projectionPath,
     std::unordered_map<std::string, std::string>&& configFilemap)
     : loadingContext_(InitLoader::getLoadingContext("LlamaModel")),
-      shards_(GGUFShards::expandGGUFIntoShards(modelPath)),
-      asyncWeightsLoader_(shards_, initLoader_, loadingContext_, &metadata_) {
-  auto thisModelInit = [this](auto&&... args) {
-    this->init(std::forward<decltype(args)>(args)...);
-  };
-  initLoader_.init(
-      InitLoader::LOADER_TYPE::DELAYED,
-      thisModelInit,
-      std::move(modelPath),
-      std::move(projectionPath),
-      std::move(configFilemap));
+      constructionArgs_{
+          std::move(modelPath),
+          std::move(projectionPath),
+          std::move(configFilemap)} {
+  setInitLoader(InitLoader::LOADER_TYPE::DELAYED);
 }
-void LlamaModel::init(
-    // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
-    std::string&& modelPathRvalue, std::string&& projectionPath,
-    std::unordered_map<std::string, std::string>&& configFilemapRvalue) {
-  std::string modelPath = std::move(modelPathRvalue);
-  std::unordered_map<std::string, std::string> configFilemap =
-      std::move(configFilemapRvalue);
 
-  // Set verbosity level
+void LlamaModel::reload() {
+  {
+    std::shared_lock lock(stateMtx_);
+    if (state_->asyncWeightsLoader_.isStreaming()) {
+      // TODO: Make Fabric support moving/streaming existing loaded tensors
+      // TODO: to a different backend.
+      throw qvac_errors::StatusError(
+          ADDON_ID,
+          toString(ReloadNotSupportedForStreamedModel),
+          "Cannot reload a model that was loaded via streamed shards; "
+          "the streamed weights have already been consumed.");
+    }
+  }
+  setInitLoader(InitLoader::LOADER_TYPE::IMMEDIATE);
+}
+
+void LlamaModel::setInitLoader(
+    std::optional<InitLoader::LOADER_TYPE> loaderType) {
+  cancel();
+  std::unique_lock lock(stateMtx_);
+  if (loaderType.has_value()) {
+    constructionArgs_.loaderType = loaderType.value();
+  }
+  state_ = std::make_shared<ReloadableState>(
+      constructionArgs_, loadingContext_, metadata_);
+  bool callerHoldsLock =
+      constructionArgs_.loaderType == InitLoader::LOADER_TYPE::IMMEDIATE;
+  state_->initLoader_.init(
+      constructionArgs_.loaderType,
+      [this, acquireLock = !callerHoldsLock]() { this->init(acquireLock); });
+}
+
+void LlamaModel::init(bool acquireLock) {
+  SharedSnapshot snap(state_, stateMtx_);
+  if (!acquireLock) {
+    snap.disable();
+  }
+  snap.lockRead();
+
+  // Defensive guard: not reachable under normal usage because reload() is
+  // only called after waitForLoadInitialization() returns, at which point the
+  // delayed init callback has already completed. Protects against a misuse
+  // scenario where reload() races with the initial delayed load.
+  if (snap->llmContext_) {
+    return;
+  }
+
+  const auto& modelPath = constructionArgs_.modelPath;
+  auto configFilemap = constructionArgs_.configFilemap;
+
   setVerbosityLevel(configFilemap);
 
-  if (!asyncWeightsLoader_.isStreaming()) {
-    resolveShardPaths(shards_, modelPath);
+  if (!snap->asyncWeightsLoader_.isStreaming()) {
+    if (!snap.promoteToWrite()) {
+      return;
+    }
+    resolveShardPaths(snap->shards_, modelPath);
+    snap.demoteToRead();
   }
 
   metadata_.parse(
-      modelPath, shards_, asyncWeightsLoader_.isStreaming(), ADDON_ID);
+      modelPath,
+      snap->shards_,
+      snap->asyncWeightsLoader_.isStreaming(),
+      ADDON_ID);
   {
     auto fileType = metadata_.tryGetU32("general.file_type");
     QLOG_IF(
@@ -118,6 +192,10 @@ void LlamaModel::init(
                                  : "unknown"));
   }
 
+  if (!snap.promoteToWrite()) {
+    return;
+  }
+
   {
     std::string backendsDir;
     if (auto backendsDirIt = configFilemap.find("backendsDir");
@@ -125,52 +203,62 @@ void LlamaModel::init(
       backendsDir = backendsDirIt->second;
       configFilemap.erase(backendsDirIt);
     }
-    initializeBackend(backendsDir);
+    snap->backendsHandle_ = LlamaBackendsHandle(backendsDir);
   }
 
   common_params params;
-  commonParamsParse(modelPath, configFilemap, params);
+  std::optional<int> adrenoVersion;
+  commonParamsParse(modelPath, configFilemap, params, adrenoVersion);
 
   const std::string errorWhenFailed = toString(UnableToLoadModel);
-  auto streamedFiles = asyncWeightsLoader_.extractIndividualStreamedFiles();
+  auto streamedFiles =
+      snap->asyncWeightsLoader_.extractIndividualStreamedFiles();
+
+  snap.demoteToRead();
+
   common_init_result llamaInit = initFromConfig(
       params,
       modelPath,
       streamedFiles,
-      shards_,
+      snap->shards_,
       loadingContext_,
-      asyncWeightsLoader_.isStreaming(),
+      snap->asyncWeightsLoader_.isStreaming(),
       ADDON_ID,
       errorWhenFailed);
 
-  // Create the appropriate context based on projectionPath
-  llmContext_ =
-      createContext(std::move(projectionPath), params, std::move(llamaInit));
-
-  // Apply configured nDiscarded if provided (> 0)
-  if (configuredNDiscarded_ > 0 && llmContext_) {
-    llmContext_->setNDiscarded(configuredNDiscarded_);
+  if (!snap.promoteToWrite()) {
+    return;
   }
 
-  if (llmContext_) {
-    cacheManager_.emplace(
-        llmContext_.get(), configuredNDiscarded_, [this](bool resetStats) {
-          this->resetState(resetStats);
-        });
-  }
-}
+  snap->isTextLlm_ = constructionArgs_.projectionPath.empty();
+  snap->llmContext_ = createContext(
+      std::string(constructionArgs_.projectionPath),
+      params,
+      std::move(llamaInit));
 
-void LlamaModel::initializeBackend(const std::string& backendsDir) {
-  backendsHandle_ = LlamaBackendsHandle(backendsDir);
+  if (snap->configuredNDiscarded_ > 0 && snap->llmContext_) {
+    snap->llmContext_->setNDiscarded(snap->configuredNDiscarded_);
+  }
+
+  if (snap->llmContext_) {
+    snap->cacheManager_.emplace(
+        snap->llmContext_.get(),
+        snap->configuredNDiscarded_,
+        [this](bool resetStats) { this->resetState(resetStats); });
+  }
 }
 
 void LlamaModel::setWeightsForFile(
     const std::string& filename,
     std::unique_ptr<std::basic_streambuf<char>>&& shard) {
-  asyncWeightsLoader_.setWeightsForFile(filename, std::move(shard));
+  std::shared_lock lock(stateMtx_);
+  state_->asyncWeightsLoader_.setWeightsForFile(filename, std::move(shard));
 }
 
-bool LlamaModel::isLoaded() { return static_cast<bool>(llmContext_); }
+bool LlamaModel::isLoaded() {
+  std::shared_lock lock(stateMtx_);
+  return static_cast<bool>(state_->llmContext_);
+}
 
 void LlamaModel::llamaLogCallback(
     ggml_log_level level, const char* text, void* userData) {
@@ -199,27 +287,41 @@ void LlamaModel::llamaLogCallback(
   // level
   QLOG_IF(priority, string_format("[Llama.cpp] %s", text));
 }
+
 void LlamaModel::cancel() const {
-  if (llmContext_) {
-    llmContext_->stop();
+  std::shared_lock lock(stateMtx_, std::try_to_lock);
+  if (!lock.owns_lock()) {
+    // If lock could not be acquired, it means reload
+    // is in progress. It would be pointless to cancel
+    // after it finishes reloading since there would be
+    // nothing executing.
+    return;
+  }
+  cancelImpl();
+}
+
+void LlamaModel::cancelImpl() const {
+  if (state_ && state_->llmContext_) {
+    state_->llmContext_->stop();
   }
 }
 
 std::any LlamaModel::process(const std::any& input) {
+  std::shared_lock lock(stateMtx_);
   if (input.type() != typeid(Prompt)) {
     throw qvac_errors::StatusError(
         ADDON_ID,
         toString(qvac_errors::general_error::InvalidArgument),
         "Invalid input type");
   }
-  return processPrompt(std::any_cast<const Prompt&>(input));
+  return processPromptImpl(std::any_cast<const Prompt&>(input));
 }
 
 LlamaModel::ResolvedPrompt
 LlamaModel::resolveChatAndTools(const std::string& input) {
   ResolvedPrompt resolved;
-  if (cacheManager_.has_value()) {
-    resolved.isCacheLoaded = cacheManager_->handleCache(
+  if (state_->cacheManager_.has_value()) {
+    resolved.isCacheLoaded = state_->cacheManager_->handleCache(
         resolved.chatMsgs,
         resolved.tools,
         input,
@@ -227,8 +329,8 @@ LlamaModel::resolveChatAndTools(const std::string& input) {
           return this->formatPrompt(inputPrompt);
         });
     resolved.shouldResetAfterInference =
-        cacheManager_->isCacheDisabled() ||
-        !cacheManager_->wasCacheUsedInLastPrompt();
+        state_->cacheManager_->isCacheDisabled() ||
+        !state_->cacheManager_->wasCacheUsedInLastPrompt();
   } else {
     auto formatted = formatPrompt(input);
     resolved.chatMsgs = std::move(formatted.first);
@@ -239,15 +341,15 @@ LlamaModel::resolveChatAndTools(const std::string& input) {
 }
 
 std::string LlamaModel::processPrompt(const Prompt& prompt) {
+  std::shared_lock lock(stateMtx_);
+  return processPromptImpl(prompt);
+}
+
+std::string LlamaModel::processPromptImpl(const Prompt& prompt) {
+  state_->lastRunWasPrefill_ = prompt.prefill;
+
   for (const auto& media : prompt.media) {
     loadMedia(media);
-  }
-
-  if (prompt.prefill) {
-    QLOG_IF(
-        Priority::WARNING,
-        "[LlamaModel] processTextWithOutputCallback: Prefill is enabled but "
-        "not implemented yet.\n");
   }
 
   std::string out;
@@ -260,16 +362,28 @@ std::string LlamaModel::processPrompt(const Prompt& prompt) {
     return out;
   }
 
+  auto restore =
+      state_->llmContext_->applyGenerationParams(prompt.generationParams);
+  ScopeGuard paramsGuard([&] { restore(); });
+
   bool evalOk =
       resolved.tools.empty()
-          ? llmContext_->evalMessage(resolved.chatMsgs, resolved.isCacheLoaded)
-          : llmContext_->evalMessageWithTools(
-                resolved.chatMsgs, resolved.tools, resolved.isCacheLoaded);
+          ? state_->llmContext_->evalMessage(
+                resolved.chatMsgs, resolved.isCacheLoaded, prompt.prefill)
+          : state_->llmContext_->evalMessageWithTools(
+                resolved.chatMsgs,
+                resolved.tools,
+                resolved.isCacheLoaded,
+                prompt.prefill);
 
   if (!evalOk) {
     QLOG_IF(
         Priority::DEBUG,
         "Inference was interrupted during prompt evaluation\n");
+    return out;
+  }
+
+  if (prompt.prefill) {
     return out;
   }
 
@@ -279,7 +393,7 @@ std::string LlamaModel::processPrompt(const Prompt& prompt) {
     callback = [&](const std::string& token) { oss << token; };
   }
 
-  if (!llmContext_->generateResponse(callback)) {
+  if (!state_->llmContext_->generateResponse(callback)) {
     resetState();
     std::string errorMsg = string_format("%s: context overflow\n", __func__);
     throw qvac_errors::StatusError(
@@ -296,32 +410,35 @@ std::string LlamaModel::processPrompt(const Prompt& prompt) {
 }
 
 qvac_lib_inference_addon_cpp::RuntimeStats LlamaModel::runtimeStats() const {
-  auto perfData = llama_perf_context(llmContext_->getCtx());
+  std::shared_lock lock(stateMtx_);
+  auto perfData = llama_perf_context(state_->llmContext_->getCtx());
   constexpr double kMillisInSecond = 1000.0;
 
-  double timeToFirstToken = perfData.t_p_eval_ms;
+  double timeToFirstToken =
+      state_->lastRunWasPrefill_ ? 0.0 : perfData.t_p_eval_ms;
   double tokensPerSecond =
-      (perfData.t_eval_ms > 0)
+      (!state_->lastRunWasPrefill_ && perfData.t_eval_ms > 0)
           ? kMillisInSecond / perfData.t_eval_ms * perfData.n_eval
           : 0.0;
 
-  int32_t generatedTokens = perfData.n_eval;
-  int32_t promptTokens = perfData.n_p_eval;
-  llama_perf_context_reset(llmContext_->getCtx());
+  int32_t generatedTokens = state_->lastRunWasPrefill_ ? 0 : perfData.n_eval;
+  int32_t promptTokens = state_->lastRunWasPrefill_ ? 0 : perfData.n_p_eval;
+  llama_perf_context_reset(state_->llmContext_->getCtx());
 
   return {
       {"TTFT", timeToFirstToken},
       {"TPS", tokensPerSecond},
-      {"CacheTokens", llmContext_->getNPast()},
+      {"CacheTokens", state_->llmContext_->getNPast()},
       {"generatedTokens", generatedTokens},
       {"promptTokens", promptTokens}};
 }
+
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static,readability-function-cognitive-complexity)
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static,readability-function-cognitive-complexity)
 void LlamaModel::commonParamsParse(
     const std::string& modelPath,
     std::unordered_map<std::string, std::string>& configFilemap,
-    common_params& params) {
+    common_params& params, std::optional<int>& outAdrenoVersion) {
 
   std::vector<std::string> configVector;
 
@@ -348,7 +465,7 @@ void LlamaModel::commonParamsParse(
     try {
       long long parsed = std::stoll(iter->second);
       if (parsed > 0) {
-        configuredNDiscarded_ = static_cast<llama_pos>(parsed);
+        state_->configuredNDiscarded_ = static_cast<llama_pos>(parsed);
       }
     } catch (...) {
       std::string errorMsg = string_format(
@@ -379,8 +496,12 @@ void LlamaModel::commonParamsParse(
 
     const std::optional<MainGpu> mainGpu = tryMainGpuFromMap(configFilemap);
 
-    const std::pair<BackendType, std::string> chosenBackend =
-        chooseBackend(preferredBackend, LlamaModel::llamaLogCallback, mainGpu);
+    const std::pair<BackendType, std::string> chosenBackend = chooseBackend(
+        preferredBackend,
+        LlamaModel::llamaLogCallback,
+        mainGpu,
+        &metadata_,
+        &outAdrenoVersion);
 
     if (chosenBackend.first == BackendType::GPU) {
       params.mmproj_backend = chosenBackend.second;
@@ -403,6 +524,8 @@ void LlamaModel::commonParamsParse(
     configFilemap.erase(deviceIt);
   }
 
+  tuneConfigMap(configFilemap, metadata_, outAdrenoVersion);
+
   // Handle both reverse-prompt variants
   for (const std::string& key : {"reverse-prompt", "reverse_prompt"}) {
     if (auto iter = configFilemap.find(key); iter != configFilemap.end()) {
@@ -410,6 +533,9 @@ void LlamaModel::commonParamsParse(
       std::vector<std::string> list = split(listString, ',');
       for (const auto& item : list) {
         params.antiprompt.push_back(item);
+      }
+      if (list.empty() && !listString.empty()) {
+        params.antiprompt.push_back(listString);
       }
       configFilemap.erase(iter);
     }
@@ -579,7 +705,7 @@ void LlamaModel::commonParamsParse(
 std::pair<std::vector<common_chat_msg>, std::vector<common_chat_tool>>
 LlamaModel::formatPrompt(const std::string& input) {
   if (input.empty()) {
-    llmContext_->resetMedia();
+    state_->llmContext_->resetMedia();
     std::string errorMsg = string_format("%s: empty prompt\n", __func__);
     throw qvac_errors::StatusError(ADDON_ID, toString(EmptyPrompt), errorMsg);
   }
@@ -629,14 +755,14 @@ LlamaModel::formatPrompt(const std::string& input) {
 
         if (jsonObj.find("type") != jsonObj.end() &&
             jsonObj["type"].get<std::string>() == "media") {
-          if (isTextLlm_) {
+          if (state_->isTextLlm_) {
             const char* errorMsg = "Media not supported by text-only models";
             throw qvac_errors::StatusError(
                 ADDON_ID, toString(MediaNotSupported), errorMsg);
           }
 
           if (!content.empty()) {
-            llmContext_->loadMedia(content);
+            state_->llmContext_->loadMedia(content);
           }
           addMediaPlaceholder++;
           isNextUser = true;
@@ -650,7 +776,7 @@ LlamaModel::formatPrompt(const std::string& input) {
           }
         }
         if (newMsg.role != "user" && isNextUser) {
-          llmContext_->resetMedia();
+          state_->llmContext_->resetMedia();
           std::string errorMsg = string_format(
               "%s: Must append a user question after loading "
               "media\n",
@@ -664,7 +790,7 @@ LlamaModel::formatPrompt(const std::string& input) {
     }
 
     if (addMediaPlaceholder > 0) {
-      llmContext_->resetMedia();
+      state_->llmContext_->resetMedia();
       std::string errorMsg =
           string_format("%s: No request for media was made\n", __func__);
       throw qvac_errors::StatusError(
@@ -672,7 +798,7 @@ LlamaModel::formatPrompt(const std::string& input) {
     }
   }
   if (!err.empty()) {
-    llmContext_->resetMedia();
+    state_->llmContext_->resetMedia();
     std::string errorMsg =
         string_format("%s: Invalid input format: %s\n", __func__, err.c_str());
     throw qvac_errors::StatusError(
@@ -682,8 +808,8 @@ LlamaModel::formatPrompt(const std::string& input) {
 }
 
 void LlamaModel::resetState(bool resetStats) {
-  llmContext_->setNDiscarded(configuredNDiscarded_);
-  llmContext_->resetState(resetStats);
+  state_->llmContext_->setNDiscarded(state_->configuredNDiscarded_);
+  state_->llmContext_->resetState(resetStats);
 }
 
 std::unique_ptr<LlmContext> LlamaModel::createContext(
@@ -691,21 +817,19 @@ std::unique_ptr<LlmContext> LlamaModel::createContext(
     common_init_result&& llamaInit) {
   if (!projectionPath.empty()) {
     params.mmproj.path = std::move(projectionPath);
-    isTextLlm_ = false;
     return std::make_unique<MtmdLlmContext>(params, std::move(llamaInit));
   }
-  isTextLlm_ = true;
   return std::make_unique<TextLlmContext>(params, std::move(llamaInit));
 }
 
 bool LlamaModel::loadMedia(const std::vector<uint8_t>& input) {
-  if (isTextLlm_) {
+  if (state_->isTextLlm_) {
     QLOG_IF(Priority::ERROR, "Media not supported by text-only models");
     throw qvac_errors::StatusError(
         ADDON_ID,
         toString(MediaNotSupported),
         "Media not supported by text-only models");
   }
-  llmContext_->loadMedia(input);
+  state_->llmContext_->loadMedia(input);
   return true;
 }

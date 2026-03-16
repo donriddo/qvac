@@ -7,8 +7,8 @@
  *   bun run scripts/generate-api-docs.ts <version> [--no-update-latest]
  *   bun run scripts/generate-api-docs.ts --rollback
  *
- * Path format: content/docs/sdk/api/vX.Y.Z/ and content/docs/sdk/api/latest/
- * SDK path: Set SDK_PATH env to point to sdk package (default: ../sdk from cwd).
+ * Path format: content/docs/v{X.Y.Z}/sdk/api/ and content/docs/(latest)/sdk/api/
+ * SDK path: Set SDK_PATH env to point to sdk package (default: ../../packages/sdk from cwd).
  */
 
 import * as fs from "fs/promises";
@@ -29,6 +29,7 @@ interface ApiFunction {
   }>;
   returns: { type: string; description: string };
   examples?: string[];
+  deprecated?: string;
 }
 
 interface GenerateOptions {
@@ -37,7 +38,7 @@ interface GenerateOptions {
 
 const SDK_PATH =
   process.env.SDK_PATH ||
-  path.join(process.cwd(), "..", "sdk");
+  path.join(process.cwd(), "..", "..", "packages", "sdk");
 
 async function generateApiDocs(
   version: string,
@@ -64,11 +65,11 @@ async function generateApiDocs(
     throw new Error(
       `SDK entry point not found: ${entryPoint}\n\n` +
         `Either:\n` +
-        `  1. Clone or copy the sdk package to: ${SDK_PATH}\n` +
+        `  1. Ensure the sdk package exists at: ${SDK_PATH}\n` +
         `  2. Or set SDK_PATH to your SDK root, e.g.:\n` +
         `     set SDK_PATH=C:\\path\\to\\sdk   (Windows)\n` +
         `     export SDK_PATH=/path/to/sdk     (Linux/macOS)\n` +
-        `  Then run: npm run docs:generate-api -- 0.7.0`
+        `  Then run: bun run scripts/generate-api-docs.ts 0.7.0`
     );
   }
 
@@ -78,7 +79,7 @@ async function generateApiDocs(
     excludePrivate: true,
     excludeProtected: true,
     excludeExternals: true,
-    skipErrorChecking: true, // SDK may have internal TS errors; we only need the public API surface
+    skipErrorChecking: true,
   });
 
   const project = await app.convert();
@@ -110,9 +111,9 @@ async function generateApiDocs(
     process.cwd(),
     "content",
     "docs",
+    `v${version}`,
     "sdk",
-    "api",
-    `v${version}`
+    "api"
   );
   await fs.mkdir(outputDir, { recursive: true });
 
@@ -212,6 +213,12 @@ function extractApiFunctions(project: any): ApiFunction[] {
       examples: blockTags
         .filter((tag: any) => tag.tag === "@example")
         .map((tag: any) => extractComment(tag.content)) || [],
+      deprecated: (() => {
+        const depTag = blockTags.find((tag: any) => tag.tag === "@deprecated");
+        if (depTag) return extractComment(depTag.content) || "This function is deprecated.";
+        if (comment?.isDeprecated) return "This function is deprecated.";
+        return undefined;
+      })(),
     });
   }
   return functions.sort((a, b) => a.name.localeCompare(b.name));
@@ -278,13 +285,18 @@ ${ex}
   const desc = String(fn.description ?? "No description available").replace(/"/g, '\\"').replace(/\bundefined\b/g, "—");
   const returnsDesc = String(fn.returns?.description ?? "No description available").replace(/\bundefined\b/g, "—");
   const bodyDesc = String(fn.description ?? "No description available").replace(/\bundefined\b/g, "—");
+
+  const deprecationCallout = fn.deprecated
+    ? `<Callout type="warn" title="Deprecated">\n${fn.deprecated}\n</Callout>\n\n`
+    : "";
+
   return `---
 title: "${fn.name}( )"
 titleStyle: code
 description: "${desc}"
 ---
 
-\`\`\`typescript
+${deprecationCallout}\`\`\`typescript
 ${fn.signature}
 \`\`\`
 
@@ -306,56 +318,75 @@ ${examplesSection}
 `.trim();
 }
 
+function formatShortSignature(fn: ApiFunction): string {
+  const sig = fn.signature.replace(/^function\s+/, "");
+  return sig.replace(/\|/g, "\\|");
+}
+
 function generateIndexMDX(functions: ApiFunction[], version: string): string {
+  const firstSentence = (text: string) => {
+    const match = text.match(/^[^.!?]+[.!?]/);
+    return match ? match[0] : text;
+  };
+
   return `---
-title: "API Reference"
-description: Complete API reference for QVAC SDK v${version}
+title: "@qvac/sdk"
+titleStyle: code
+description: API reference — v${version}
 ---
 
 ## Overview
 
-Complete API reference for **QVAC SDK v${version}** with ${functions.length} functions.
+\`@qvac/sdk\` npm package exposes a function-centric, typed JS API.
 
-## Available Functions
+## Functions
 
+| Function | Summary | Signature |
+| --- | --- | --- |
 ${functions
-  .map((fn) => `- [\`${fn.name}()\`](./${fn.name}) - ${fn.description}`)
+  .map((fn) => {
+    const summary = firstSentence(fn.description).replace(/\|/g, "\\|");
+    const sig = formatShortSignature(fn);
+    return `| [\`${fn.name}()\`](./${fn.name}) | ${summary} | \`${sig}\` |`;
+  })
   .join("\n")}
 `;
 }
 
 async function updateLatestSafely(version: string) {
-  const base = path.join(process.cwd(), "content", "docs", "sdk", "api");
-  const latestDir = path.join(base, "latest");
-  const versionDir = path.join(base, `v${version}`);
-  const backupDir = path.join(base, ".latest-backup");
+  const docsBase = path.join(process.cwd(), "content", "docs");
+  const latestApiDir = path.join(docsBase, "(latest)", "sdk", "api");
+  const versionApiDir = path.join(docsBase, `v${version}`, "sdk", "api");
+  const backupDir = path.join(docsBase, ".latest-api-backup");
 
-  console.log(`📌 Updating 'latest' to point to v${version}...`);
+  console.log(`📌 Updating (latest)/sdk/api/ to match v${version}...`);
 
   try {
-    const stat = await fs.stat(latestDir);
+    const stat = await fs.stat(latestApiDir);
     if (stat.isDirectory()) {
       await fs.rm(backupDir, { recursive: true, force: true });
-      await fs.rename(latestDir, backupDir);
-      console.log("✓ Backed up current latest → .latest-backup");
+      await fs.cp(latestApiDir, backupDir, { recursive: true });
+      console.log("✓ Backed up current (latest)/sdk/api/ → .latest-api-backup");
     }
   } catch {
-    console.log("✓ No previous latest to backup (first generation)");
+    console.log("✓ No previous (latest)/sdk/api/ to backup (first generation)");
   }
 
-  await fs.cp(versionDir, latestDir, { recursive: true });
-  console.log(`✓ Updated latest → v${version}`);
+  await fs.rm(latestApiDir, { recursive: true, force: true });
+  await fs.cp(versionApiDir, latestApiDir, { recursive: true });
+  console.log(`✓ Updated (latest)/sdk/api/ → v${version}`);
 }
 
 async function smokeTest(version: string): Promise<void> {
   console.log(`🧪 Running smoke test...`);
-  const base = path.join(process.cwd(), "content", "docs", "sdk", "api");
-  const versionDir = path.join(base, `v${version}`);
+  const apiDir = path.join(
+    process.cwd(), "content", "docs", `v${version}`, "sdk", "api"
+  );
 
-  const indexPath = path.join(versionDir, "index.mdx");
+  const indexPath = path.join(apiDir, "index.mdx");
   await fs.stat(indexPath);
 
-  const files = await fs.readdir(versionDir);
+  const files = await fs.readdir(apiDir);
   const mdxFiles = files.filter(
     (f) => f.endsWith(".mdx") && f !== "index.mdx"
   );
@@ -365,7 +396,7 @@ async function smokeTest(version: string): Promise<void> {
 
   for (const file of mdxFiles) {
     const content = await fs.readFile(
-      path.join(versionDir, file),
+      path.join(apiDir, file),
       "utf-8"
     );
     if (!content.startsWith("---\n")) {
@@ -384,9 +415,9 @@ async function smokeTest(version: string): Promise<void> {
 }
 
 async function rollbackLatest(): Promise<void> {
-  const base = path.join(process.cwd(), "content", "docs", "sdk", "api");
-  const latestDir = path.join(base, "latest");
-  const backupDir = path.join(base, ".latest-backup");
+  const docsBase = path.join(process.cwd(), "content", "docs");
+  const latestApiDir = path.join(docsBase, "(latest)", "sdk", "api");
+  const backupDir = path.join(docsBase, ".latest-api-backup");
 
   const backupExists = await fs
     .stat(backupDir)
@@ -397,9 +428,10 @@ async function rollbackLatest(): Promise<void> {
     return;
   }
 
-  await fs.rm(latestDir, { recursive: true, force: true });
-  await fs.rename(backupDir, latestDir);
-  console.log("✅ Rolled back latest to previous version");
+  await fs.rm(latestApiDir, { recursive: true, force: true });
+  await fs.cp(backupDir, latestApiDir, { recursive: true });
+  await fs.rm(backupDir, { recursive: true, force: true });
+  console.log("✅ Rolled back (latest)/sdk/api/ to previous version");
 }
 
 // CLI

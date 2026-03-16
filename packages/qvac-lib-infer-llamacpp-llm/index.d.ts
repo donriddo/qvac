@@ -20,6 +20,7 @@ export interface Loader {
 export interface AddonMessage {
   type: 'text'
   input: string
+  prefill?: boolean
 }
 export interface AddonMediaMessage {
   type: 'media'
@@ -94,6 +95,22 @@ export type Message =
   | UserMediaMessage
   | ChatFunctionDefinition
 
+export interface GenerationParams {
+  temp?: number
+  top_p?: number
+  top_k?: number
+  predict?: number
+  seed?: number
+  frequency_penalty?: number
+  presence_penalty?: number
+  repeat_penalty?: number
+}
+
+export interface RunOptions {
+  prefill?: boolean
+  generationParams?: GenerationParams
+}
+
 export interface DownloadWeightsOptions {
   closeLoader?: boolean
 }
@@ -129,9 +146,9 @@ export default class LlmLlamacpp extends BaseInference {
     opts?: DownloadWeightsOptions
   ): Promise<Record<string, DownloadResult>>
 
-  _runInternal(prompt: Message[]): Promise<QvacResponse>
+  _runInternal(prompt: Message[], runOptions?: RunOptions): Promise<QvacResponse>
 
-  run(prompt: Message[]): Promise<QvacResponse>
+  run(prompt: Message[], runOptions?: RunOptions): Promise<QvacResponse>
 
   unload(): Promise<void>
 

@@ -8,6 +8,7 @@
 #include "../utils/Qwen3ReasoningUtils.hpp"
 #include "../utils/UTF8TokenBuffer.hpp"
 #include "LlmContext.hpp"
+#include "common/common.h"
 #include "qvac-lib-inference-addon-cpp/Logger.hpp"
 
 class TextLlmContext: public LlmContext {
@@ -27,11 +28,12 @@ public:
    *
    * @param chatMsgs - chat messages.
    * @param is_cache_loaded - whether the cache is loaded.
+   * @param prefill - whether to only prefill context without generation setup.
    * @return - true if successful, false if inference is stopped.
    */
   bool evalMessage(
       const std::vector<common_chat_msg>& chatMsgs,
-      bool isCacheLoaded) override;
+      bool isCacheLoaded, bool prefill) override;
 
   /**
    * The eval message with tools method. It evaluates the message with tools and
@@ -40,11 +42,13 @@ public:
    * @param chatMsgs - chat messages.
    * @param tools - tools.
    * @param isCacheLoaded - whether the cache is loaded.
+   * @param prefill - whether to only prefill context without generation setup.
    * @return - true if successful, false if inference is stopped.
    */
   bool evalMessageWithTools(
       const std::vector<common_chat_msg>& chatMsgs,
-      const std::vector<common_chat_tool>& tools, bool isCacheLoaded) override;
+      const std::vector<common_chat_tool>& tools, bool isCacheLoaded,
+      bool prefill) override;
 
   /**
    * The generate response method. It generates the response token by token.
@@ -54,6 +58,9 @@ public:
    */
   bool generateResponse(
       const std::function<void(const std::string&)>& outputCallback) override;
+
+  std::function<void()> applyGenerationParams(
+      const GenerationParams& overrides) override;
 
   /**
    * The stop method. It stops the model inference.

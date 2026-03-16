@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.25)
 
 option(BUILD_TESTING "Build tests" OFF)
 option(ENABLE_XNNPACK "Enable XNNPack execution provider" ON)
+option(QVAC_ONNX_ANDROID_LOG "Enable Android logcat debug logging" OFF)
 
 if(ENABLE_XNNPACK)
   list(APPEND VCPKG_MANIFEST_FEATURES "xnnpack")
@@ -16,7 +17,10 @@ endif()
 
 set(VCPKG_INSTALL_OPTIONS --clean-after-build)
 
-project(qvac-onnx VERSION 0.11.5 LANGUAGES C CXX)
+file(READ "${CMAKE_CURRENT_SOURCE_DIR}/package.json" _pkg_json)
+string(JSON _pkg_version GET "${_pkg_json}" "version")
+
+project(qvac-onnx VERSION ${_pkg_version} LANGUAGES C CXX)
 
 find_path(VCPKG_INSTALLED_PATH share/qvac-lint-cpp/.clang-format REQUIRED)
 
@@ -27,17 +31,22 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-# Patch LINK_ONLY out of cmake config files for cmake 4.x compatibility
+# Patch cmake config files for cmake 4.x compatibility
 foreach(_cmake4_fix_file
     "${VCPKG_INSTALLED_PATH}/share/onnxruntime/onnxruntimeTargets.cmake"
     "${VCPKG_INSTALLED_PATH}/share/protobuf/protobuf-targets.cmake")
   if(EXISTS "${_cmake4_fix_file}")
     file(READ "${_cmake4_fix_file}" _cmake4_fix_content)
+    # Strip LINK_ONLY generator expressions.
+    # Use [^";] to exclude " (property value boundary) and ; (entry separator)
+    # while still allowing nested genexes like $<$<CONFIG:DEBUG>:Dbghelp>.
+    # Build pattern with string(CONCAT) to prevent cmake genex evaluation.
     if(_cmake4_fix_content MATCHES "LINK_ONLY:")
-      string(REGEX REPLACE "\\\\?\\$<LINK_ONLY:([^>]+)>" "\\1"
+      string(CONCAT _lo_re "\\\\?" "\\$" [=[<LINK_ONLY:([^";]+)>]=])
+      string(REGEX REPLACE "${_lo_re}" "\\1"
         _cmake4_fix_content "${_cmake4_fix_content}")
-      file(WRITE "${_cmake4_fix_file}" "${_cmake4_fix_content}")
     endif()
+    file(WRITE "${_cmake4_fix_file}" "${_cmake4_fix_content}")
   endif()
 endforeach()
 
@@ -50,6 +59,19 @@ target_sources(${qvac-onnx} PRIVATE addon/binding.cpp)
 target_include_directories(${qvac-onnx} PRIVATE src)
 target_link_libraries(${qvac-onnx} PRIVATE onnxruntime::onnxruntime_static)
 
+if(QVAC_ONNX_ANDROID_LOG)
+  target_compile_definitions(${qvac-onnx} PRIVATE QVAC_ONNX_ENABLE_ANDROID_LOG)
+endif()
+
+# Override install_name so that consumers using @loader_path rpath can resolve
+# this library as a companion dependency (cmake-bare sets INSTALL_NAME_DIR ""
+# which produces a bare filename install_name that dyld cannot resolve via rpath).
+if(APPLE)
+  set_target_properties(${qvac-onnx}_module PROPERTIES
+    INSTALL_NAME_DIR "@rpath"
+    BUILD_WITH_INSTALL_NAME_DIR ON)
+endif()
+
 # Version script
 if(UNIX AND NOT APPLE)
   target_link_options(${qvac-onnx}_module PRIVATE
@@ -57,6 +79,11 @@ if(UNIX AND NOT APPLE)
 elseif(APPLE)
   target_link_options(${qvac-onnx}_module PRIVATE
     -Wl,-exported_symbols_list,${CMAKE_CURRENT_SOURCE_DIR}/exports.txt)
+elseif(WIN32)
+  # Use /EXPORT instead of a .def file to avoid overriding the auto-generated
+  # exports from WINDOWS_EXPORT_ALL_SYMBOLS (which exports bare_* and napi_*).
+  target_link_options(${qvac-onnx}_module PRIVATE
+    /EXPORT:OrtGetApiBase)
 endif()
 
 # Strip .bare module
@@ -79,6 +106,10 @@ target_include_directories(qvac-onnx-headers INTERFACE
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
   $<INSTALL_INTERFACE:include>
   $<INSTALL_INTERFACE:include/onnxruntime>)
+
+if(QVAC_ONNX_ANDROID_LOG)
+  target_compile_definitions(qvac-onnx-headers INTERFACE QVAC_ONNX_ENABLE_ANDROID_LOG)
+endif()
 
 # --- Installs ---
 install(DIRECTORY src/qvac-onnx DESTINATION include FILES_MATCHING PATTERN "*.hpp")
@@ -211,7 +242,7 @@ if(ANDROID OR (APPLE AND CMAKE_SYSTEM_NAME STREQUAL "iOS"))
         "${CMAKE_INSTALL_PREFIX}/share/protobuf/protobuf-targets.cmake")
       if(EXISTS "${_lo_file}")
         file(READ "${_lo_file}" _c)
-        string(CONCAT _lo_re "\\\\?" "\\$" "<LINK_ONLY:([^>]+)>")
+        string(CONCAT _lo_re "\\\\?" "\\$" [==[<LINK_ONLY:([^";]+)>]==])
         string(REGEX REPLACE "${_lo_re}" "\\1" _c "${_c}")
         file(WRITE "${_lo_file}" "${_c}")
       endif()

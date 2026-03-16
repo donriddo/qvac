@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.12.0] - 2026-03-13
+
+### Changed
+
+- Updated qvac-fabric dependency from 7248.1.3 to 7248.1.4.
+
+## [0.11.3] - 2026-03-06
+
+### Fixed
+
+- The `GGMLConfig` type now exposes `embd_normalize` instead of `embed_normalize` in `index.d.ts`. This fixes a mismatch where TypeScript users could be guided toward an incorrect property name, reducing configuration mistakes and autocomplete friction.
+
 ## [0.11.2] - 2026-03-03
 
 ### Fixed

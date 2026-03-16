@@ -157,17 +157,12 @@ bool TextLlmContext::checkAntiprompt() {
     std::string lastOutput =
         common_sampler_prev_str(smpl_.get(), lctx_, kNPrev);
 
-    // Check if each of the reverse prompts appears at the end of the output.
-    for (std::string& antiprompt : params_.antiprompt) {
-      size_t extraPadding = 2;
-      size_t searchStartPos =
-          lastOutput.length() >
-                  static_cast<size_t>(antiprompt.length() + extraPadding)
-              ? lastOutput.length() -
-                    static_cast<size_t>(antiprompt.length() + extraPadding)
-              : 0;
-
-      if (lastOutput.find(antiprompt, searchStartPos) != std::string::npos) {
+    // Check if each of the reverse prompts appears anywhere in the recent
+    // output. We search the full kNPrev-token window because a single token
+    // can decode to many characters, and a short antiprompt like "\n" may
+    // appear at the start of such a token, far from the string's tail.
+    for (const std::string& antiprompt : params_.antiprompt) {
+      if (lastOutput.find(antiprompt) != std::string::npos) {
         return true;
       }
     }
@@ -254,13 +249,15 @@ void TextLlmContext::tokenizeChat(
 };
 
 bool TextLlmContext::evalMessage(
-    const std::vector<common_chat_msg>& chatMsgs, bool isCacheLoaded) {
-  return evalMessageWithTools(chatMsgs, {}, isCacheLoaded);
+    const std::vector<common_chat_msg>& chatMsgs, bool isCacheLoaded,
+    bool prefill) {
+  return evalMessageWithTools(chatMsgs, {}, isCacheLoaded, prefill);
 }
 
 bool TextLlmContext::evalMessageWithTools(
     const std::vector<common_chat_msg>& chatMsgs,
-    const std::vector<common_chat_tool>& tools, bool isCacheLoaded) {
+    const std::vector<common_chat_tool>& tools, bool isCacheLoaded,
+    bool prefill) {
   std::vector<llama_token> inputTokens;
   tokenizeChat(chatMsgs, tools, inputTokens, isCacheLoaded);
 
@@ -269,7 +266,7 @@ bool TextLlmContext::evalMessageWithTools(
 
   if (nTokens >= llama_n_ctx(lctx_)) {
     std::string errorMsg = string_format(
-        "[TextLlm] context overflow at prefill step (%ld tokens, max %d)\n",
+        "[TextLlm] context overflow at prefill step: prompt tokens %ld, max context tokens %d\n",
         nTokens,
         llama_n_ctx(lctx_));
     throw qvac_errors::StatusError(
@@ -340,7 +337,7 @@ bool TextLlmContext::evalMessageWithTools(
       textBatch->n_tokens++;
     }
     bool isLastToken = (tokenIndex == nTokens);
-    if (isLastToken) {
+    if (isLastToken && !prefill) {
       textBatch->logits[textBatch->n_tokens - 1] = static_cast<int8_t>(true);
     }
     // NOLINTNEXTLINE(clang-analyzer-core.CallAndMessage)
@@ -487,6 +484,41 @@ bool TextLlmContext::generateResponse(
     flushPendingUtf8ToCallback(outputCallback);
   }
   return true;
+}
+
+std::function<void()> TextLlmContext::applyGenerationParams(
+    const GenerationParams& overrides) {
+  if (!overrides.hasOverrides()) {
+    return []() {};
+  }
+
+  common_params_sampling savedSampling = params_.sampling;
+  int savedPredict = params_.n_predict;
+
+  auto setIf = [](const auto& src, auto& dst) {
+    if (src) {
+      dst = *src;
+    }
+  };
+  setIf(overrides.temp, params_.sampling.temp);
+  setIf(overrides.top_p, params_.sampling.top_p);
+  setIf(overrides.top_k, params_.sampling.top_k);
+  setIf(overrides.n_predict, params_.n_predict);
+  setIf(overrides.seed, params_.sampling.seed);
+  setIf(overrides.frequency_penalty, params_.sampling.penalty_freq);
+  setIf(overrides.presence_penalty, params_.sampling.penalty_present);
+  setIf(overrides.repeat_penalty, params_.sampling.penalty_repeat);
+
+  smpl_.reset(common_sampler_init(model_, params_.sampling));
+
+  bool restored = false;
+  return [this, savedSampling, savedPredict, restored]() mutable {
+    if (restored) return;
+    restored = true;
+    params_.sampling = savedSampling;
+    params_.n_predict = savedPredict;
+    smpl_.reset(common_sampler_init(model_, params_.sampling));
+  };
 }
 
 void TextLlmContext::stop() { stopGeneration_.store(true); }
