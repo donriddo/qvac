@@ -190,7 +190,6 @@ private:
 
     // configuration values parsed from configFilemap
     llama_pos configuredNDiscarded_ = 0;
-    bool toolsAtEnd_ = false;
     std::optional<CacheManager> cacheManager_;
     bool lastRunWasPrefill_ = false;
   };
@@ -213,7 +212,8 @@ private:
   void commonParamsParse(
       const std::string& modelPath,
       std::unordered_map<std::string, std::string>& configFilemap,
-      common_params& params, std::optional<int>& outAdrenoVersion);
+      common_params& params, std::optional<int>& outAdrenoVersion,
+      bool& outToolsAtEnd);
 
   /**
    * The Format prompt method. It formats the prompt json to chat messages.

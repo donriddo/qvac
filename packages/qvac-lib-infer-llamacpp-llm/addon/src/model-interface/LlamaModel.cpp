@@ -208,7 +208,8 @@ void LlamaModel::init(bool acquireLock) {
 
   common_params params;
   std::optional<int> adrenoVersion;
-  commonParamsParse(modelPath, configFilemap, params, adrenoVersion);
+  bool toolsAtEnd = false;
+  commonParamsParse(modelPath, configFilemap, params, adrenoVersion, toolsAtEnd);
 
   const std::string errorWhenFailed = toString(UnableToLoadModel);
   auto streamedFiles =
@@ -235,7 +236,7 @@ void LlamaModel::init(bool acquireLock) {
       std::string(constructionArgs_.projectionPath),
       params,
       std::move(llamaInit),
-      snap->toolsAtEnd_);
+      toolsAtEnd);
 
   if (snap->configuredNDiscarded_ > 0 && snap->llmContext_) {
     snap->llmContext_->setNDiscarded(snap->configuredNDiscarded_);
@@ -462,7 +463,8 @@ qvac_lib_inference_addon_cpp::RuntimeStats LlamaModel::runtimeStats() const {
 void LlamaModel::commonParamsParse(
     const std::string& modelPath,
     std::unordered_map<std::string, std::string>& configFilemap,
-    common_params& params, std::optional<int>& outAdrenoVersion) {
+    common_params& params, std::optional<int>& outAdrenoVersion,
+    bool& outToolsAtEnd) {
 
   std::vector<std::string> configVector;
 
@@ -510,18 +512,18 @@ void LlamaModel::commonParamsParse(
       iter != configFilemap.end()) {
     std::string val = iter->second;
     std::transform(val.begin(), val.end(), val.begin(), ::tolower);
-    state_->toolsAtEnd_ = (val == "true");
+    outToolsAtEnd = (val == "true");
     configFilemap.erase(iter);
   }
 
-  if (state_->toolsAtEnd_) {
+  if (outToolsAtEnd) {
     auto arch = metadata_.tryGetString("general.architecture");
     if (!arch.has_value() || arch.value() != "qwen3") {
       QLOG_IF(
           Priority::WARNING,
           "[LlamaModel] tools_at_end is only supported for Qwen3 models, "
           "ignoring\n");
-      state_->toolsAtEnd_ = false;
+      outToolsAtEnd = false;
     }
   }
 
