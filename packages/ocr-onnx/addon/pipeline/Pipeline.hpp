@@ -9,8 +9,6 @@
 #include <stack>
 #include <vector>
 
-#include <nlohmann/json.hpp>
-
 #include <qvac-lib-inference-addon-cpp/ModelInterfaces.hpp>
 #include <qvac-lib-inference-addon-cpp/RuntimeStats.hpp>
 
