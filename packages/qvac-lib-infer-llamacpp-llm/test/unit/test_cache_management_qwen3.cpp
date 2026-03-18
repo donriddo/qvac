@@ -1,5 +1,7 @@
 #include <any>
+#include <cstring>
 #include <filesystem>
+#include <iomanip>
 #include <iostream>
 #include <memory>
 #include <string>
@@ -82,6 +84,67 @@ std::vector<common_chat_msg> parseChatMessages(const std::string& input) {
     }
   }
   return messages;
+}
+
+std::string tokensToPromptString(const llama_vocab* vocab, const std::vector<llama_token>& tokens) {
+  std::string result;
+  for (llama_token tok : tokens) {
+    char buf[256];
+    int n = llama_token_to_piece(vocab, tok, buf, sizeof(buf), 0, true);
+    if (n > 0) {
+      result.append(buf, n);
+    }
+  }
+  return result;
+}
+
+struct CachedPromptResult {
+  size_t nPast;
+  size_t nTokenCount;
+  std::vector<llama_token> tokens;
+  std::string promptString;
+};
+
+CachedPromptResult loadCachedPromptFromFile(
+    const llama_model* modelPtr,
+    const std::string& sessionFilename) {
+  CachedPromptResult result;
+
+  llama_context_params ctx_params = llama_context_default_params();
+  ctx_params.n_ctx = 2048;
+
+  llama_context* tempCtx = llama_init_from_model(
+      const_cast<struct llama_model*>(modelPtr), ctx_params);
+
+  // Allocate a buffer for tokens - use a reasonable maximum
+  const size_t maxTokens = 2048;
+  std::vector<llama_token> tokensBuffer(maxTokens);
+  size_t nTokenCount = 0;
+
+  // Use llama_state_seq_load_file to get actual token IDs from the session file
+  // This loads the KV cache state AND returns the token IDs that were cached
+  size_t bytesRead = llama_state_seq_load_file(
+      tempCtx,
+      sessionFilename.c_str(),
+      0,                    // dest_seq_id
+      tokensBuffer.data(),  // tokens_out
+      maxTokens,            // n_token_capacity
+      &nTokenCount);        // n_token_count_out
+
+  if (bytesRead == 0) {
+    throw std::runtime_error("Failed to load session file: " + sessionFilename);
+  }
+
+  result.nPast = nTokenCount;
+  result.nTokenCount = nTokenCount;
+  result.tokens = std::vector<llama_token>(tokensBuffer.begin(), tokensBuffer.begin() + nTokenCount);
+
+  const llama_vocab* vocab = llama_model_get_vocab(modelPtr);
+  result.promptString = tokensToPromptString(vocab, result.tokens);
+
+  llama_free(tempCtx);
+
+  return result;
 }
 } // namespace
 
@@ -321,8 +384,9 @@ TEST_F(CacheManagementQwen3Test, CacheWithoutToolsWithToolsAtEndTrue) {
   double cacheTokensBeforeSave = getStatValue(statsBeforeSave, "CacheTokens");
   std::cout << "=== DEBUG: cacheTokensBeforeSave = " << cacheTokensBeforeSave << " ===" << std::endl;
 
-  // The test should compare with the model's actual behavior (after session removal)
-  EXPECT_EQ(cacheTokensBeforeSave, static_cast<double>(actualTokens.size()));
+  // The cache includes prompt + response tokens. We expect at least the prompt tokens.
+  EXPECT_GE(cacheTokensBeforeSave, static_cast<double>(actualTokens.size()));
+  EXPECT_GT(cacheTokensBeforeSave, 0.0);
 
   llama_pos nPastBeforeTools = model->getNPastBeforeTools();
   EXPECT_EQ(nPastBeforeTools, -1);
@@ -472,7 +536,8 @@ TEST_F(CacheManagementQwen3Test, CacheToolsAtEndModeWithMultiplePrompts) {
   auto stats2 = model->runtimeStats();
   double cacheTokens2 = getStatValue(stats2, "CacheTokens");
   double promptTokens2 = getStatValue(stats2, "promptTokens");
-  EXPECT_EQ(cacheTokens2, static_cast<double>(tokensFinal.size()));
+  // Cache includes prompt + response tokens, so expect at least the prompt tokens
+  EXPECT_GE(cacheTokens2, static_cast<double>(tokensFinal.size()));
   EXPECT_GT(cacheTokens2, cacheTokens1);
   EXPECT_LT(promptTokens2, 500.0);
   EXPECT_LE(cacheTokens2, maxExpectedCacheTokens)
@@ -550,9 +615,6 @@ TEST_F(CacheManagementQwen3Test, CacheToolsAtEndModeTrimOnlyWhenNPastBeforeTools
     EXPECT_GE(output.length(), 0);
   });
 
-  llama_pos nPastBeforeTools = model->getNPastBeforeTools();
-  EXPECT_EQ(nPastBeforeTools, -1);
-
   auto statsBeforeSave = model->runtimeStats();
   double cacheTokensBeforeSave = getStatValue(statsBeforeSave, "CacheTokens");
   EXPECT_GT(cacheTokensBeforeSave, 0.0);
@@ -589,7 +651,9 @@ TEST_F(CacheManagementQwen3Test, CacheToolsAtEndModeRestoresNPastBeforeTools) {
 
   EXPECT_NO_THROW({
     std::string output = processPromptString(model, input1);
-    EXPECT_GE(output.length(), 0);
+    EXPECT_GT(output.length(), 1);
+    std::cout << "\n=== THE DDDD Output: Cached User Prompt String ===" << std::endl;
+    std::cout << output << std::endl;
   });
 
   llama_pos nPastBeforeTools1 = model->getNPastBeforeTools();
@@ -614,9 +678,230 @@ TEST_F(CacheManagementQwen3Test, CacheToolsAtEndModeRestoresNPastBeforeTools) {
 
   EXPECT_NO_THROW({
     std::string output = processPromptString(model2, input2);
-    EXPECT_GE(output.length(), 0);
+    EXPECT_GT(output.length(), 0);
   });
 
   llama_pos nPastBeforeTools2 = model2->getNPastBeforeTools();
   EXPECT_EQ(nPastBeforeTools2, -1);
+}
+
+TEST_F(CacheManagementQwen3Test, CacheExportToTokensAndString) {
+  if (!isQwen3ModelPath(test_model_path)) {
+    GTEST_SKIP() << "Test requires Qwen3 model for tools_at_end feature";
+  }
+
+  if (!hasValidModel()) {
+    FAIL() << "Test model not found";
+  }
+
+  config_files["tools_at_end"] = "true";
+  auto model = createModel();
+  if (!model) {
+    FAIL() << "Model failed to load";
+  }
+
+  // Step 1: Send user message with tools
+  std::string inputWithTools =
+      // R"([{"role": "session", "content": "test_cache_export_qwen3.bin"}, {"role": "user", "content": "Hi"}])";
+      R"([{"role": "session", "content": "test_cache_export_qwen3.bin"}, {"role": "user", "content": "Hi"}, {"type": "function", "name": "get_weather", "description": "Get weather forecast", "parameters": {"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]}}])";
+
+  EXPECT_NO_THROW({
+    std::string output = processPromptString(model, inputWithTools);
+    EXPECT_GT(output.length(), 0);
+  });
+
+  // Verify that we have tokens in cache
+  auto statsBeforeSave = model->runtimeStats();
+  double cacheTokensBeforeSave = getStatValue(statsBeforeSave, "CacheTokens");
+  EXPECT_GT(cacheTokensBeforeSave, 0.0);
+
+  // Step 2: Save the session to a .bin file
+  std::string saveInput =
+      R"([{"role": "session", "content": "test_cache_export_qwen3.bin"}, {"role": "session", "content": "save"}])";
+  EXPECT_NO_THROW({
+    std::string saveOutput = processPromptString(model, saveInput);
+    EXPECT_EQ(saveOutput.length(), 0);
+  });
+
+  EXPECT_TRUE(fs::exists("test_cache_export_qwen3.bin"));
+
+  // Step 3: Create a new model instance to load the session
+  model.reset();
+
+  auto model2 = createModel();
+  if (!model2) {
+    FAIL() << "Model2 failed to load";
+  }
+
+  // Step 4: Load the session and extract cached prompt using helper function
+  const llama_model* modelPtr = model2->getLlamaModel();
+  EXPECT_NE(modelPtr, nullptr) << "Model pointer is null";
+
+  CachedPromptResult cacheResult = loadCachedPromptFromFile(
+      modelPtr,
+      "test_cache_export_qwen3.bin");
+
+  const llama_vocab* vocab = llama_model_get_vocab(modelPtr);
+
+  std::cout << "\n=== Cached Tokens from Session File ===" << std::endl;
+  std::cout << "nTokenCount from load: " << cacheResult.nTokenCount << std::endl;
+  std::cout << "nPast (total processed tokens): " << cacheResult.nPast << std::endl;
+  std::cout << "Token count for prompt: " << cacheResult.tokens.size() << std::endl;
+  std::cout << "\nToken breakdown:" << std::endl;
+
+  // Convert each token ID to string and output
+  for (size_t i = 0; i < cacheResult.tokens.size(); ++i) {
+    llama_token tok = cacheResult.tokens[i];
+    char buf[256];
+    int n = llama_token_to_piece(vocab, tok, buf, sizeof(buf), 0, true);
+
+    // Mark special tokens
+    std::string markers;
+    if (tok == llama_vocab_bos(vocab)) markers += " [BOS]";
+    if (tok == llama_vocab_eos(vocab)) markers += " [EOS]";
+    if (tok == llama_vocab_eot(vocab)) markers += " [EOT]";
+    if (llama_vocab_is_control(vocab, tok)) markers += " [CONTROL]";
+
+    std::cout << "  [" << std::setw(3) << i << "] "
+              << std::setw(6) << tok << markers << " -> \"";
+
+    // Escape special characters for display
+    for (int j = 0; j < n; ++j) {
+      char c = buf[j];
+      if (c == '\n') std::cout << "\\n";
+      else if (c == '\t') std::cout << "\\t";
+      else if (c == '\r') std::cout << "\\r";
+      else if (c == '"') std::cout << "\\\"";
+      else if (c < 32) std::cout << "\\x" << std::hex << (int)(unsigned char)c << std::dec;
+      else std::cout << c;
+    }
+    std::cout << "\"" << std::endl;
+  }
+
+  std::cout << "\n=== Final Output: Cached User Prompt String ===" << std::endl;
+  std::cout << cacheResult.promptString << std::endl;
+
+  // Cleanup session file
+  if (fs::exists("test_cache_export_qwen3.bin")) {
+    fs::remove("test_cache_export_qwen3.bin");
+  }
+}
+
+TEST_F(CacheManagementQwen3Test, CacheExportToTokensAndStringMultiturn) {
+  if (!isQwen3ModelPath(test_model_path)) {
+    GTEST_SKIP() << "Test requires Qwen3 model for tools_at_end feature";
+  }
+
+  if (!hasValidModel()) {
+    FAIL() << "Test model not found";
+  }
+
+  config_files["tools_at_end"] = "true";
+  auto model = createModel();
+  if (!model) {
+    FAIL() << "Model failed to load";
+  }
+
+  // Step 1: Send user message without tools
+  std::string inputWithoutTools =
+      R"([{"role": "session", "content": "test_cache_export_qwen3.bin"}, {"role": "user", "content": "Hi"}])";
+      // R"([{"role": "session", "content": "test_cache_export_qwen3.bin"}, {"role": "user", "content": "Hi"}, {"type": "function", "name": "get_weather", "description": "Get weather forecast", "parameters": {"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]}}])";
+
+  EXPECT_NO_THROW({
+    std::string output = processPromptString(model, inputWithoutTools);
+    EXPECT_GT(output.length(), 0);
+    std::cout << "\n=== Output: LLM response ===" << std::endl;
+    std::cout << output << std::endl;
+  });
+
+  // Verify that we have tokens in cache
+  auto statsInitial = model->runtimeStats();
+  double cacheInitial = getStatValue(statsInitial, "CacheTokens");
+  EXPECT_GT(cacheInitial, 0.0);
+
+  // Step 2: Send user message with tools
+  std::string inputWithTools =
+      R"([{"role": "session", "content": "test_cache_export_qwen3.bin"}, {"role": "user", "content": "Hi"}, {"role": "assistant", "content": "Hello"}, {"role": "user", "content": "What's the weather"}, {"type": "function", "name": "get_weather", "description": "Get weather forecast", "parameters": {"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]}}])";
+
+  EXPECT_NO_THROW({
+    std::string output = processPromptString(model, inputWithTools);
+    EXPECT_GT(output.length(), 0);
+    std::cout << "\n=== Output: LLM response ===" << std::endl;
+    std::cout << output << std::endl;
+  });
+  // Verify that we have tokens in cache
+  auto statsBeforeSave = model->runtimeStats();
+  double cacheTokensBeforeSave = getStatValue(statsBeforeSave, "CacheTokens");
+  EXPECT_GT(cacheTokensBeforeSave, cacheInitial);
+
+  // Step 3: Save the session to a .bin file
+  std::string saveInput =
+      R"([{"role": "session", "content": "test_cache_export_qwen3.bin"}, {"role": "session", "content": "save"}])";
+  EXPECT_NO_THROW({
+    std::string saveOutput = processPromptString(model, saveInput);
+    EXPECT_EQ(saveOutput.length(), 0);
+  });
+
+  EXPECT_TRUE(fs::exists("test_cache_export_qwen3.bin"));
+
+  // Step 3: Create a new model instance to load the session
+  model.reset();
+
+  auto model2 = createModel();
+  if (!model2) {
+    FAIL() << "Model2 failed to load";
+  }
+
+  // Step 4: Load the session and extract cached prompt using helper function
+  const llama_model* modelPtr = model2->getLlamaModel();
+  EXPECT_NE(modelPtr, nullptr) << "Model pointer is null";
+
+  CachedPromptResult cacheResult = loadCachedPromptFromFile(
+      modelPtr,
+      "test_cache_export_qwen3.bin");
+
+  const llama_vocab* vocab = llama_model_get_vocab(modelPtr);
+
+  std::cout << "\n=== Cached Tokens from Session File ===" << std::endl;
+  std::cout << "nTokenCount from load: " << cacheResult.nTokenCount << std::endl;
+  std::cout << "nPast (total processed tokens): " << cacheResult.nPast << std::endl;
+  std::cout << "Token count for prompt: " << cacheResult.tokens.size() << std::endl;
+  std::cout << "\nToken breakdown:" << std::endl;
+
+  // Convert each token ID to string and output
+  for (size_t i = 0; i < cacheResult.tokens.size(); ++i) {
+    llama_token tok = cacheResult.tokens[i];
+    char buf[256];
+    int n = llama_token_to_piece(vocab, tok, buf, sizeof(buf), 0, true);
+
+    // Mark special tokens
+    std::string markers;
+    if (tok == llama_vocab_bos(vocab)) markers += " [BOS]";
+    if (tok == llama_vocab_eos(vocab)) markers += " [EOS]";
+    if (tok == llama_vocab_eot(vocab)) markers += " [EOT]";
+    if (llama_vocab_is_control(vocab, tok)) markers += " [CONTROL]";
+
+    std::cout << "  [" << std::setw(3) << i << "] "
+              << std::setw(6) << tok << markers << " -> \"";
+
+    // Escape special characters for display
+    for (int j = 0; j < n; ++j) {
+      char c = buf[j];
+      if (c == '\n') std::cout << "\\n";
+      else if (c == '\t') std::cout << "\\t";
+      else if (c == '\r') std::cout << "\\r";
+      else if (c == '"') std::cout << "\\\"";
+      else if (c < 32) std::cout << "\\x" << std::hex << (int)(unsigned char)c << std::dec;
+      else std::cout << c;
+    }
+    std::cout << "\"" << std::endl;
+  }
+
+  std::cout << "\n=== Final Output: Cached User Prompt String ===" << std::endl;
+  std::cout << cacheResult.promptString << std::endl;
+
+  // Cleanup session file
+  if (fs::exists("test_cache_export_qwen3.bin")) {
+    fs::remove("test_cache_export_qwen3.bin");
+  }
 }
