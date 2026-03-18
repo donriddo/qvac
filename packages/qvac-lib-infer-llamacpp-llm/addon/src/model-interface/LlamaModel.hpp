@@ -155,19 +155,6 @@ public:
   qvac_lib_inference_addon_cpp::RuntimeStats runtimeStats() const final;
 
   /**
-   * Get the underlying llama_model pointer.
-   *
-   * @return pointer to llama_model, or nullptr if not loaded
-   */
-  const struct llama_model* getLlamaModel() const {
-    std::shared_lock lock(stateMtx_);
-    if (state_ && state_->llmContext_) {
-      return state_->llmContext_->getModel();
-    }
-    return nullptr;
-  }
-
-  /**
    * Static callback function for llama.cpp logging
    */
   static void

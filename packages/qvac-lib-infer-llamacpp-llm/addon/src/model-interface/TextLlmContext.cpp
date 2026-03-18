@@ -211,9 +211,6 @@ void TextLlmContext::tokenizeChat(
     inputs.tools = tools;
   }
   prompt = getPrompt(tmpls_.get(), inputs);
-  std::cout << "=== DEBUG-REAL: Actual model prompt (after session removal) ===" << std::endl;
-  std::cout << prompt << std::endl;
-  std::cout << "=== END DEBUG-REAL ===\n" << std::endl;
 
   QLOG_IF(
       Priority::DEBUG,

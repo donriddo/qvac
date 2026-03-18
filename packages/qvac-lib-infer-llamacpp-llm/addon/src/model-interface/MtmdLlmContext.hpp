@@ -81,13 +81,6 @@ public:
   llama_context* getCtx() override;
 
   /**
-   * The get model method. It returns the underlying llama model.
-   *
-   * @return - the model.
-   */
-  const struct llama_model* getModel() const override { return model_; }
-
-  /**
    * The get n_past method. It returns the n_past.
    *
    * @return - the n_past.

@@ -196,13 +196,6 @@ public:
   virtual llama_context* getCtx() = 0;
 
   /**
-   * The get model method. It returns the underlying llama model.
-   *
-   * @return - the model.
-   */
-  virtual const struct llama_model* getModel() const = 0;
-
-  /**
    * The get nPast method. It returns the nPast.
    *
    * @return - the nPast.
