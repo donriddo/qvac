@@ -22,7 +22,7 @@ import { handleOCRStream } from "@/server/rpc/handlers/ocr-stream";
 import { handleHeartbeat } from "@/server/rpc/handlers/heartbeat";
 import { handleHeartbeatDelegated } from "@/server/rpc/handlers/heartbeat-delegated";
 import { handleCancelDelegated } from "@/server/rpc/handlers/cancel-delegated";
-import { handleGenerationStream } from "@/server/rpc/handlers/generation-stream";
+import { handleDiffusionStream } from "@/server/rpc/handlers/diffusion-stream";
 import {
   handlePluginInvoke,
   handlePluginInvokeStream,
@@ -98,7 +98,7 @@ export const registry: Record<string, HandlerEntry> = {
   translate: { type: "stream", handler: handleTranslate },
   textToSpeech: { type: "stream", handler: handleTextToSpeech },
   ocrStream: { type: "stream", handler: handleOCRStream },
-  generationStream: { type: "stream", handler: handleGenerationStream },
+  diffusionStream: { type: "stream", handler: handleDiffusionStream },
   pluginInvokeStream: { type: "stream", handler: handlePluginInvokeStream },
 
   // Handlers with delegation support

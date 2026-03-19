@@ -1,4 +1,4 @@
-import { loadModel, unloadModel, generation, FLUX_2_KLEIN_4B_Q4_0, FLUX_2_KLEIN_4B_VAE, QWEN3_4B_Q4_K_M } from "@qvac/sdk";
+import { loadModel, unloadModel, diffusion, FLUX_2_KLEIN_4B_Q4_0, FLUX_2_KLEIN_4B_VAE, QWEN3_4B_Q4_K_M } from "@qvac/sdk";
 import fs from "fs";
 import path from "path";
 
@@ -30,7 +30,7 @@ console.log(`Model loaded: ${modelId}`);
 console.log(`\nimg2img from: ${inputImagePath}`);
 console.log(`Prompt: "${prompt}", strength: ${strength}`);
 
-const { outputs, stats } = generation({
+const { outputs, stats } = diffusion({
   modelId,
   prompt,
   init_image: fs.readFileSync(inputImagePath),

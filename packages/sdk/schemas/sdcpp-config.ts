@@ -47,8 +47,8 @@ export const diffusionStatsSchema = z.object({
 
 export type DiffusionStats = z.infer<typeof diffusionStatsSchema>;
 
-export const generationStreamResponseSchema = z.object({
-  type: z.literal("generationStream"),
+export const diffusionStreamResponseSchema = z.object({
+  type: z.literal("diffusionStream"),
   step: z.number().optional(),
   totalSteps: z.number().optional(),
   elapsedMs: z.number().optional(),
@@ -58,11 +58,11 @@ export const generationStreamResponseSchema = z.object({
   stats: diffusionStatsSchema.optional(),
 });
 
-export type GenerationStreamResponse = z.infer<
-  typeof generationStreamResponseSchema
+export type DiffusionStreamResponse = z.infer<
+  typeof diffusionStreamResponseSchema
 >;
 
-export const generationRequestSchema = z.object({
+export const diffusionRequestSchema = z.object({
   modelId: z.string(),
   prompt: z.string(),
   negative_prompt: z.string().optional(),
@@ -104,19 +104,19 @@ export const generationRequestSchema = z.object({
   strength: z.number().min(0).max(1).optional(),
 });
 
-export type GenerationRequest = z.infer<typeof generationRequestSchema>;
+export type DiffusionRequest = z.infer<typeof diffusionRequestSchema>;
 
 // RPC request schema (wire format with `type` literal for routing)
-export const generationStreamRequestSchema = generationRequestSchema.extend({
-  type: z.literal("generationStream"),
+export const diffusionStreamRequestSchema = diffusionRequestSchema.extend({
+  type: z.literal("diffusionStream"),
 });
 
-export type GenerationStreamRequest = z.infer<
-  typeof generationStreamRequestSchema
+export type DiffusionStreamRequest = z.infer<
+  typeof diffusionStreamRequestSchema
 >;
 
 // Client params (no `type` field — added by the client wrapper)
-export type GenerationClientParams = {
+export type DiffusionClientParams = {
   modelId: string;
   prompt: string;
   negative_prompt?: string;
@@ -125,8 +125,8 @@ export type GenerationClientParams = {
   steps?: number;
   cfg_scale?: number;
   guidance?: number;
-  sampling_method?: GenerationRequest["sampling_method"];
-  scheduler?: GenerationRequest["scheduler"];
+  sampling_method?: DiffusionRequest["sampling_method"];
+  scheduler?: DiffusionRequest["scheduler"];
   seed?: number;
   batch_count?: number;
   vae_tiling?: boolean;

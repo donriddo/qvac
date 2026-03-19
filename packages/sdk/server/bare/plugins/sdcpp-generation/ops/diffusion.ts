@@ -1,7 +1,7 @@
 import { getModel } from "@/server/bare/registry/model-registry";
 import type {
-  GenerationRequest,
-  GenerationStreamResponse,
+  DiffusionRequest,
+  DiffusionStreamResponse,
   DiffusionStats,
 } from "@/schemas/sdcpp-config";
 
@@ -9,9 +9,9 @@ interface ResponseWithStats {
   stats?: DiffusionStats;
 }
 
-export async function* generation(
-  request: GenerationRequest,
-): AsyncGenerator<GenerationStreamResponse> {
+export async function* diffusion(
+  request: DiffusionRequest,
+): AsyncGenerator<DiffusionStreamResponse> {
   const model = getModel(request.modelId);
 
   const runParams: Record<string, unknown> = {
@@ -43,7 +43,7 @@ export async function* generation(
   for await (const chunk of response.iterate()) {
     if (chunk instanceof Uint8Array) {
       yield {
-        type: "generationStream",
+        type: "diffusionStream",
         data: Buffer.from(chunk).toString("base64"),
         outputIndex: outputIndex++,
       };
@@ -52,7 +52,7 @@ export async function* generation(
         const tick = JSON.parse(chunk) as Record<string, unknown>;
         if ("step" in tick) {
           yield {
-            type: "generationStream",
+            type: "diffusionStream",
             step: tick["step"] as number,
             totalSteps: tick["total"] as number,
             elapsedMs: tick["elapsed_ms"] as number,
@@ -66,7 +66,7 @@ export async function* generation(
 
   const responseWithStats = response as unknown as ResponseWithStats;
   yield {
-    type: "generationStream",
+    type: "diffusionStream",
     done: true,
     stats: responseWithStats.stats ?? undefined,
   };

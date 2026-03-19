@@ -1,5 +1,5 @@
-// Generation (diffusion) executor
-import { generation, type GenerationClientParams } from "@qvac/sdk";
+// Diffusion executor
+import { diffusion, type DiffusionClientParams } from "@qvac/sdk";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import {
@@ -8,13 +8,13 @@ import {
   type Expectation,
 } from "@tetherto/qvac-test-suite";
 import { AbstractModelExecutor } from "../../shared/executors/abstract-model-executor.js";
-import { generationTests } from "../../generation-tests.js";
+import { diffusionTests } from "../../diffusion-tests.js";
 
-export class GenerationExecutor extends AbstractModelExecutor<typeof generationTests> {
-  pattern = /^generation-/;
+export class DiffusionExecutor extends AbstractModelExecutor<typeof diffusionTests> {
+  pattern = /^diffusion-/;
 
   protected handlers = Object.fromEntries(
-    generationTests.map((test) => [test.testId, this.generic.bind(this)]),
+    diffusionTests.map((test) => [test.testId, this.generic.bind(this)]),
   ) as never;
 
   async execute(
@@ -23,13 +23,13 @@ export class GenerationExecutor extends AbstractModelExecutor<typeof generationT
     params: unknown,
     expectation: unknown,
   ): Promise<TestResult> {
-    if (testId === "generation-seed-reproducibility") {
+    if (testId === "diffusion-seed-reproducibility") {
       return await this.seedReproducibility(params, expectation);
     }
-    if (testId === "generation-streaming-progress") {
+    if (testId === "diffusion-streaming-progress") {
       return await this.streamingProgress(params, expectation);
     }
-    if (testId === "generation-stats-present") {
+    if (testId === "diffusion-stats-present") {
       return await this.statsPresent(params, expectation);
     }
 
@@ -43,8 +43,8 @@ export class GenerationExecutor extends AbstractModelExecutor<typeof generationT
   private buildParams(
     modelId: string,
     p: Record<string, unknown>,
-  ): GenerationClientParams {
-    const params: GenerationClientParams = {
+  ): DiffusionClientParams {
+    const params: DiffusionClientParams = {
       modelId,
       prompt: p.prompt as string,
     };
@@ -55,8 +55,8 @@ export class GenerationExecutor extends AbstractModelExecutor<typeof generationT
     if (p.steps != null) params.steps = p.steps as number;
     if (p.cfg_scale != null) params.cfg_scale = p.cfg_scale as number;
     if (p.guidance != null) params.guidance = p.guidance as number;
-    if (p.sampling_method != null) params.sampling_method = p.sampling_method as GenerationClientParams["sampling_method"];
-    if (p.scheduler != null) params.scheduler = p.scheduler as GenerationClientParams["scheduler"];
+    if (p.sampling_method != null) params.sampling_method = p.sampling_method as DiffusionClientParams["sampling_method"];
+    if (p.scheduler != null) params.scheduler = p.scheduler as DiffusionClientParams["scheduler"];
     if (p.seed != null) params.seed = p.seed as number;
     if (p.batch_count != null) params.batch_count = p.batch_count as number;
     if (p.vae_tiling != null) params.vae_tiling = p.vae_tiling as boolean;
@@ -83,7 +83,7 @@ export class GenerationExecutor extends AbstractModelExecutor<typeof generationT
       const genParams = this.buildParams(modelId, p);
 
       if (genParams.stream) {
-        const { outputStream } = generation(genParams);
+        const { outputStream } = diffusion(genParams);
         const collected: string[] = [];
         for await (const { data } of outputStream) {
           collected.push(data);
@@ -94,7 +94,7 @@ export class GenerationExecutor extends AbstractModelExecutor<typeof generationT
         );
       }
 
-      const { outputs } = generation(genParams);
+      const { outputs } = diffusion(genParams);
       const buffers = await outputs;
       return ValidationHelpers.validate(buffers, expectation as Expectation);
     } catch (error) {
@@ -103,7 +103,7 @@ export class GenerationExecutor extends AbstractModelExecutor<typeof generationT
       if (exp.validation === "throws-error") {
         return ValidationHelpers.validate(errorMsg, exp);
       }
-      return { passed: false, output: `Generation failed: ${errorMsg}` };
+      return { passed: false, output: `Diffusion failed: ${errorMsg}` };
     }
   }
 
@@ -118,10 +118,10 @@ export class GenerationExecutor extends AbstractModelExecutor<typeof generationT
       const genParams = this.buildParams(modelId, p);
       delete genParams.stream;
 
-      const { outputs: outputs1 } = generation(genParams);
+      const { outputs: outputs1 } = diffusion(genParams);
       const buffers1 = await outputs1;
 
-      const { outputs: outputs2 } = generation(genParams);
+      const { outputs: outputs2 } = diffusion(genParams);
       const buffers2 = await outputs2;
 
       if (buffers1.length === 0 || buffers2.length === 0) {
@@ -156,7 +156,7 @@ export class GenerationExecutor extends AbstractModelExecutor<typeof generationT
 
     try {
       const genParams = this.buildParams(modelId, { ...p, stream: true });
-      const { outputStream, progressStream, stats } = generation(genParams);
+      const { outputStream, progressStream, stats } = diffusion(genParams);
 
       const progressTicks: { step: number; totalSteps: number; elapsedMs: number }[] = [];
       const progressDone = (async () => {
@@ -202,7 +202,7 @@ export class GenerationExecutor extends AbstractModelExecutor<typeof generationT
 
     try {
       const genParams = this.buildParams(modelId, p);
-      const { outputs, stats } = generation(genParams);
+      const { outputs, stats } = diffusion(genParams);
 
       await outputs;
       const finalStats = await stats;

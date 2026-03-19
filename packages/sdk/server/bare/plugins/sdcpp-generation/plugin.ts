@@ -4,8 +4,8 @@ import {
   definePlugin,
   defineHandler,
   sdcppConfigSchema,
-  generationRequestSchema,
-  generationStreamResponseSchema,
+  diffusionRequestSchema,
+  diffusionStreamResponseSchema,
   ModelType,
   ADDON_DIFFUSION,
   type CreateModelParams,
@@ -16,7 +16,7 @@ import {
 } from "@/schemas";
 import { createStreamLogger, registerAddonLogger } from "@/logging";
 import { parseModelPath } from "@/server/utils";
-import { generation } from "./ops/generation";
+import { diffusion } from "./ops/diffusion";
 
 type DiffusionArtifactKey =
   | "clipLModelPath"
@@ -112,11 +112,11 @@ export const diffusionPlugin = definePlugin({
   },
 
   handlers: {
-    generationStream: defineHandler({
-      requestSchema: generationRequestSchema,
-      responseSchema: generationStreamResponseSchema,
+    diffusionStream: defineHandler({
+      requestSchema: diffusionRequestSchema,
+      responseSchema: diffusionStreamResponseSchema,
       streaming: true,
-      handler: generation,
+      handler: diffusion,
     }),
   },
 

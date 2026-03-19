@@ -1,20 +1,20 @@
 import {
-  generationStreamResponseSchema,
-  type GenerationStreamRequest,
-  type GenerationClientParams,
+  diffusionStreamResponseSchema,
+  type DiffusionStreamRequest,
+  type DiffusionClientParams,
   type DiffusionStats,
 } from "@/schemas";
 import { stream as streamRpc } from "@/client/rpc/rpc-client";
 
-export interface GenerationProgressTick {
+export interface DiffusionProgressTick {
   step: number;
   totalSteps: number;
   elapsedMs: number;
 }
 
-interface GenerationResult {
+interface DiffusionResult {
   outputStream: AsyncGenerator<{ data: string; outputIndex: number }>;
-  progressStream: AsyncGenerator<GenerationProgressTick>;
+  progressStream: AsyncGenerator<DiffusionProgressTick>;
   outputs: Promise<Buffer[]>;
   stats: Promise<DiffusionStats | undefined>;
 }
@@ -35,11 +35,11 @@ interface GenerationResult {
  * @example
  * ```typescript
  * // txt2img (non-streaming)
- * const { outputs, stats } = generation({ modelId, prompt: "a cat" });
+ * const { outputs, stats } = diffusion({ modelId, prompt: "a cat" });
  * const buffers = await outputs;
  *
  * // txt2img (streaming with progress)
- * const { outputStream, progressStream } = generation({ modelId, prompt: "a cat", stream: true });
+ * const { outputStream, progressStream } = diffusion({ modelId, prompt: "a cat", stream: true });
  * // consume progress in parallel
  * (async () => { for await (const { step, totalSteps } of progressStream) console.log(`${step}/${totalSteps}`); })();
  * for await (const { data, outputIndex } of outputStream) {
@@ -47,7 +47,7 @@ interface GenerationResult {
  * }
  *
  * // img2img
- * const { outputs } = generation({
+ * const { outputs } = diffusion({
  *   modelId,
  *   prompt: "watercolor style",
  *   init_image: fs.readFileSync("photo.jpg"),
@@ -55,11 +55,11 @@ interface GenerationResult {
  * });
  * ```
  */
-export function generation(params: GenerationClientParams): GenerationResult {
+export function diffusion(params: DiffusionClientParams): DiffusionResult {
   const { stream: streaming, init_image, ...rest } = params;
 
-  const request: GenerationStreamRequest = {
-    type: "generationStream",
+  const request: DiffusionStreamRequest = {
+    type: "diffusionStream",
     ...rest,
     ...(init_image != null && {
       init_image:
@@ -80,7 +80,7 @@ export function generation(params: GenerationClientParams): GenerationResult {
   statsPromise.catch(() => {});
 
   const outputQueue: { data: string; outputIndex: number }[] = [];
-  const progressQueue: GenerationProgressTick[] = [];
+  const progressQueue: DiffusionProgressTick[] = [];
   const collectedBuffers: Buffer[] = [];
   let outputDone = false;
   let progressDone = false;
@@ -103,9 +103,9 @@ export function generation(params: GenerationClientParams): GenerationResult {
           response &&
           typeof response === "object" &&
           "type" in response &&
-          response.type === "generationStream"
+          response.type === "diffusionStream"
         ) {
-          const parsed = generationStreamResponseSchema.parse(response);
+          const parsed = diffusionStreamResponseSchema.parse(response);
 
           if (parsed.step != null && parsed.totalSteps != null && parsed.elapsedMs != null) {
             progressQueue.push({ step: parsed.step, totalSteps: parsed.totalSteps, elapsedMs: parsed.elapsedMs });
@@ -151,7 +151,7 @@ export function generation(params: GenerationClientParams): GenerationResult {
 
   void processResponses();
 
-  const progressStream = (async function* (): AsyncGenerator<GenerationProgressTick> {
+  const progressStream = (async function* (): AsyncGenerator<DiffusionProgressTick> {
     while (true) {
       if (progressQueue.length > 0) {
         yield progressQueue.shift()!;

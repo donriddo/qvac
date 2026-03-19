@@ -65,7 +65,7 @@ import { TtsExecutor } from "../shared/executors/tts-executor.js";
 import { ParakeetExecutor } from "./executors/parakeet-executor.js";
 import { VisionExecutor } from "./executors/vision-executor.js";
 import { DownloadExecutor } from "../shared/executors/download-executor.js";
-import { GenerationExecutor } from "./executors/generation-executor.js";
+import { DiffusionExecutor } from "./executors/diffusion-executor.js";
 
 const resources = new ResourceManager();
 
@@ -359,7 +359,7 @@ export const executor = createExecutor({
     new ParakeetExecutor(resources),
     new VisionExecutor(resources),
     new DownloadExecutor(resources),
-    new GenerationExecutor(resources),
+    new DiffusionExecutor(resources),
   ],
   profiling: {
     init: () => profiler.enable({ mode: "summary", includeServerBreakdown: true }),

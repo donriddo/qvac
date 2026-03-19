@@ -1,7 +1,7 @@
-// Generation (diffusion) test definitions
+// Diffusion test definitions
 import type { TestDefinition } from "@tetherto/qvac-test-suite";
 
-const createGenerationTest = (
+const createDiffusionTest = (
   testId: string,
   params: Record<string, unknown>,
   expectation:
@@ -13,7 +13,7 @@ const createGenerationTest = (
   params,
   expectation,
   metadata: {
-    category: "generation",
+    category: "diffusion",
     dependency: "diffusion",
     estimatedDurationMs,
   },
@@ -21,8 +21,8 @@ const createGenerationTest = (
 
 // ---- txt2img ----
 
-export const generationBasicTxt2img = createGenerationTest(
-  "generation-basic-txt2img",
+export const diffusionBasicTxt2img = createDiffusionTest(
+  "diffusion-basic-txt2img",
   {
     prompt: "a solid red square on white background",
     width: 256,
@@ -33,8 +33,8 @@ export const generationBasicTxt2img = createGenerationTest(
   { validation: "type", expectedType: "array" },
 );
 
-export const generationDefaultSize = createGenerationTest(
-  "generation-default-size",
+export const diffusionDefaultSize = createDiffusionTest(
+  "diffusion-default-size",
   {
     prompt: "a blue circle",
     width: 256,
@@ -45,8 +45,8 @@ export const generationDefaultSize = createGenerationTest(
   { validation: "type", expectedType: "array" },
 );
 
-export const generationNegativePrompt = createGenerationTest(
-  "generation-negative-prompt",
+export const diffusionNegativePrompt = createDiffusionTest(
+  "diffusion-negative-prompt",
   {
     prompt: "a landscape painting",
     negative_prompt: "blurry, low quality",
@@ -58,8 +58,8 @@ export const generationNegativePrompt = createGenerationTest(
   { validation: "type", expectedType: "array" },
 );
 
-export const generationCfgScale = createGenerationTest(
-  "generation-cfg-scale",
+export const diffusionCfgScale = createDiffusionTest(
+  "diffusion-cfg-scale",
   {
     prompt: "a mountain landscape",
     width: 256,
@@ -71,8 +71,8 @@ export const generationCfgScale = createGenerationTest(
   { validation: "type", expectedType: "array" },
 );
 
-export const generationSamplerEulerA = createGenerationTest(
-  "generation-sampler-euler-a",
+export const diffusionSamplerEulerA = createDiffusionTest(
+  "diffusion-sampler-euler-a",
   {
     prompt: "a green forest",
     width: 256,
@@ -84,8 +84,8 @@ export const generationSamplerEulerA = createGenerationTest(
   { validation: "type", expectedType: "array" },
 );
 
-export const generationSamplerHeun = createGenerationTest(
-  "generation-sampler-heun",
+export const diffusionSamplerHeun = createDiffusionTest(
+  "diffusion-sampler-heun",
   {
     prompt: "a sunset over ocean",
     width: 256,
@@ -97,8 +97,8 @@ export const generationSamplerHeun = createGenerationTest(
   { validation: "type", expectedType: "array" },
 );
 
-export const generationSchedulerKarras = createGenerationTest(
-  "generation-scheduler-karras",
+export const diffusionSchedulerKarras = createDiffusionTest(
+  "diffusion-scheduler-karras",
   {
     prompt: "abstract art",
     width: 256,
@@ -110,8 +110,8 @@ export const generationSchedulerKarras = createGenerationTest(
   { validation: "type", expectedType: "array" },
 );
 
-export const generationSeedReproducibility = createGenerationTest(
-  "generation-seed-reproducibility",
+export const diffusionSeedReproducibility = createDiffusionTest(
+  "diffusion-seed-reproducibility",
   {
     prompt: "a red triangle",
     width: 256,
@@ -124,8 +124,8 @@ export const generationSeedReproducibility = createGenerationTest(
   240000,
 );
 
-export const generationBatchCount = createGenerationTest(
-  "generation-batch-count",
+export const diffusionBatchCount = createDiffusionTest(
+  "diffusion-batch-count",
   {
     prompt: "a simple shape",
     width: 256,
@@ -140,8 +140,8 @@ export const generationBatchCount = createGenerationTest(
 
 // ---- streaming ----
 
-export const generationStreaming = createGenerationTest(
-  "generation-streaming",
+export const diffusionStreaming = createDiffusionTest(
+  "diffusion-streaming",
   {
     prompt: "a yellow star",
     width: 256,
@@ -153,8 +153,8 @@ export const generationStreaming = createGenerationTest(
   { validation: "type", expectedType: "array" },
 );
 
-export const generationStreamingProgress = createGenerationTest(
-  "generation-streaming-progress",
+export const diffusionStreamingProgress = createDiffusionTest(
+  "diffusion-streaming-progress",
   {
     prompt: "a purple diamond",
     width: 256,
@@ -169,8 +169,8 @@ export const generationStreamingProgress = createGenerationTest(
 
 // ---- img2img ----
 
-export const generationImg2img = createGenerationTest(
-  "generation-img2img",
+export const diffusionImg2img = createDiffusionTest(
+  "diffusion-img2img",
   {
     prompt: "watercolor painting style",
     width: 256,
@@ -183,8 +183,8 @@ export const generationImg2img = createGenerationTest(
   { validation: "type", expectedType: "array" },
 );
 
-export const generationImg2imgLowStrength = createGenerationTest(
-  "generation-img2img-low-strength",
+export const diffusionImg2imgLowStrength = createDiffusionTest(
+  "diffusion-img2img-low-strength",
   {
     prompt: "oil painting style",
     width: 256,
@@ -199,8 +199,8 @@ export const generationImg2imgLowStrength = createGenerationTest(
 
 // ---- stats ----
 
-export const generationStatsPresent = createGenerationTest(
-  "generation-stats-present",
+export const diffusionStatsPresent = createDiffusionTest(
+  "diffusion-stats-present",
   {
     prompt: "a white circle on black background",
     width: 256,
@@ -214,8 +214,8 @@ export const generationStatsPresent = createGenerationTest(
 
 // ---- error cases ----
 
-export const generationEmptyPrompt = createGenerationTest(
-  "generation-empty-prompt",
+export const diffusionEmptyPrompt = createDiffusionTest(
+  "diffusion-empty-prompt",
   {
     prompt: "",
     width: 256,
@@ -226,20 +226,20 @@ export const generationEmptyPrompt = createGenerationTest(
   60000,
 );
 
-export const generationTests = [
-  generationBasicTxt2img,
-  generationDefaultSize,
-  generationNegativePrompt,
-  generationCfgScale,
-  generationSamplerEulerA,
-  generationSamplerHeun,
-  generationSchedulerKarras,
-  generationSeedReproducibility,
-  generationBatchCount,
-  generationStreaming,
-  generationStreamingProgress,
-  generationImg2img,
-  generationImg2imgLowStrength,
-  generationStatsPresent,
-  generationEmptyPrompt,
+export const diffusionTests = [
+  diffusionBasicTxt2img,
+  diffusionDefaultSize,
+  diffusionNegativePrompt,
+  diffusionCfgScale,
+  diffusionSamplerEulerA,
+  diffusionSamplerHeun,
+  diffusionSchedulerKarras,
+  diffusionSeedReproducibility,
+  diffusionBatchCount,
+  diffusionStreaming,
+  diffusionStreamingProgress,
+  diffusionImg2img,
+  diffusionImg2imgLowStrength,
+  diffusionStatsPresent,
+  diffusionEmptyPrompt,
 ];

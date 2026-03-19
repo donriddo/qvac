@@ -3,8 +3,8 @@ import test from "brittle";
 import { z } from "zod";
 import {
   sdcppConfigSchema,
-  generationRequestSchema,
-  generationStreamResponseSchema,
+  diffusionRequestSchema,
+  diffusionStreamResponseSchema,
   diffusionStatsSchema,
   modelInfoSchema,
   ModelType,
@@ -116,19 +116,19 @@ test("diffusionStatsSchema: strips unknown fields (no passthrough)", (t) => {
 });
 
 // ============================================
-// generationRequestSchema
+// diffusionRequestSchema
 // ============================================
 
-test("generationRequestSchema: accepts minimal txt2img request", (t) => {
-  const result = generationRequestSchema.safeParse({
+test("diffusionRequestSchema: accepts minimal txt2img request", (t) => {
+  const result = diffusionRequestSchema.safeParse({
     modelId: "model-1",
     prompt: "a cat sitting on a windowsill",
   });
   t.is(result.success, true);
 });
 
-test("generationRequestSchema: accepts full txt2img request", (t) => {
-  const result = generationRequestSchema.safeParse({
+test("diffusionRequestSchema: accepts full txt2img request", (t) => {
+  const result = diffusionRequestSchema.safeParse({
     modelId: "model-1",
     prompt: "a cat",
     negative_prompt: "ugly",
@@ -147,22 +147,22 @@ test("generationRequestSchema: accepts full txt2img request", (t) => {
   t.is(result.success, true);
 });
 
-test("generationRequestSchema: rejects missing modelId", (t) => {
-  const result = generationRequestSchema.safeParse({
+test("diffusionRequestSchema: rejects missing modelId", (t) => {
+  const result = diffusionRequestSchema.safeParse({
     prompt: "a cat",
   });
   t.is(result.success, false);
 });
 
-test("generationRequestSchema: rejects missing prompt", (t) => {
-  const result = generationRequestSchema.safeParse({
+test("diffusionRequestSchema: rejects missing prompt", (t) => {
+  const result = diffusionRequestSchema.safeParse({
     modelId: "model-1",
   });
   t.is(result.success, false);
 });
 
-test("generationRequestSchema: rejects width not multiple of 8", (t) => {
-  const result = generationRequestSchema.safeParse({
+test("diffusionRequestSchema: rejects width not multiple of 8", (t) => {
+  const result = diffusionRequestSchema.safeParse({
     modelId: "model-1",
     prompt: "a cat",
     width: 513,
@@ -170,8 +170,8 @@ test("generationRequestSchema: rejects width not multiple of 8", (t) => {
   t.is(result.success, false);
 });
 
-test("generationRequestSchema: rejects negative steps", (t) => {
-  const result = generationRequestSchema.safeParse({
+test("diffusionRequestSchema: rejects negative steps", (t) => {
+  const result = diffusionRequestSchema.safeParse({
     modelId: "model-1",
     prompt: "a cat",
     steps: -1,
@@ -179,8 +179,8 @@ test("generationRequestSchema: rejects negative steps", (t) => {
   t.is(result.success, false);
 });
 
-test("generationRequestSchema: rejects invalid sampling_method", (t) => {
-  const result = generationRequestSchema.safeParse({
+test("diffusionRequestSchema: rejects invalid sampling_method", (t) => {
+  const result = diffusionRequestSchema.safeParse({
     modelId: "model-1",
     prompt: "a cat",
     sampling_method: "ddpm",
@@ -188,8 +188,8 @@ test("generationRequestSchema: rejects invalid sampling_method", (t) => {
   t.is(result.success, false);
 });
 
-test("generationRequestSchema: rejects invalid scheduler", (t) => {
-  const result = generationRequestSchema.safeParse({
+test("diffusionRequestSchema: rejects invalid scheduler", (t) => {
+  const result = diffusionRequestSchema.safeParse({
     modelId: "model-1",
     prompt: "a cat",
     scheduler: "default",
@@ -197,8 +197,8 @@ test("generationRequestSchema: rejects invalid scheduler", (t) => {
   t.is(result.success, false);
 });
 
-test("generationRequestSchema: accepts img2img request with init_image + strength", (t) => {
-  const result = generationRequestSchema.safeParse({
+test("diffusionRequestSchema: accepts img2img request with init_image + strength", (t) => {
+  const result = diffusionRequestSchema.safeParse({
     modelId: "model-1",
     prompt: "a watercolor cat",
     init_image: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk",
@@ -207,8 +207,8 @@ test("generationRequestSchema: accepts img2img request with init_image + strengt
   t.is(result.success, true);
 });
 
-test("generationRequestSchema: rejects strength > 1", (t) => {
-  const result = generationRequestSchema.safeParse({
+test("diffusionRequestSchema: rejects strength > 1", (t) => {
+  const result = diffusionRequestSchema.safeParse({
     modelId: "model-1",
     prompt: "a cat",
     init_image: "base64data",
@@ -217,8 +217,8 @@ test("generationRequestSchema: rejects strength > 1", (t) => {
   t.is(result.success, false);
 });
 
-test("generationRequestSchema: rejects strength < 0", (t) => {
-  const result = generationRequestSchema.safeParse({
+test("diffusionRequestSchema: rejects strength < 0", (t) => {
+  const result = diffusionRequestSchema.safeParse({
     modelId: "model-1",
     prompt: "a cat",
     init_image: "base64data",
@@ -228,12 +228,12 @@ test("generationRequestSchema: rejects strength < 0", (t) => {
 });
 
 // ============================================
-// generationStreamResponseSchema
+// diffusionStreamResponseSchema
 // ============================================
 
-test("generationStreamResponseSchema: accepts progress tick", (t) => {
-  const result = generationStreamResponseSchema.safeParse({
-    type: "generationStream",
+test("diffusionStreamResponseSchema: accepts progress tick", (t) => {
+  const result = diffusionStreamResponseSchema.safeParse({
+    type: "diffusionStream",
     step: 5,
     totalSteps: 20,
     elapsedMs: 1234,
@@ -241,18 +241,18 @@ test("generationStreamResponseSchema: accepts progress tick", (t) => {
   t.is(result.success, true);
 });
 
-test("generationStreamResponseSchema: accepts output data chunk", (t) => {
-  const result = generationStreamResponseSchema.safeParse({
-    type: "generationStream",
+test("diffusionStreamResponseSchema: accepts output data chunk", (t) => {
+  const result = diffusionStreamResponseSchema.safeParse({
+    type: "diffusionStream",
     data: "iVBORw0KGgoAAAANSUhEUg==",
     outputIndex: 0,
   });
   t.is(result.success, true);
 });
 
-test("generationStreamResponseSchema: accepts final done chunk with stats", (t) => {
-  const result = generationStreamResponseSchema.safeParse({
-    type: "generationStream",
+test("diffusionStreamResponseSchema: accepts final done chunk with stats", (t) => {
+  const result = diffusionStreamResponseSchema.safeParse({
+    type: "diffusionStream",
     done: true,
     stats: {
       generationMs: 1234,
@@ -265,8 +265,8 @@ test("generationStreamResponseSchema: accepts final done chunk with stats", (t) 
   t.is(result.success, true);
 });
 
-test("generationStreamResponseSchema: rejects wrong type literal", (t) => {
-  const result = generationStreamResponseSchema.safeParse({
+test("diffusionStreamResponseSchema: rejects wrong type literal", (t) => {
+  const result = diffusionStreamResponseSchema.safeParse({
     type: "completionStream",
     step: 1,
   });
@@ -350,7 +350,7 @@ test("loadModelOptionsBaseSchema: rejects diffusion with unknown config key (str
 // Plugin registration & handler dispatch
 // ============================================
 
-test("diffusion plugin: registers and dispatches generationStream", async function (t) {
+test("diffusion plugin: registers and dispatches diffusionStream", async function (t) {
   clearPlugins();
   const modelId = "test-diffusion-model-1";
 
@@ -366,24 +366,24 @@ test("diffusion plugin: registers and dispatches generationStream", async functi
       };
     },
     handlers: {
-      generationStream: {
-        requestSchema: generationRequestSchema as z.ZodType,
-        responseSchema: generationStreamResponseSchema as z.ZodType,
+      diffusionStream: {
+        requestSchema: diffusionRequestSchema as z.ZodType,
+        responseSchema: diffusionStreamResponseSchema as z.ZodType,
         streaming: true,
         handler: async function* () {
           yield {
-            type: "generationStream" as const,
+            type: "diffusionStream" as const,
             step: 1,
             totalSteps: 2,
             elapsedMs: 100,
           };
           yield {
-            type: "generationStream" as const,
+            type: "diffusionStream" as const,
             data: "iVBORw0KGgo=",
             outputIndex: 0,
           };
           yield {
-            type: "generationStream" as const,
+            type: "diffusionStream" as const,
             done: true,
             stats: { generationMs: 200, totalSteps: 2, width: 512, height: 512 },
           };
@@ -407,7 +407,7 @@ test("diffusion plugin: registers and dispatches generationStream", async functi
     const stream = handlePluginInvokeStream({
       type: "pluginInvokeStream",
       modelId,
-      handler: "generationStream",
+      handler: "diffusionStream",
       params: { modelId, prompt: "a cat" },
     });
 
@@ -460,12 +460,12 @@ test("diffusion plugin: rejects invalid request schema", async function (t) {
       return { model: { load: async function () {} }, loader: undefined };
     },
     handlers: {
-      generationStream: {
-        requestSchema: generationRequestSchema as z.ZodType,
-        responseSchema: generationStreamResponseSchema as z.ZodType,
+      diffusionStream: {
+        requestSchema: diffusionRequestSchema as z.ZodType,
+        responseSchema: diffusionStreamResponseSchema as z.ZodType,
         streaming: true,
         handler: async function* () {
-          yield { type: "generationStream" as const, done: true };
+          yield { type: "diffusionStream" as const, done: true };
         },
       },
     },
@@ -484,7 +484,7 @@ test("diffusion plugin: rejects invalid request schema", async function (t) {
     const stream = handlePluginInvokeStream({
       type: "pluginInvokeStream",
       modelId,
-      handler: "generationStream",
+      handler: "diffusionStream",
       params: { noModelId: true, noPrompt: true },
     });
 
@@ -517,9 +517,9 @@ test("diffusion plugin: rejects invalid response from handler", async function (
       return { model: { load: async function () {} }, loader: undefined };
     },
     handlers: {
-      generationStream: {
-        requestSchema: generationRequestSchema as z.ZodType,
-        responseSchema: generationStreamResponseSchema as z.ZodType,
+      diffusionStream: {
+        requestSchema: diffusionRequestSchema as z.ZodType,
+        responseSchema: diffusionStreamResponseSchema as z.ZodType,
         streaming: true,
         handler: async function* () {
           yield { type: "wrongType", badField: 123 };
@@ -541,7 +541,7 @@ test("diffusion plugin: rejects invalid response from handler", async function (
     const stream = handlePluginInvokeStream({
       type: "pluginInvokeStream",
       modelId,
-      handler: "generationStream",
+      handler: "diffusionStream",
       params: { modelId, prompt: "a cat" },
     });
 
@@ -588,13 +588,13 @@ test("diffusion plugin: stats with all RuntimeStats fields passes response valid
       return { model: { load: async function () {} }, loader: undefined };
     },
     handlers: {
-      generationStream: {
-        requestSchema: generationRequestSchema as z.ZodType,
-        responseSchema: generationStreamResponseSchema as z.ZodType,
+      diffusionStream: {
+        requestSchema: diffusionRequestSchema as z.ZodType,
+        responseSchema: diffusionStreamResponseSchema as z.ZodType,
         streaming: true,
         handler: async function* () {
           yield {
-            type: "generationStream" as const,
+            type: "diffusionStream" as const,
             done: true,
             stats: fullStats,
           };
@@ -616,7 +616,7 @@ test("diffusion plugin: stats with all RuntimeStats fields passes response valid
     const stream = handlePluginInvokeStream({
       type: "pluginInvokeStream",
       modelId,
-      handler: "generationStream",
+      handler: "diffusionStream",
       params: { modelId, prompt: "a cat" },
     });
 
@@ -682,10 +682,10 @@ test("modelInfoSchema: rejects addon not in enum", (t) => {
 });
 
 // ============================================
-// generationStream handler dispatch — img2img mode
+// diffusionStream handler dispatch — img2img mode
 // ============================================
 
-test("diffusion plugin: dispatches generationStream with init_image (img2img)", async function (t) {
+test("diffusion plugin: dispatches diffusionStream with init_image (img2img)", async function (t) {
   clearPlugins();
   const modelId = "test-diffusion-model-5";
 
@@ -701,24 +701,24 @@ test("diffusion plugin: dispatches generationStream with init_image (img2img)", 
       };
     },
     handlers: {
-      generationStream: {
-        requestSchema: generationRequestSchema as z.ZodType,
-        responseSchema: generationStreamResponseSchema as z.ZodType,
+      diffusionStream: {
+        requestSchema: diffusionRequestSchema as z.ZodType,
+        responseSchema: diffusionStreamResponseSchema as z.ZodType,
         streaming: true,
         handler: async function* () {
           yield {
-            type: "generationStream" as const,
+            type: "diffusionStream" as const,
             step: 1,
             totalSteps: 5,
             elapsedMs: 50,
           };
           yield {
-            type: "generationStream" as const,
+            type: "diffusionStream" as const,
             data: "iVBORw0KGgo=",
             outputIndex: 0,
           };
           yield {
-            type: "generationStream" as const,
+            type: "diffusionStream" as const,
             done: true,
             stats: { generationMs: 300, totalSteps: 5, width: 512, height: 512 },
           };
@@ -740,7 +740,7 @@ test("diffusion plugin: dispatches generationStream with init_image (img2img)", 
     const stream = handlePluginInvokeStream({
       type: "pluginInvokeStream",
       modelId,
-      handler: "generationStream",
+      handler: "diffusionStream",
       params: {
         modelId,
         prompt: "watercolor style",
