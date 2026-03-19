@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites tests="30" failures="10" disabled="0" errors="0" time="0.004" timestamp="2026-03-06T18:21:25.241" name="AllTests">
+  <testsuite name="LlamaModelTest" tests="3" failures="3" disabled="0" skipped="0" errors="0" time="0.001" timestamp="2026-03-06T18:21:25.241">
+    <testcase name="CommonParamsParseToolsAtEndTrue" file="C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_llama_model.cpp" line="897" status="run" result="completed" time="0." timestamp="2026-03-06T18:21:25.241" classname="LlamaModelTest">
+      <failure message="C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_llama_model.cpp:899&#x0A;Failed&#x0A;Test model not found at: Llama-3.2-1B-Instruct-Q4_0.gguf&#x0A;" type=""><![CDATA[C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_llama_model.cpp:899
+Failed
+Test model not found at: Llama-3.2-1B-Instruct-Q4_0.gguf
+]]></failure>
+    </testcase>
+    <testcase name="CommonParamsParseToolsAtEndFalse" file="C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_llama_model.cpp" line="926" status="run" result="completed" time="0." timestamp="2026-03-06T18:21:25.242" classname="LlamaModelTest">
+      <failure message="C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_llama_model.cpp:928&#x0A;Failed&#x0A;Test model not found at: Llama-3.2-1B-Instruct-Q4_0.gguf&#x0A;" type=""><![CDATA[C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_llama_model.cpp:928
+Failed
+Test model not found at: Llama-3.2-1B-Instruct-Q4_0.gguf
+]]></failure>
+    </testcase>
+    <testcase name="CommonParamsParseToolsAtEndUppercase" file="C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_llama_model.cpp" line="955" status="run" result="completed" time="0." timestamp="2026-03-06T18:21:25.242" classname="LlamaModelTest">
+      <failure message="C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_llama_model.cpp:957&#x0A;Failed&#x0A;Test model not found at: Llama-3.2-1B-Instruct-Q4_0.gguf&#x0A;" type=""><![CDATA[C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_llama_model.cpp:957
+Failed
+Test model not found at: Llama-3.2-1B-Instruct-Q4_0.gguf
+]]></failure>
+    </testcase>
+  </testsuite>
+  <testsuite name="CacheManagementTest" tests="6" failures="1" disabled="0" skipped="5" errors="0" time="0." timestamp="2026-03-06T18:21:25.242">
+    <testcase name="CacheWithToolsAtEndFalseSavesFullCache" file="C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_cache_management.cpp" line="1042" status="run" result="completed" time="0." timestamp="2026-03-06T18:21:25.242" classname="CacheManagementTest">
+      <failure message="C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_cache_management.cpp:1044&#x0A;Failed&#x0A;Test model not found&#x0A;" type=""><![CDATA[C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_cache_management.cpp:1044
+Failed
+Test model not found
+]]></failure>
+    </testcase>
+    <testcase name="CacheWithToolsAtEndTrueTrimsToolTokens" file="C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_cache_management.cpp" line="1080" status="run" result="skipped" time="0." timestamp="2026-03-06T18:21:25.242" classname="CacheManagementTest">
+      <skipped message="C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_cache_management.cpp:1082&#x0A;Test requires Qwen3 model for tools_at_end feature&#x0A;"><![CDATA[C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_cache_management.cpp:1082
+Test requires Qwen3 model for tools_at_end feature
+]]></skipped>
+    </testcase>
+    <testcase name="CacheReloadWithToolsAtEndTrue" file="C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_cache_management.cpp" line="1121" status="run" result="skipped" time="0." timestamp="2026-03-06T18:21:25.242" classname="CacheManagementTest">
+      <skipped message="C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_cache_management.cpp:1123&#x0A;Test requires Qwen3 model for tools_at_end feature&#x0A;"><![CDATA[C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_cache_management.cpp:1123
+Test requires Qwen3 model for tools_at_end feature
+]]></skipped>
+    </testcase>
+    <testcase name="CacheWithoutToolsWithToolsAtEndTrue" file="C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_cache_management.cpp" line="1179" status="run" result="skipped" time="0." timestamp="2026-03-06T18:21:25.242" classname="CacheManagementTest">
+      <skipped message="C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_cache_management.cpp:1181&#x0A;Test requires Qwen3 model for tools_at_end feature&#x0A;"><![CDATA[C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_cache_management.cpp:1181
+Test requires Qwen3 model for tools_at_end feature
+]]></skipped>
+    </testcase>
+    <testcase name="CacheToolsAtEndModeWithMultiplePrompts" file="C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_cache_management.cpp" line="1219" status="run" result="skipped" time="0." timestamp="2026-03-06T18:21:25.243" classname="CacheManagementTest">
+      <skipped message="C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_cache_management.cpp:1221&#x0A;Test requires Qwen3 model for tools_at_end feature&#x0A;"><![CDATA[C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_cache_management.cpp:1221
+Test requires Qwen3 model for tools_at_end feature
+]]></skipped>
+    </testcase>
+    <testcase name="CacheToolsAtEndModeTrimOnlyWhenNPastBeforeToolsPositive" file="C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_cache_management.cpp" line="1272" status="run" result="skipped" time="0." timestamp="2026-03-06T18:21:25.243" classname="CacheManagementTest">
+      <skipped message="C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_cache_management.cpp:1274&#x0A;Test requires Qwen3 model for tools_at_end feature&#x0A;"><![CDATA[C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_cache_management.cpp:1274
+Test requires Qwen3 model for tools_at_end feature
+]]></skipped>
+    </testcase>
+  </testsuite>
+  <testsuite name="TextLlmContextTest" tests="12" failures="6" disabled="0" skipped="6" errors="0" time="0.001" timestamp="2026-03-06T18:21:25.243">
+    <testcase name="DoubleTokenizeWithToolsAtEnd" file="C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_text_llm_context.cpp" line="384" status="run" result="skipped" time="0." timestamp="2026-03-06T18:21:25.243" classname="TextLlmContextTest">
+      <skipped message="C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_text_llm_context.cpp:387&#x0A;Test requires Qwen3 model for tools_at_end feature&#x0A;"><![CDATA[C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_text_llm_context.cpp:387
+Test requires Qwen3 model for tools_at_end feature
+]]></skipped>
+    </testcase>
+    <testcase name="DoubleTokenizeWithoutToolsAtEnd" file="C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_text_llm_context.cpp" line="426" status="run" result="completed" time="0." timestamp="2026-03-06T18:21:25.243" classname="TextLlmContextTest">
+      <failure message="C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_text_llm_context.cpp:428&#x0A;Failed&#x0A;Test model not found&#x0A;" type=""><![CDATA[C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_text_llm_context.cpp:428
+Failed
+Test model not found
+]]></failure>
+    </testcase>
+    <testcase name="DoubleTokenizeWithToolsAtEndNoTools" file="C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_text_llm_context.cpp" line="463" status="run" result="completed" time="0." timestamp="2026-03-06T18:21:25.243" classname="TextLlmContextTest">
+      <failure message="C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_text_llm_context.cpp:465&#x0A;Failed&#x0A;Test model not found&#x0A;" type=""><![CDATA[C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_text_llm_context.cpp:465
+Failed
+Test model not found
+]]></failure>
+    </testcase>
+    <testcase name="DoubleTokenizeWithMultipleTools" file="C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_text_llm_context.cpp" line="485" status="run" result="skipped" time="0." timestamp="2026-03-06T18:21:25.243" classname="TextLlmContextTest">
+      <skipped message="C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_text_llm_context.cpp:488&#x0A;Test requires Qwen3 model for tools_at_end feature&#x0A;"><![CDATA[C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_text_llm_context.cpp:488
+Test requires Qwen3 model for tools_at_end feature
+]]></skipped>
+    </testcase>
+    <testcase name="DoubleTokenizeBoundaryAccuracy" file="C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_text_llm_context.cpp" line="541" status="run" result="skipped" time="0." timestamp="2026-03-06T18:21:25.243" classname="TextLlmContextTest">
+      <skipped message="C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_text_llm_context.cpp:544&#x0A;Test requires Qwen3 model for tools_at_end feature&#x0A;"><![CDATA[C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_text_llm_context.cpp:544
+Test requires Qwen3 model for tools_at_end feature
+]]></skipped>
+    </testcase>
+    <testcase name="DoubleTokenizationTimeOverhead" file="C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_text_llm_context.cpp" line="598" status="run" result="completed" time="0." timestamp="2026-03-06T18:21:25.243" classname="TextLlmContextTest">
+      <failure message="C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_text_llm_context.cpp:600&#x0A;Failed&#x0A;Test model not found&#x0A;" type=""><![CDATA[C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_text_llm_context.cpp:600
+Failed
+Test model not found
+]]></failure>
+    </testcase>
+    <testcase name="DoubleTokenizationTimeOverheadLargePrompt" file="C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_text_llm_context.cpp" line="710" status="run" result="completed" time="0." timestamp="2026-03-06T18:21:25.244" classname="TextLlmContextTest">
+      <failure message="C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_text_llm_context.cpp:712&#x0A;Failed&#x0A;Test model not found&#x0A;" type=""><![CDATA[C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_text_llm_context.cpp:712
+Failed
+Test model not found
+]]></failure>
+    </testcase>
+    <testcase name="NPastBeforeToolsSetAfterEvalWithTools" file="C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_text_llm_context.cpp" line="801" status="run" result="skipped" time="0." timestamp="2026-03-06T18:21:25.244" classname="TextLlmContextTest">
+      <skipped message="C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_text_llm_context.cpp:804&#x0A;Test requires Qwen3 model for tools_at_end feature&#x0A;"><![CDATA[C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_text_llm_context.cpp:804
+Test requires Qwen3 model for tools_at_end feature
+]]></skipped>
+    </testcase>
+    <testcase name="NPastBeforeToolsMinusOneWithoutTools" file="C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_text_llm_context.cpp" line="847" status="run" result="completed" time="0." timestamp="2026-03-06T18:21:25.244" classname="TextLlmContextTest">
+      <failure message="C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_text_llm_context.cpp:849&#x0A;Failed&#x0A;Test model not found&#x0A;" type=""><![CDATA[C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_text_llm_context.cpp:849
+Failed
+Test model not found
+]]></failure>
+    </testcase>
+    <testcase name="NPastBeforeToolsMinusOneWhenToolsAtEndFalse" file="C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_text_llm_context.cpp" line="869" status="run" result="completed" time="0." timestamp="2026-03-06T18:21:25.244" classname="TextLlmContextTest">
+      <failure message="C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_text_llm_context.cpp:871&#x0A;Failed&#x0A;Test model not found&#x0A;" type=""><![CDATA[C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_text_llm_context.cpp:871
+Failed
+Test model not found
+]]></failure>
+    </testcase>
+    <testcase name="NPastBeforeToolsResetAfterResetState" file="C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_text_llm_context.cpp" line="906" status="run" result="skipped" time="0." timestamp="2026-03-06T18:21:25.244" classname="TextLlmContextTest">
+      <skipped message="C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_text_llm_context.cpp:909&#x0A;Test requires Qwen3 model for tools_at_end feature&#x0A;"><![CDATA[C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_text_llm_context.cpp:909
+Test requires Qwen3 model for tools_at_end feature
+]]></skipped>
+    </testcase>
+    <testcase name="NPastBeforeToolsBoundaryAccuracy" file="C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_text_llm_context.cpp" line="953" status="run" result="skipped" time="0." timestamp="2026-03-06T18:21:25.244" classname="TextLlmContextTest">
+      <skipped message="C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_text_llm_context.cpp:956&#x0A;Test requires Qwen3 model for tools_at_end feature&#x0A;"><![CDATA[C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_text_llm_context.cpp:956
+Test requires Qwen3 model for tools_at_end feature
+]]></skipped>
+    </testcase>
+  </testsuite>
+  <testsuite name="ChatTemplateUtilsTest" tests="9" failures="0" disabled="0" skipped="0" errors="0" time="0." timestamp="2026-03-06T18:21:25.244">
+    <testcase name="GetChatTemplateForModelWithManualOverrideToolsAtEndFalse" file="C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_chat_template_utils.cpp" line="42" status="run" result="completed" time="0." timestamp="2026-03-06T18:21:25.244" classname="ChatTemplateUtilsTest" />
+    <testcase name="GetChatTemplateForModelWithManualOverrideToolsAtEndTrue" file="C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_chat_template_utils.cpp" line="48" status="run" result="completed" time="0." timestamp="2026-03-06T18:21:25.244" classname="ChatTemplateUtilsTest" />
+    <testcase name="GetChatTemplateForModelEmptyOverrideNullptrToolsAtEndFalse" file="C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_chat_template_utils.cpp" line="54" status="run" result="completed" time="0." timestamp="2026-03-06T18:21:25.245" classname="ChatTemplateUtilsTest" />
+    <testcase name="GetChatTemplateForModelEmptyOverrideNullptrToolsAtEndTrue" file="C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_chat_template_utils.cpp" line="59" status="run" result="completed" time="0." timestamp="2026-03-06T18:21:25.245" classname="ChatTemplateUtilsTest" />
+    <testcase name="GetFixedQwen3TemplateNotNull" file="C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_chat_template_utils.cpp" line="125" status="run" result="completed" time="0." timestamp="2026-03-06T18:21:25.245" classname="ChatTemplateUtilsTest" />
+    <testcase name="GetToolsDynamicQwen3TemplateNotNull" file="C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_chat_template_utils.cpp" line="131" status="run" result="completed" time="0." timestamp="2026-03-06T18:21:25.245" classname="ChatTemplateUtilsTest" />
+    <testcase name="TemplatesAreDifferent" file="C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_chat_template_utils.cpp" line="137" status="run" result="completed" time="0." timestamp="2026-03-06T18:21:25.245" classname="ChatTemplateUtilsTest" />
+    <testcase name="ManualOverrideTakesPrecedenceOverToolsAtEnd" file="C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_chat_template_utils.cpp" line="145" status="run" result="completed" time="0." timestamp="2026-03-06T18:21:25.245" classname="ChatTemplateUtilsTest" />
+    <testcase name="ManualOverrideTakesPrecedenceOverToolsAtEndFalse" file="C:\tether\qvac\packages\qvac-lib-infer-llamacpp-llm\test\unit\test_chat_template_utils.cpp" line="154" status="run" result="completed" time="0." timestamp="2026-03-06T18:21:25.245" classname="ChatTemplateUtilsTest" />
+  </testsuite>
+</testsuites>
