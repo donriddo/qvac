@@ -8,13 +8,14 @@ export const sdcppConfigSchema = z
     prediction: z
       .enum(["auto", "eps", "v", "edm_v", "flow", "flux_flow", "flux2_flow"])
       .optional(),
-    wtype: z
-      .enum(["default", "f32", "f16", "q4_0", "q4_1", "q5_0", "q5_1", "q8_0"])
+    type: z
+      .enum([
+        "auto", "f32", "f16", "bf16",
+        "q2_k", "q3_k", "q4_0", "q4_1", "q4_k",
+        "q5_0", "q5_1", "q5_k", "q6_k", "q8_0",
+      ])
       .optional(),
     rng: z.enum(["cuda", "cpu"]).optional(),
-    schedule: z
-      .enum(["default", "discrete", "karras", "exponential", "ays", "gits"])
-      .optional(),
     clip_on_cpu: z.boolean().optional(),
     vae_on_cpu: z.boolean().optional(),
     vae_tiling: z.boolean().optional(),
@@ -30,24 +31,17 @@ export const sdcppConfigSchema = z
 export type SdcppConfig = z.infer<typeof sdcppConfigSchema>;
 
 export const diffusionStatsSchema = z.object({
-  generation_time: z.number().optional(),
-  totalTime: z.number().optional(),
-  stepsPerSecond: z.number().optional(),
-  msPerStep: z.number().optional(),
-  megapixelsPerSecond: z.number().optional(),
-  totalSteps: z.number().optional(),
-  totalGenerations: z.number().optional(),
-  totalImages: z.number().optional(),
-  totalPixels: z.number().optional(),
   modelLoadMs: z.number().optional(),
   generationMs: z.number().optional(),
   totalGenerationMs: z.number().optional(),
   totalWallMs: z.number().optional(),
-  steps: z.number().optional(),
+  totalSteps: z.number().optional(),
+  totalGenerations: z.number().optional(),
+  totalImages: z.number().optional(),
+  totalPixels: z.number().optional(),
   width: z.number().optional(),
   height: z.number().optional(),
   seed: z.number().optional(),
-  output_count: z.number().optional(),
 });
 
 export type DiffusionStats = z.infer<typeof diffusionStatsSchema>;
@@ -95,7 +89,10 @@ export const generationRequestSchema = z.object({
     ])
     .optional(),
   scheduler: z
-    .enum(["default", "discrete", "karras", "exponential", "ays", "gits"])
+    .enum([
+      "discrete", "karras", "exponential", "ays", "gits",
+      "sgm_uniform", "simple", "lcm", "smoothstep", "kl_optimal", "bong_tangent",
+    ])
     .optional(),
   seed: z.number().int().optional(),
   batch_count: z.number().int().positive().optional(),

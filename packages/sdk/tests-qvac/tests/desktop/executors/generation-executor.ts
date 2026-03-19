@@ -212,9 +212,9 @@ export class GenerationExecutor extends AbstractModelExecutor<typeof generationT
       }
 
       const hasExpectedFields =
-        typeof finalStats.steps === "number" ||
-        typeof finalStats.generation_time === "number" ||
-        typeof finalStats.totalSteps === "number";
+        typeof finalStats.totalSteps === "number" ||
+        typeof finalStats.generationMs === "number" ||
+        typeof finalStats.modelLoadMs === "number";
 
       return {
         passed: hasExpectedFields,

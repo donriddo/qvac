@@ -40,9 +40,8 @@ test("sdcppConfigSchema: accepts valid full config", (t) => {
     threads: 4,
     device: "gpu",
     prediction: "flow",
-    wtype: "q8_0",
+    type: "q8_0",
     rng: "cpu",
-    schedule: "karras",
     clip_on_cpu: true,
     vae_on_cpu: false,
     vae_tiling: true,
@@ -67,8 +66,8 @@ test("sdcppConfigSchema: rejects invalid prediction type", (t) => {
   t.is(result.success, false);
 });
 
-test("sdcppConfigSchema: rejects invalid wtype", (t) => {
-  const result = sdcppConfigSchema.safeParse({ wtype: "q3_0" });
+test("sdcppConfigSchema: rejects invalid type", (t) => {
+  const result = sdcppConfigSchema.safeParse({ type: "q3_0" });
   t.is(result.success, false);
 });
 
@@ -81,26 +80,19 @@ test("sdcppConfigSchema.strict(): rejects unknown keys", (t) => {
 // diffusionStatsSchema
 // ============================================
 
-test("diffusionStatsSchema: accepts all 18 C++ stats fields", (t) => {
+test("diffusionStatsSchema: accepts all C++ RuntimeStats fields", (t) => {
   const result = diffusionStatsSchema.safeParse({
-    generation_time: 1234.5,
-    totalTime: 1.234,
-    stepsPerSecond: 5.6,
-    msPerStep: 178.5,
-    megapixelsPerSecond: 0.12,
+    modelLoadMs: 500,
+    generationMs: 1234,
+    totalGenerationMs: 1234,
+    totalWallMs: 1734,
     totalSteps: 20,
     totalGenerations: 1,
     totalImages: 1,
     totalPixels: 262144,
-    modelLoadMs: 500,
-    generationMs: 1234,
-    totalGenerationMs: 1234,
-    totalWallMs: 1234,
-    steps: 20,
     width: 512,
     height: 512,
     seed: 42,
-    output_count: 1,
   });
   t.is(result.success, true);
 });
@@ -112,12 +104,12 @@ test("diffusionStatsSchema: accepts empty stats", (t) => {
 
 test("diffusionStatsSchema: strips unknown fields (no passthrough)", (t) => {
   const result = diffusionStatsSchema.safeParse({
-    generation_time: 100,
+    modelLoadMs: 100,
     unknownField: "should-be-stripped",
   });
   t.is(result.success, true);
   if (result.success) {
-    t.is(result.data.generation_time, 100);
+    t.is(result.data.modelLoadMs, 100);
     t.absent((result.data as Record<string, unknown>)["unknownField"]);
   }
 });
@@ -150,16 +142,6 @@ test("generationRequestSchema: accepts full txt2img request", (t) => {
     batch_count: 2,
     vae_tiling: true,
     cache_preset: "fast",
-  });
-  t.is(result.success, true);
-});
-
-test("generationRequestSchema: accepts img2img request with init_image + strength", (t) => {
-  const result = generationRequestSchema.safeParse({
-    modelId: "model-1",
-    prompt: "a watercolor cat",
-    init_image: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk",
-    strength: 0.75,
   });
   t.is(result.success, true);
 });
@@ -203,6 +185,25 @@ test("generationRequestSchema: rejects invalid sampling_method", (t) => {
     sampling_method: "ddpm",
   });
   t.is(result.success, false);
+});
+
+test("generationRequestSchema: rejects invalid scheduler", (t) => {
+  const result = generationRequestSchema.safeParse({
+    modelId: "model-1",
+    prompt: "a cat",
+    scheduler: "default",
+  });
+  t.is(result.success, false);
+});
+
+test("generationRequestSchema: accepts img2img request with init_image + strength", (t) => {
+  const result = generationRequestSchema.safeParse({
+    modelId: "model-1",
+    prompt: "a watercolor cat",
+    init_image: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk",
+    strength: 0.75,
+  });
+  t.is(result.success, true);
 });
 
 test("generationRequestSchema: rejects strength > 1", (t) => {
@@ -253,12 +254,11 @@ test("generationStreamResponseSchema: accepts final done chunk with stats", (t) 
     type: "generationStream",
     done: true,
     stats: {
-      generation_time: 1234.5,
-      steps: 20,
+      generationMs: 1234,
+      totalSteps: 20,
       width: 512,
       height: 512,
       seed: 42,
-      output_count: 1,
     },
   });
   t.is(result.success, true);
@@ -384,7 +384,7 @@ test("diffusion plugin: registers and dispatches generationStream", async functi
           yield {
             type: "generationStream" as const,
             done: true,
-            stats: { generation_time: 200, steps: 2, width: 512, height: 512 },
+            stats: { generationMs: 200, totalSteps: 2, width: 512, height: 512 },
           };
         },
       },
@@ -434,8 +434,8 @@ test("diffusion plugin: registers and dispatches generationStream", async functi
     t.is(finalData.done, true);
     t.ok(finalData.stats);
     const stats = finalData.stats as Record<string, unknown>;
-    t.is(stats.generation_time, 200);
-    t.is(stats.steps, 2);
+    t.is(stats.generationMs, 200);
+    t.is(stats.totalSteps, 2);
 
     // Last chunk: sentinel
     t.is(chunks[3]!.done, true);
@@ -560,29 +560,22 @@ test("diffusion plugin: rejects invalid response from handler", async function (
   }
 });
 
-test("diffusion plugin: stats with all 18 fields passes response validation", async function (t) {
+test("diffusion plugin: stats with all RuntimeStats fields passes response validation", async function (t) {
   clearPlugins();
   const modelId = "test-diffusion-model-4";
 
   const fullStats = {
-    generation_time: 1234.5,
-    totalTime: 1.234,
-    stepsPerSecond: 5.6,
-    msPerStep: 178.5,
-    megapixelsPerSecond: 0.12,
+    modelLoadMs: 500,
+    generationMs: 1234,
+    totalGenerationMs: 1234,
+    totalWallMs: 1734,
     totalSteps: 20,
     totalGenerations: 1,
     totalImages: 1,
     totalPixels: 262144,
-    modelLoadMs: 500,
-    generationMs: 1234,
-    totalGenerationMs: 1234,
-    totalWallMs: 1234,
-    steps: 20,
     width: 512,
     height: 512,
     seed: 42,
-    output_count: 1,
   };
 
   const mockPlugin = {
@@ -637,25 +630,18 @@ test("diffusion plugin: stats with all 18 fields passes response validation", as
     const statsChunk = chunks[0]!.result as Record<string, unknown>;
     const receivedStats = statsChunk.stats as Record<string, unknown>;
 
-    // Verify all 18 fields survived safeParse validation
-    t.is(receivedStats.generation_time, 1234.5);
-    t.is(receivedStats.totalTime, 1.234);
-    t.is(receivedStats.stepsPerSecond, 5.6);
-    t.is(receivedStats.msPerStep, 178.5);
-    t.is(receivedStats.megapixelsPerSecond, 0.12);
+    // Verify all RuntimeStats fields survived safeParse validation
+    t.is(receivedStats.modelLoadMs, 500);
+    t.is(receivedStats.generationMs, 1234);
+    t.is(receivedStats.totalGenerationMs, 1234);
+    t.is(receivedStats.totalWallMs, 1734);
     t.is(receivedStats.totalSteps, 20);
     t.is(receivedStats.totalGenerations, 1);
     t.is(receivedStats.totalImages, 1);
     t.is(receivedStats.totalPixels, 262144);
-    t.is(receivedStats.modelLoadMs, 500);
-    t.is(receivedStats.generationMs, 1234);
-    t.is(receivedStats.totalGenerationMs, 1234);
-    t.is(receivedStats.totalWallMs, 1234);
-    t.is(receivedStats.steps, 20);
     t.is(receivedStats.width, 512);
     t.is(receivedStats.height, 512);
     t.is(receivedStats.seed, 42);
-    t.is(receivedStats.output_count, 1);
   } finally {
     unregisterModel(modelId);
     clearPlugins();
@@ -733,7 +719,7 @@ test("diffusion plugin: dispatches generationStream with init_image (img2img)", 
           yield {
             type: "generationStream" as const,
             done: true,
-            stats: { generation_time: 300 },
+            stats: { generationMs: 300, totalSteps: 5, width: 512, height: 512 },
           };
         },
       },
