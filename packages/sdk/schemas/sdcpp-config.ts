@@ -15,7 +15,8 @@ export const sdcppConfigSchema = z
         "q5_0", "q5_1", "q5_k", "q6_k", "q8_0",
       ])
       .optional(),
-    rng: z.enum(["cuda", "cpu"]).optional(),
+    rng: z.enum(["cpu", "cuda", "std_default"]).optional(),
+    sampler_rng: z.enum(["cpu", "cuda", "std_default"]).optional(),
     clip_on_cpu: z.boolean().optional(),
     vae_on_cpu: z.boolean().optional(),
     vae_tiling: z.boolean().optional(),

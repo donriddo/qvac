@@ -42,6 +42,7 @@ test("sdcppConfigSchema: accepts valid full config", (t) => {
     prediction: "flow",
     type: "q8_0",
     rng: "cpu",
+    sampler_rng: "std_default",
     clip_on_cpu: true,
     vae_on_cpu: false,
     vae_tiling: true,

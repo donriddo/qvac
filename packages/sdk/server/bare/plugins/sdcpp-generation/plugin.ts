@@ -96,6 +96,7 @@ export const diffusionPlugin = definePlugin({
         prediction: config.prediction,
         type: config.type,
         rng: config.rng,
+        sampler_rng: config.sampler_rng,
         clip_on_cpu: config.clip_on_cpu,
         vae_on_cpu: config.vae_on_cpu,
         vae_tiling: config.vae_tiling,
