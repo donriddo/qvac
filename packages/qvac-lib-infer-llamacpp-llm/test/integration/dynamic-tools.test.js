@@ -217,4 +217,5 @@ test('[dynamic-tools] single-shot with tools works without session', { timeout: 
   t.is(r.stats.CacheTokens, 0, 'no cache tokens without session')
   t.ok(r.stats.promptTokens > 0, 'prompt tokens tracked')
   t.ok(r.stats.generatedTokens > 0, 'generated tokens tracked')
+  t.end()
 })

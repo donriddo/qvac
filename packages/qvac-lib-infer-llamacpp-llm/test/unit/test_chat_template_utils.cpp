@@ -169,3 +169,191 @@ TEST_F(
   std::string result = getChatTemplate(nullptr, params, false);
   EXPECT_EQ(result, "my_custom_template");
 }
+
+// Tests with actual Qwen3 model loaded
+class ChatTemplateUtilsQwen3Test : public ::testing::Test {
+protected:
+  void SetUp() override {
+    config_files["device"] = test_common::getTestDevice();
+    config_files["ctx_size"] = "2048";
+    config_files["gpu_layers"] = test_common::getTestGpuLayers();
+    config_files["n_predict"] = "10";
+
+    // Use Qwen3 model for testing
+    test_model_path = test_common::BaseTestModelPath::get(
+        "Qwen3-1.7B-Q4_0.gguf", "Llama-3.2-1B-Instruct-Q4_0.gguf");
+    test_projection_path = "";
+
+    config_files["backendsDir"] = test_common::getTestBackendsDir().string();
+  }
+
+  std::unordered_map<std::string, std::string> config_files;
+  std::string test_model_path;
+  std::string test_projection_path;
+
+  std::unique_ptr<LlamaModel> createModel() {
+    if (!hasValidModel()) {
+      return nullptr;
+    }
+    std::string modelPath = test_model_path;
+    std::string projectionPath = test_projection_path;
+    auto configCopy = config_files;
+    auto model = std::make_unique<LlamaModel>(
+        std::move(modelPath), std::move(projectionPath), std::move(configCopy));
+    model->waitForLoadInitialization();
+    if (!model->isLoaded()) {
+      return nullptr;
+    }
+    return model;
+  }
+
+  bool hasValidModel() { return fs::exists(test_model_path); }
+};
+
+TEST_F(ChatTemplateUtilsQwen3Test, IsQwen3ModelWithQwen3ModelLoaded) {
+  if (!hasValidModel()) {
+    GTEST_SKIP() << "Qwen3 model not found at " << test_model_path;
+  }
+
+  auto model = createModel();
+  ASSERT_NE(model, nullptr) << "Failed to load Qwen3 model";
+  ASSERT_TRUE(model->isLoaded()) << "Qwen3 model not loaded successfully";
+
+  llama_model* llamaModel = model->getModel();
+  ASSERT_NE(llamaModel, nullptr) << "Llama model pointer is null";
+
+  EXPECT_TRUE(isQwen3Model(llamaModel))
+      << "Model should be detected as Qwen3 model";
+}
+
+TEST_F(ChatTemplateUtilsQwen3Test, GetChatTemplateForModelWithQwen3NoOverride) {
+  if (!hasValidModel()) {
+    GTEST_SKIP() << "Qwen3 model not found at " << test_model_path;
+  }
+
+  auto model = createModel();
+  ASSERT_NE(model, nullptr) << "Failed to load Qwen3 model";
+  ASSERT_TRUE(model->isLoaded()) << "Qwen3 model not loaded successfully";
+
+  llama_model* llamaModel = model->getModel();
+  ASSERT_NE(llamaModel, nullptr) << "Llama model pointer is null";
+
+  // Without override, should return Qwen3 template
+  std::string result = getChatTemplateForModel(llamaModel, "", false);
+  EXPECT_NE(result, "") << "Should return Qwen3 template when no override provided";
+  EXPECT_GT(result.length(), 0u) << "Template should not be empty";
+}
+
+TEST_F(ChatTemplateUtilsQwen3Test, GetChatTemplateForModelWithQwen3ToolsAtEnd) {
+  if (!hasValidModel()) {
+    GTEST_SKIP() << "Qwen3 model not found at " << test_model_path;
+  }
+
+  auto model = createModel();
+  ASSERT_NE(model, nullptr) << "Failed to load Qwen3 model";
+  ASSERT_TRUE(model->isLoaded()) << "Qwen3 model not loaded successfully";
+
+  llama_model* llamaModel = model->getModel();
+  ASSERT_NE(llamaModel, nullptr) << "Llama model pointer is null";
+
+  // With toolsAtEnd=true, should return dynamic template
+  std::string result = getChatTemplateForModel(llamaModel, "", true);
+  EXPECT_NE(result, "") << "Should return Qwen3 tools template when no override provided";
+  EXPECT_GT(result.length(), 0u) << "Template should not be empty";
+}
+
+TEST_F(
+    ChatTemplateUtilsQwen3Test,
+    GetChatTemplateForModelWithQwen3ManualOverrideTakesPrecedence) {
+  if (!hasValidModel()) {
+    GTEST_SKIP() << "Qwen3 model not found at " << test_model_path;
+  }
+
+  auto model = createModel();
+  ASSERT_NE(model, nullptr) << "Failed to load Qwen3 model";
+  ASSERT_TRUE(model->isLoaded()) << "Qwen3 model not loaded successfully";
+
+  llama_model* llamaModel = model->getModel();
+  ASSERT_NE(llamaModel, nullptr) << "Llama model pointer is null";
+
+  // Manual override should take precedence
+  std::string manualOverride = "custom qwen3 template";
+  std::string result = getChatTemplateForModel(llamaModel, manualOverride, false);
+  EXPECT_EQ(result, manualOverride)
+      << "Manual override should take precedence over Qwen3 template";
+}
+
+TEST_F(ChatTemplateUtilsQwen3Test, GetChatTemplateWithQwen3JinjaEnabled) {
+  if (!hasValidModel()) {
+    GTEST_SKIP() << "Qwen3 model not found at " << test_model_path;
+  }
+
+  auto model = createModel();
+  ASSERT_NE(model, nullptr) << "Failed to load Qwen3 model";
+  ASSERT_TRUE(model->isLoaded()) << "Qwen3 model not loaded successfully";
+
+  llama_model* llamaModel = model->getModel();
+  ASSERT_NE(llamaModel, nullptr) << "Llama model pointer is null";
+
+  common_params params;
+  params.chat_template = "";
+  params.use_jinja = true;
+
+  // With Jinja enabled and no override, should use Qwen3 template
+  std::string result = getChatTemplate(llamaModel, params, false);
+  EXPECT_NE(result, "") << "Should return Qwen3 template when Jinja is enabled";
+  EXPECT_GT(result.length(), 0u) << "Template should not be empty";
+}
+
+TEST_F(
+    ChatTemplateUtilsQwen3Test,
+    GetChatTemplateWithQwen3JinjaEnabledManualOverride) {
+  if (!hasValidModel()) {
+    GTEST_SKIP() << "Qwen3 model not found at " << test_model_path;
+  }
+
+  auto model = createModel();
+  ASSERT_NE(model, nullptr) << "Failed to load Qwen3 model";
+  ASSERT_TRUE(model->isLoaded()) << "Qwen3 model not loaded successfully";
+
+  llama_model* llamaModel = model->getModel();
+  ASSERT_NE(llamaModel, nullptr) << "Llama model pointer is null";
+
+  common_params params;
+  params.chat_template = "custom template";
+  params.use_jinja = true;
+
+  // With manual override, should use the override
+  std::string result = getChatTemplate(llamaModel, params, false);
+  EXPECT_EQ(result, "custom template")
+      << "Manual override should take precedence";
+}
+
+TEST_F(ChatTemplateUtilsQwen3Test, NonQwen3ModelNotDetectedAsQwen3) {
+  if (!hasValidModel()) {
+    GTEST_SKIP() << "Qwen3 model not found at " << test_model_path;
+  }
+
+  // Test with Llama model instead
+  std::string llamaModelPath = test_common::BaseTestModelPath::get();
+  if (!fs::exists(llamaModelPath)) {
+    GTEST_SKIP() << "Llama model not found at " << llamaModelPath;
+  }
+
+  std::string modelPath = llamaModelPath;
+  std::string projectionPath = "";
+  auto configCopy = config_files;
+  auto model = std::make_unique<LlamaModel>(
+      std::move(modelPath), std::move(projectionPath), std::move(configCopy));
+  model->waitForLoadInitialization();
+
+  if (!model->isLoaded()) {
+    GTEST_SKIP() << "Llama model failed to load";
+  }
+
+  llama_model* llamaModel = model->getModel();
+  ASSERT_NE(llamaModel, nullptr) << "Llama model pointer is null";
+
+  EXPECT_FALSE(isQwen3Model(llamaModel))
+      << "Llama model should not be detected as Qwen3 model";
+}
