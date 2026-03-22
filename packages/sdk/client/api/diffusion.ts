@@ -22,14 +22,9 @@ interface DiffusionResult {
 /**
  * Generate outputs using a loaded diffusion model.
  *
- * Supports text-to-image, image-to-image, and (future) video generation.
- * img2img is activated by providing `init_image` (and optionally `strength`).
- *
  * @param params - Generation parameters
  * @param params.modelId - The identifier of the loaded diffusion model
  * @param params.prompt - Text prompt describing the desired output
- * @param params.init_image - Source image for img2img (base64 string or Buffer). Omit for txt2img.
- * @param params.strength - How much to transform the source: 0 = keep, 1 = ignore. Only used with init_image.
  * @param params.stream - Whether to stream outputs as they arrive (true) or return all at once (false). Defaults to false.
  * @returns Object with outputStream generator, progressStream generator, outputs promise, and stats promise
  * @example
@@ -45,28 +40,14 @@ interface DiffusionResult {
  * for await (const { data, outputIndex } of outputStream) {
  *   fs.writeFileSync(`output_${outputIndex}.png`, Buffer.from(data, "base64"));
  * }
- *
- * // img2img
- * const { outputs } = diffusion({
- *   modelId,
- *   prompt: "watercolor style",
- *   init_image: fs.readFileSync("photo.jpg"),
- *   strength: 0.75,
- * });
  * ```
  */
 export function diffusion(params: DiffusionClientParams): DiffusionResult {
-  const { stream: streaming, init_image, ...rest } = params;
+  const { stream: streaming, ...rest } = params;
 
   const request: DiffusionStreamRequest = {
     type: "diffusionStream",
     ...rest,
-    ...(init_image != null && {
-      init_image:
-        typeof init_image === "string"
-          ? init_image
-          : init_image.toString("base64"),
-    }),
   };
 
   let statsResolver: (value: DiffusionStats | undefined) => void = () => {};

@@ -1,7 +1,5 @@
 // Diffusion executor
 import { diffusion, type DiffusionClientParams } from "@qvac/sdk";
-import * as fs from "node:fs";
-import * as path from "node:path";
 import {
   ValidationHelpers,
   type TestResult,
@@ -61,16 +59,6 @@ export class DiffusionExecutor extends AbstractModelExecutor<typeof diffusionTes
     if (p.batch_count != null) params.batch_count = p.batch_count as number;
     if (p.vae_tiling != null) params.vae_tiling = p.vae_tiling as boolean;
     if (p.stream != null) params.stream = p.stream as boolean;
-
-    if (p.initImageFileName) {
-      const imagePath = path.resolve(
-        process.cwd(),
-        "../shared-test-data/images",
-        p.initImageFileName as string,
-      );
-      params.init_image = fs.readFileSync(imagePath);
-      params.strength = (p.strength as number) ?? 0.75;
-    }
 
     return params;
   }

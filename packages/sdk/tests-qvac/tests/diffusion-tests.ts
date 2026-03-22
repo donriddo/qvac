@@ -167,36 +167,6 @@ export const diffusionStreamingProgress = createDiffusionTest(
   { validation: "type", expectedType: "string" },
 );
 
-// ---- img2img ----
-
-export const diffusionImg2img = createDiffusionTest(
-  "diffusion-img2img",
-  {
-    prompt: "watercolor painting style",
-    width: 256,
-    height: 256,
-    steps: 4,
-    strength: 0.75,
-    seed: 42,
-    initImageFileName: "elephant.jpg",
-  },
-  { validation: "type", expectedType: "array" },
-);
-
-export const diffusionImg2imgLowStrength = createDiffusionTest(
-  "diffusion-img2img-low-strength",
-  {
-    prompt: "oil painting style",
-    width: 256,
-    height: 256,
-    steps: 4,
-    strength: 0.3,
-    seed: 42,
-    initImageFileName: "elephant.jpg",
-  },
-  { validation: "type", expectedType: "array" },
-);
-
 // ---- stats ----
 
 export const diffusionStatsPresent = createDiffusionTest(
@@ -238,8 +208,6 @@ export const diffusionTests = [
   diffusionBatchCount,
   diffusionStreaming,
   diffusionStreamingProgress,
-  diffusionImg2img,
-  diffusionImg2imgLowStrength,
   diffusionStatsPresent,
   diffusionEmptyPrompt,
 ];

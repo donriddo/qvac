@@ -99,9 +99,7 @@ export const diffusionRequestSchema = z.object({
   batch_count: z.number().int().positive().optional(),
   vae_tiling: z.boolean().optional(),
   cache_preset: z.string().optional(),
-  init_image: z.string().optional(),
-  /** img2img denoising strength (0–1). Only valid when init_image is provided. */
-  strength: z.number().min(0).max(1).optional(),
+
 });
 
 export type DiffusionRequest = z.infer<typeof diffusionRequestSchema>;
@@ -131,7 +129,5 @@ export type DiffusionClientParams = {
   batch_count?: number;
   vae_tiling?: boolean;
   cache_preset?: string;
-  init_image?: string | Buffer;
-  strength?: number;
   stream?: boolean;
 };

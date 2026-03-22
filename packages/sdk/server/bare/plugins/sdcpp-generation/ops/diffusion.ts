@@ -30,12 +30,6 @@ export async function* diffusion(
     cache_preset: request.cache_preset,
   };
 
-  const initImage = request.init_image;
-  if (initImage) {
-    runParams["init_image"] = new Uint8Array(Buffer.from(initImage, "base64"));
-    runParams["strength"] = request.strength;
-  }
-
   const response = await model.run(runParams);
 
   let outputIndex = 0;
