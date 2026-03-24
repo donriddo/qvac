@@ -68,12 +68,7 @@ target_include_directories(${LIB_NAME} PUBLIC
         ${QVAC_LIB_INFERENCE_ADDON_CPP_INCLUDE_DIRS}
 )
 
-# Use static linking for mobile platforms (ONNX runtime must be bundled in the binary)
-if(ANDROID OR IOS)
-  target_link_libraries(${LIB_NAME} PRIVATE onnxruntime::onnxruntime_static nlohmann_json::nlohmann_json)
-else()
-  target_link_libraries(${LIB_NAME} PRIVATE onnxruntime::onnxruntime nlohmann_json::nlohmann_json)
-endif()
+target_link_libraries(${LIB_NAME} PRIVATE onnxruntime::onnxruntime nlohmann_json::nlohmann_json)
 
 # Create the Bare addon module using bare-make's helper
 add_bare_module(qvac_lib_infer_parakeet EXPORTS)
@@ -99,22 +94,12 @@ target_include_directories(
 
 target_compile_definitions(${qvac_lib_infer_parakeet} PUBLIC JS_LOGGER)
 
-# Use static linking for mobile platforms
-if(ANDROID OR IOS)
-  target_link_libraries(
-    ${qvac_lib_infer_parakeet}
-    PRIVATE
-      ${LIB_NAME}
-      onnxruntime::onnxruntime_static
-  )
-else()
-  target_link_libraries(
-    ${qvac_lib_infer_parakeet}
-    PRIVATE
-      ${LIB_NAME}
-      onnxruntime::onnxruntime
-  )
-endif()
+target_link_libraries(
+  ${qvac_lib_infer_parakeet}
+  PRIVATE
+    ${LIB_NAME}
+    onnxruntime::onnxruntime
+)
 
 # Platform-specific settings
 if(WIN32)
