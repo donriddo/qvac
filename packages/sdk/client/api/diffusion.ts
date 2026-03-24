@@ -21,15 +21,6 @@ interface DiffusionResult {
 /**
  * Generate images using a loaded diffusion model.
  *
- * Step-progress ticks stream in real time during inference via `progressStream`.
- * Images are delivered only after the full generation completes — the C++
- * `generate_image()` call is synchronous. With `batch_count > 1`, multiple
- * images arrive in sequence and are collected into the `outputs` promise.
- *
- * @param params - Generation parameters
- * @param params.modelId - The identifier of the loaded diffusion model
- * @param params.prompt - Text prompt describing the desired output
- * @returns Object with progressStream generator, outputs promise, and stats promise
  * @example
  * ```typescript
  * // Basic usage

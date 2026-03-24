@@ -104,7 +104,6 @@ export const diffusionRequestSchema = z.object({
 
 export type DiffusionRequest = z.infer<typeof diffusionRequestSchema>;
 
-// RPC request schema (wire format with `type` literal for routing)
 export const diffusionStreamRequestSchema = diffusionRequestSchema.extend({
   type: z.literal("diffusionStream"),
 });
@@ -113,7 +112,6 @@ export type DiffusionStreamRequest = z.infer<
   typeof diffusionStreamRequestSchema
 >;
 
-// Client params (no `type` field — added by the client wrapper)
 export type DiffusionClientParams = {
   modelId: string;
   prompt: string;
