@@ -9,7 +9,7 @@
         "@qvac/embed-llamacpp": "^0.12.0",
         "@qvac/error": "^0.1.1",
         "@qvac/langdetect-text": "^0.1.0",
-        "@qvac/llm-llamacpp": "^0.12.1",
+        "@qvac/llm-llamacpp": "^0.14.0",
         "@qvac/logging": "^0.1.0",
         "@qvac/ocr-onnx": "^0.2.0",
         "@qvac/rag": "^0.4.2",
@@ -519,7 +519,7 @@
 
     "@qvac/langdetect-text": ["@qvac/langdetect-text@0.1.1", "", { "dependencies": { "tinyld": "1.3.4" } }, "sha512-VLyKuRqMXfW9KQOjsPmI+W1OFcppeWPkGOX45bzehh8ukeiA4LhlD8v7/+v4UAHkrF1C7JtDWeGVYi4krUFBAg=="],
 
-    "@qvac/llm-llamacpp": ["@qvac/llm-llamacpp@0.12.2", "", { "dependencies": { "@qvac/infer-base": "^0.2.2", "bare-path": "^3.0.0", "bare-process": "^4.2.2" }, "peerDependencies": { "@qvac/dl-hyperdrive": "^0.1.1" } }, "sha512-yx1bCK0Lp1XwsKbFyMNQ7BPy4vt95WLN3iMO2gSTTJW225trAFDBee9xktOJ4V4onhClKzdOm1fKAvy2ZNCJXA=="],
+    "@qvac/llm-llamacpp": ["@qvac/llm-llamacpp@0.14.0", "", { "dependencies": { "@qvac/infer-base": "^0.3.0", "bare-fs": "^4.5.1", "bare-path": "^3.0.0", "bare-process": "^4.2.2" } }, "sha512-zDt4hCY3QOREolPCT6eZ0GwYQUtPt3q45ExdyCa9LibkiXHd0HPGknpO9WZSC8Yv38ZSQqXy8H/Si51kzeTSOQ=="],
 
     "@qvac/logging": ["@qvac/logging@0.1.0", "", {}, "sha512-B9JayZKJGzSsM/9JmMdO7wiOOZ2mY5aWTbXl2aIKzy+l2Uqzkoby0IxMjKSVtYo6uMDs2zcrZqLtjI2dDSaYog=="],
 
@@ -2541,7 +2541,7 @@
 
     "@qvac/embed-llamacpp/@qvac/infer-base": ["@qvac/infer-base@0.2.2", "", { "dependencies": { "@qvac/error": "^0.1.0", "@qvac/logging": "^0.1.0", "bare-events": "2.4.2", "bare-os": "^3.2.0", "bare-path": "^3.0.0" }, "peerDependencies": { "@qvac/dl-hyperdrive": "^0.1.0" } }, "sha512-8D/5PRIy/A+Uhg1ZSoJMu5FSPDHdrMKZoPnAzTZMceikTj+BWwTV//j8pXbRABsjrFbqBegvr/LujirC9I2cRQ=="],
 
-    "@qvac/llm-llamacpp/@qvac/infer-base": ["@qvac/infer-base@0.2.2", "", { "dependencies": { "@qvac/error": "^0.1.0", "@qvac/logging": "^0.1.0", "bare-events": "2.4.2", "bare-os": "^3.2.0", "bare-path": "^3.0.0" }, "peerDependencies": { "@qvac/dl-hyperdrive": "^0.1.0" } }, "sha512-8D/5PRIy/A+Uhg1ZSoJMu5FSPDHdrMKZoPnAzTZMceikTj+BWwTV//j8pXbRABsjrFbqBegvr/LujirC9I2cRQ=="],
+    "@qvac/llm-llamacpp/@qvac/infer-base": ["@qvac/infer-base@0.3.0", "", { "dependencies": { "@qvac/error": "^0.1.0", "@qvac/logging": "^0.1.0", "bare-events": "2.4.2", "bare-os": "^3.2.0", "bare-path": "^3.0.0" }, "peerDependencies": { "@qvac/dl-hyperdrive": "^0.1.0" } }, "sha512-wuhAnL+RZ5Vla1UKmeIQL7tzGX7v8BflIqMfQwqD0q8vSfgLLeLVUGFCNnfFf8lDtH7WVk1+GmxzRrQprksXpA=="],
 
     "@qvac/response/bare-events": ["bare-events@2.4.2", "", {}, "sha512-qMKFd2qG/36aA4GwvKq8MxnPgCQAmBWmSyLWsJcbn8v03wvIPQ/hG1Ms8bPzndZxMDoHpxez5VOS+gC9Yi24/Q=="],
 

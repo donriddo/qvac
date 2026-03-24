@@ -8,7 +8,7 @@ import {
   type CompletionStats,
   type CompletionParams,
   QWEN3_1_7B_INST_Q4,
-} from "@/index";
+} from "@qvac/sdk";
 
 // Define Zod schemas for tool parameters
 const weatherSchema = z.object({
