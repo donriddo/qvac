@@ -4,7 +4,8 @@ const path = require('bare-path')
 const {
   ensureChatterboxModels,
   ensureSupertonicModels,
-  ensureSupertonicModelsMultilingual
+  ensureSupertonicModelsMultilingual,
+  ensureLavaSRModels
 } = require('../test/utils/downloadModel.js')
 
 const baseDir = '.'
@@ -37,6 +38,10 @@ async function run () {
     const supertonicMultilingualDir = path.join(modelsDir, 'supertonic-multilingual')
     const rSuperML = await ensureSupertonicModelsMultilingual({ targetDir: supertonicMultilingualDir })
     if (!rSuperML.success) errors.push('Supertonic multilingual')
+
+    const lavasrDir = path.join(modelsDir, 'lavasr')
+    const rLavasr = await ensureLavaSRModels({ targetDir: lavasrDir })
+    if (!rLavasr.success) errors.push('LavaSR')
   } else {
     const chatterboxDir = path.join(modelsDir, language === 'en' ? 'chatterbox' : 'chatterbox-multilingual')
     const rChatter = await ensureChatterboxModels({ targetDir: chatterboxDir, variant, language })
@@ -48,6 +53,10 @@ async function run () {
     const supertonicMultilingualDir = path.join(modelsDir, 'supertonic-multilingual')
     const rSuperML = await ensureSupertonicModelsMultilingual({ targetDir: supertonicMultilingualDir })
     if (!rSuperML.success) errors.push('Supertonic multilingual')
+
+    const lavasrDir = path.join(modelsDir, 'lavasr')
+    const rLavasr = await ensureLavaSRModels({ targetDir: lavasrDir })
+    if (!rLavasr.success) errors.push('LavaSR')
   }
 
   if (errors.length) {
