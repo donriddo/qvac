@@ -30,7 +30,6 @@ permissions:
 
 jobs:
   test-cpp:
-    environment: release
     strategy:
       fail-fast: false
       matrix:
