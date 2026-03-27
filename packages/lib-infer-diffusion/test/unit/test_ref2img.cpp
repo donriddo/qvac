@@ -78,9 +78,8 @@ std::string bytesToJsonArray(const std::vector<uint8_t>& bytes) {
   return oss.str();
 }
 
-// Build paramsJson for a ref2img job (in-context conditioning).
-// The image goes through ref_image_bytes, NOT init_image_bytes.
-// This routes through the FLUX reference token path (like Iris).
+// Build paramsJson for an img2img job (in-context conditioning).
+// The image goes through ref_image_bytes → FLUX reference token path.
 // cfg_scale=1.0 disables external CFG (distilled model handles guidance internally).
 std::string makeRef2ImgParams(
     const std::vector<uint8_t>& refBytes,
@@ -92,7 +91,7 @@ std::string makeRef2ImgParams(
     int w = 0,
     int h = 0) {
   std::ostringstream oss;
-  oss << R"({"mode":"ref2img","prompt":")" << prompt << R"(",)"
+  oss << R"({"mode":"img2img","prompt":")" << prompt << R"(",)"
       << R"("negative_prompt":")" << negPrompt << R"(",)"
       << R"("steps":)" << steps << R"(,)"
       << R"("cfg_scale":1.0,)"

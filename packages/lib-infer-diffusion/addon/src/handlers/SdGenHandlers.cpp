@@ -150,11 +150,10 @@ const SdGenHandlersMap SD_GEN_HANDLERS = {
     {"mode",
      [](SdGenConfig& c, const picojson::value& v) {
        const auto mode = requireStr(v, "mode");
-       if (mode != "txt2img" && mode != "img2img" && mode != "ref2img")
+       if (mode != "txt2img" && mode != "img2img")
          throw StatusError(
              general_error::InvalidArgument,
-             "mode must be 'txt2img', 'img2img', or 'ref2img', got: '" +
-                 mode + "'");
+             "mode must be 'txt2img' or 'img2img', got: '" + mode + "'");
        c.mode = mode;
      }},
 

@@ -72,7 +72,7 @@ async function main () {
     const response = await model.run({
       prompt: 'a soccer player version of this photo, professional headshot, with shaved buzz cut.',
       negative_prompt: 'blurry, low quality, distorted',
-      ref_image: refImage,
+      init_image: refImage,
       cfg_scale: 1.0,
       steps: STEPS,
       guidance: GUIDANCE,
