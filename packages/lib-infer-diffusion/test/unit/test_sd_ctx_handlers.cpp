@@ -4,6 +4,7 @@
 #include <gtest/gtest.h>
 
 #include "handlers/SdCtxHandlers.hpp"
+#include "utils/LoggingMacros.hpp"
 
 using namespace qvac_lib_inference_addon_sd;
 using namespace qvac_errors;
@@ -179,4 +180,65 @@ TEST(
           cfg,
           std::unordered_map<std::string, std::string>{{"flow_shift", "bogus"}}),
       StatusError);
+}
+
+TEST(SdCtxHandlers_Verbosity, SupportedLevelsSetGlobalVerbosity) {
+  logging::g_verbosityLevel =
+      qvac_lib_inference_addon_cpp::logger::Priority::ERROR;
+
+  SdCtxConfig cfg0;
+  applySdCtxHandlers(
+      cfg0,
+      std::unordered_map<std::string, std::string>{{"verbosity", "0"}});
+  EXPECT_EQ(
+      logging::g_verbosityLevel,
+      qvac_lib_inference_addon_cpp::logger::Priority::ERROR);
+
+  SdCtxConfig cfg1;
+  applySdCtxHandlers(
+      cfg1,
+      std::unordered_map<std::string, std::string>{{"verbosity", "1"}});
+  EXPECT_EQ(
+      logging::g_verbosityLevel,
+      qvac_lib_inference_addon_cpp::logger::Priority::WARNING);
+
+  SdCtxConfig cfg2;
+  applySdCtxHandlers(
+      cfg2,
+      std::unordered_map<std::string, std::string>{{"verbosity", "2"}});
+  EXPECT_EQ(
+      logging::g_verbosityLevel,
+      qvac_lib_inference_addon_cpp::logger::Priority::INFO);
+
+  SdCtxConfig cfg3;
+  applySdCtxHandlers(
+      cfg3,
+      std::unordered_map<std::string, std::string>{{"verbosity", "3"}});
+  EXPECT_EQ(
+      logging::g_verbosityLevel,
+      qvac_lib_inference_addon_cpp::logger::Priority::DEBUG);
+}
+
+TEST(SdCtxHandlers_Verbosity, InvalidValueFallsBackToError) {
+  logging::g_verbosityLevel =
+      qvac_lib_inference_addon_cpp::logger::Priority::DEBUG;
+
+  SdCtxConfig cfg;
+  applySdCtxHandlers(
+      cfg,
+      std::unordered_map<std::string, std::string>{{"verbosity", "bogus"}});
+
+  EXPECT_EQ(
+      logging::g_verbosityLevel,
+      qvac_lib_inference_addon_cpp::logger::Priority::ERROR);
+}
+
+TEST(SdCtxHandlers_UnknownKeys, AreIgnored) {
+  SdCtxConfig cfg;
+  EXPECT_NO_THROW(
+      applySdCtxHandlers(
+          cfg,
+          std::unordered_map<std::string, std::string>{{"unknown_key", "value"}}));
+  EXPECT_EQ(cfg.device, "gpu");
+  EXPECT_EQ(cfg.nThreads, -1);
 }
