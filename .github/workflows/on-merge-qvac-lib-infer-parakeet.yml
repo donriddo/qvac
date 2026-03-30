@@ -116,7 +116,6 @@ jobs:
       publish_target: "gpr"
       repository: ${{ github.repository }}
       ref: ${{ github.ref }}
-      workdir: "packages/qvac-lib-infer-parakeet"
 
   publish-feature-gpr:
     needs: publish-logic
