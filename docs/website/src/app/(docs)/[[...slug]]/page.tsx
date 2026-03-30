@@ -117,7 +117,6 @@ export async function generateMetadata(
     },
     openGraph: {
       title,
-      description: description ?? undefined,
       url: canonicalUrl,
       siteName: 'QVAC',
       locale: 'en_US',
@@ -134,7 +133,6 @@ export async function generateMetadata(
     twitter: {
       card: 'summary_large_image',
       title,
-      description: description ?? undefined,
       images: ['/qvac-logo.svg'],
     },
   };
