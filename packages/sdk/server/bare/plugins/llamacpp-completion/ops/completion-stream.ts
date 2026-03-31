@@ -154,20 +154,59 @@ async function initSystemPromptCache(
   await primeResponse.await();
 }
 
+type HistoryMsg = {
+  role: string;
+  content: string;
+  attachments?: { path: string }[] | undefined;
+}
+
+function historyWithAssistantFirst (history: HistoryMsg[]): HistoryMsg[] {
+  const userMsg = history[history.length - 1] as HistoryMsg
+  const lastMessages = [userMsg]
+  const prevLLMMsg = history[history.length - 2]
+  /*
+   * Dynamic Tools mode specific: pass prev 'assistant' msg to preserve llm correct history
+   * because at this point llm cache has only 'user' msg
+   */
+  if (userMsg?.role === 'tool') {
+    if (prevLLMMsg?.role === 'assistant') {
+      lastMessages.unshift(prevLLMMsg)
+    } else if (prevLLMMsg?.role === 'tool'){
+      // multiple tool results, find recent 'assistant'
+      lastMessages.unshift(prevLLMMsg)
+      let backIdx = history.length - 3
+      while (backIdx > 0) {
+        const nextMsg = history[backIdx]
+        if (nextMsg?.role === 'tool') {
+          lastMessages.unshift(nextMsg)
+        } else  if (nextMsg?.role === 'assistant') {
+          lastMessages.unshift(nextMsg)
+          break
+        }
+        backIdx -= 1
+      }
+    }
+  }
+  if (userMsg?.role === 'user' && prevLLMMsg?.role === 'assistant') {
+    lastMessages.unshift(prevLLMMsg)
+  }
+  return lastMessages
+}
+
 function prepareMessagesForCache(
   cachePathToUse: string,
   cacheExists: boolean,
-  history: {
-    role: string;
-    content: string;
-    attachments?: { path: string }[] | undefined;
-  }[],
+  history: HistoryMsg[],
   tools?: Tool[],
+  toolsMode?: string
 ): ChatHistory[] {
   const addTools = tools?.length ? transformMessages(tools) : [];
   if (cacheExists && history.length > 0) {
-    const lastMessage = history[history.length - 1];
-    const lastTransformedMessages = transformMessage(lastMessage!);
+    const userMsg = history[history.length - 1] as HistoryMsg
+    const lastMessages = toolsMode === ToolsModeType.dynamic
+      ? historyWithAssistantFirst(history)
+      : [userMsg]
+    const lastTransformedMessages = transformMessages(lastMessages);
     return [
       { role: "session", content: cachePathToUse },
       ...lastTransformedMessages,
@@ -289,8 +328,8 @@ export async function* completion(
     const modelConfig = getModelConfig(modelId);
     const systemPromptFromHistory = extractSystemPrompt(history);
     const toolsModeForHash = (modelConfig as { toolsMode?: string }).toolsMode;
-    const systemTools = toolsMode !== ToolsModeType.dynamic && tools?.length && toolsEnabled;
-    const dynamicTools = toolsMode === ToolsModeType.dynamic && tools?.length && toolsEnabled;
+    const systemTools = !!(toolsMode !== ToolsModeType.dynamic && tools?.length && toolsEnabled);
+    const dynamicTools = !!(toolsMode === ToolsModeType.dynamic && tools?.length && toolsEnabled);
     const configHash = generateConfigHash(
       systemPromptFromHistory,
       toolsModeForHash !== ToolsModeType.dynamic ? tools : undefined,
@@ -325,6 +364,7 @@ export async function* completion(
         cacheExists,
         history,
         dynamicTools ? tools : undefined,
+        toolsMode
       );
       logMessagesToAddon(messagesToSend, "PROMPT_SEND");
 
@@ -373,6 +413,7 @@ export async function* completion(
         cacheExists,
         history,
         dynamicTools ? tools : undefined,
+        toolsMode
       );
       logMessagesToAddon(messagesToSend, "PROMPT_SEND");
 
