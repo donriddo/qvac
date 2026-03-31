@@ -1,5 +1,23 @@
 // Tools/Function calling test definitions
-import type { TestDefinition } from "@tetherto/qvac-test-suite";
+import type { Expectation, TestDefinition } from "@tetherto/qvac-test-suite";
+
+const toolsCalledValidator = (result: unknown & { toolCalls?: Array<{ name: string }> }) => {
+  return Boolean(result.toolCalls && result.toolCalls.length > 0);
+};
+
+const toolsCalledExpectation: Expectation = {
+  validation: "custom",
+  validator: toolsCalledValidator,
+};
+
+const toolsNotCalledValidatorEqual = (numCalls: number) => (result: unknown & { toolCalls?: Array<{ name: string }> }) => {
+  return Boolean(result.toolCalls && result.toolCalls.length === numCalls);
+};
+
+const toolsNotCalledExpectation: Expectation = {
+  validation: "custom",
+  validator: toolsNotCalledValidatorEqual(0),
+};
 
 // Helper for creating tools tests
 const createToolsTest = (
@@ -16,10 +34,7 @@ const createToolsTest = (
     };
   }>,
   toolsMode?: "static" | "dynamic",
-  expectation: {
-    validation: "type";
-    expectedType: "string" | "number" | "array";
-  } = {
+  expectation: Expectation = {
     validation: "type",
     expectedType: "string",
   },
@@ -210,6 +225,7 @@ export const toolsModeStatic = createToolsTest(
     },
   ],
   "static",
+  toolsCalledExpectation,
 );
 
 export const toolsModeDynamic = createToolsTest(
@@ -240,6 +256,7 @@ export const toolsModeDynamic = createToolsTest(
     },
   ],
   "dynamic",
+  toolsCalledExpectation,
 );
 
 // Test multiple tools with correct selection
@@ -274,6 +291,7 @@ export const toolsModeMultipleTools = createToolsTest(
     },
   ],
   "dynamic",
+  toolsCalledExpectation,
 );
 
 // Test model declines tool use
@@ -295,6 +313,7 @@ export const toolsModeModelDeclines = createToolsTest(
     },
   ],
   "dynamic",
+  toolsNotCalledExpectation,
 );
 
 // Test no tools provided (empty array)
@@ -303,6 +322,7 @@ export const toolsModeEmptyArray = createToolsTest(
   "What's the weather like?",
   [],
   "dynamic",
+  toolsNotCalledExpectation,
 );
 
 // Test single tool
@@ -324,6 +344,7 @@ export const toolsModeSingleTool = createToolsTest(
     },
   ],
   "dynamic",
+  toolsCalledExpectation,
 );
 
 // Test large tool set (10+ tools)
@@ -345,17 +366,22 @@ export const toolsModeLargeToolSet = createToolsTest(
   "Execute tool number 5",
   largeToolSet,
   "dynamic",
+  toolsCalledExpectation,
 );
 
-export const toolsTests = [
-  toolsSimpleFunction,
-  toolsMultipleFunctions,
-  toolsModeStatic,
+export const dynamicToolsTests = [
   toolsModeDynamic,
   toolsModeMultipleTools,
   toolsModeModelDeclines,
   toolsModeEmptyArray,
   toolsModeSingleTool,
   toolsModeLargeToolSet,
+]
+
+export const toolsTests = [
+  toolsSimpleFunction,
+  toolsMultipleFunctions,
+  toolsModeStatic,
   ...additionalToolsTests,
+  ...dynamicToolsTests,
 ];

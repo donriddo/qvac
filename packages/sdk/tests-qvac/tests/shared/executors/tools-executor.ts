@@ -1,4 +1,4 @@
-import { completion } from "@qvac/sdk";
+import { completion, ToolsModeType } from "@qvac/sdk";
 import {
   ValidationHelpers,
   type TestResult,
@@ -14,7 +14,7 @@ export class ToolsExecutor extends AbstractModelExecutor<typeof toolsTests> {
     toolsTests.map((test) => [test.testId, this.generic.bind(this)]),
   ) as never;
 
-  async generic(params: unknown, expectation: unknown): Promise<TestResult> {
+  async generic(params: unknown, expectation: Expectation): Promise<TestResult> {
     const p = params as {
       history: Array<{ role: string; content: string }>;
       tools: Array<{
@@ -23,9 +23,11 @@ export class ToolsExecutor extends AbstractModelExecutor<typeof toolsTests> {
         description: string;
         parameters: Record<string, unknown>;
       }>;
+      toolsMode: string,
       stream?: boolean;
     };
-    const toolsModelId = await this.resources.ensureLoaded("tools");
+    const resourceDep = p.toolsMode  === ToolsModeType.dynamic ? "tools-dynamic" : "tools"
+    const toolsModelId = await this.resources.ensureLoaded(resourceDep);
 
     try {
       const result = completion({
@@ -38,11 +40,18 @@ export class ToolsExecutor extends AbstractModelExecutor<typeof toolsTests> {
       const text = await result.text;
       const toolCalls = result.toolCalls ? await result.toolCalls : undefined;
 
-      const resultData =
-        text ||
-        (toolCalls && toolCalls.length > 0 ? "tool call made" : "no response");
+      if (expectation.validation === "type") {
+        const resultData =
+          text ||
+          (toolCalls && toolCalls.length > 0 ? "tool call made" : "no response");
+        return ValidationHelpers.validate(resultData, expectation);
+      }
 
-      return ValidationHelpers.validate(resultData, expectation as Expectation);
+      if (expectation.validation === "custom") {
+        return ValidationHelpers.validate({ toolCalls, text}, expectation);
+      }
+
+      return { passed: false, output: `Unhandled validation type: ${expectation.validation}`}
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       return { passed: false, output: `Tools test failed: ${errorMsg}` };
