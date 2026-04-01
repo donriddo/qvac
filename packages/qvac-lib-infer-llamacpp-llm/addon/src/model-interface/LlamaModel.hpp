@@ -228,6 +228,8 @@ private:
     std::optional<CacheManager> cacheManager_;
 
     bool lastRunWasPrefill_ = false;
+    llama_pos lastNPastBeforeTools_ = -1;
+    bool lastToolsTrimmed_ = false;
   };
 
   struct ResolvedPrompt {

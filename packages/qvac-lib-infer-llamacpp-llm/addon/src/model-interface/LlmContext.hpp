@@ -117,7 +117,9 @@ public:
   [[nodiscard]] llama_pos nPastBeforeTools() const { return nPastBeforeTools_; }
   void setNPastBeforeTools(llama_pos pos) { nPastBeforeTools_ = pos; }
   void recordToolBoundary(llama_pos nPast, llama_pos totalTokens) {
-    if (toolsAtEnd_ && nConversationOnlyTokens_ > 0) {
+    if (toolsAtEnd_ && nConversationOnlyTokens_ > 0 &&
+        nPastBeforeTools_ == -1) {
+      // Only set anchor on first round — preserve position during chain
       nPastBeforeTools_ = nPast - (totalTokens - nConversationOnlyTokens_);
     }
   }

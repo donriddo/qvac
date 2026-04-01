@@ -553,9 +553,15 @@ std::string LlamaModel::processPromptImpl(const Prompt& prompt) {
   }
 
   std::ostringstream oss;
+  bool needsOutputCapture = state_->llmContext_->dynamicToolsState().toolsAtEnd();
   auto callback = prompt.outputCallback;
   if (!prompt.outputCallback) {
     callback = [&](const std::string& token) { oss << token; };
+  } else if (needsOutputCapture) {
+    callback = [&](const std::string& token) {
+      oss << token;
+      prompt.outputCallback(token);
+    };
   }
 
   if (!state_->llmContext_->generateResponse(callback)) {
@@ -565,19 +571,27 @@ std::string LlamaModel::processPromptImpl(const Prompt& prompt) {
         ADDON_ID, toString(ContextOverflow), errorMsg);
   }
 
-  if (!prompt.outputCallback) {
+  if (!prompt.outputCallback || needsOutputCapture) {
     out = oss.str();
   }
   auto& dts = state_->llmContext_->dynamicToolsState();
-  if (dts.toolsAtEnd() && !resolved.tools.empty() &&
-      dts.nPastBeforeTools() > 0 &&
+  // Capture nPastBeforeTools before postInfer cleanup for stats reporting
+  state_->lastNPastBeforeTools_ = dts.nPastBeforeTools();
+  state_->lastToolsTrimmed_ = false;
+
+  if (dts.toolsAtEnd() && dts.nPastBeforeTools() > 0 &&
       state_->llmContext_->getNPast() > dts.nPastBeforeTools()) {
-    state_->llmContext_->removeLastNTokens(
-        state_->llmContext_->getNPast() - dts.nPastBeforeTools());
-    dts.reset();
-    if (state_->llmContext_->getFirstMsgTokens() >
-        state_->llmContext_->getNPast()) {
-      state_->llmContext_->setFirstMsgTokens(state_->llmContext_->getNPast());
+    bool hasToolCall = out.find("<tool_call>") != std::string::npos;
+    if (!hasToolCall) {
+      state_->lastToolsTrimmed_ = true;
+      state_->llmContext_->removeLastNTokens(
+          state_->llmContext_->getNPast() - dts.nPastBeforeTools());
+      dts.reset();
+      if (state_->llmContext_->getFirstMsgTokens() >
+          state_->llmContext_->getNPast()) {
+        state_->llmContext_->setFirstMsgTokens(
+            state_->llmContext_->getNPast());
+      }
     }
   }
   if (resolved.shouldResetAfterInference) {
@@ -610,7 +624,12 @@ qvac_lib_inference_addon_cpp::RuntimeStats LlamaModel::runtimeStats() const {
       {"CacheTokens", state_->llmContext_->getNPast()},
       {"generatedTokens", generatedTokens},
       {"promptTokens", promptTokens},
-      {"contextSlides", static_cast<int64_t>(contextSlides)}};
+      {"contextSlides", static_cast<int64_t>(contextSlides)},
+      {"nPastBeforeTools",
+       static_cast<int64_t>(state_->lastNPastBeforeTools_)},
+      {"firstMsgTokens",
+       static_cast<int64_t>(state_->llmContext_->getFirstMsgTokens())},
+      {"toolsTrimmed", state_->lastToolsTrimmed_ ? 1LL : 0LL}};
 }
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static,readability-function-cognitive-complexity)
