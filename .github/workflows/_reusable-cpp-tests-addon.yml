@@ -25,6 +25,15 @@ on:
         required: false
         type: string
         default: ""
+      test_models:
+        description: >
+          JSON array of HuggingFace model specs to download before tests.
+          Format per entry: "owner/repo/filename"
+          Rename: "owner/repo/filename=output_name"
+          Shards: "owner/repo/printf_pattern*count"
+        required: false
+        type: string
+        default: "[]"
     secrets:
       NPM_TOKEN:
         required: true
@@ -150,6 +159,53 @@ jobs:
             exit 1
           fi
           glslc --version
+
+      - name: Download test models
+        if: inputs.test_models != '[]'
+        shell: bash
+        working-directory: ${{ env.WORKDIR }}
+        env:
+          MODEL_SPECS: ${{ inputs.test_models }}
+        run: |
+          set -euo pipefail
+          HF="https://huggingface.co"
+          DEST="models/unit-test"
+          mkdir -p "$DEST"
+
+          echo "$MODEL_SPECS" | jq -r '.[]' | while IFS= read -r spec; do
+            if [[ "$spec" == *'*'* ]]; then
+              count="${spec##*\*}"
+              rest="${spec%%\**}"
+              repo="${rest%/*}"
+              pattern="${rest##*/}"
+              echo "Downloading $count shards ($pattern) from $repo..."
+              for i in $(seq 1 "$count"); do
+                shard=$(printf "$pattern" "$i" "$count")
+                curl -L --fail --retry 3 --retry-all-errors --retry-delay 2 \
+                  "${HF}/${repo}/resolve/main/${shard}" -o "${DEST}/${shard}"
+              done
+              continue
+            fi
+
+            if [[ "$spec" == *'='* ]]; then
+              output="${spec##*=}"
+              src="${spec%%=*}"
+            else
+              src="$spec"
+              output=""
+            fi
+
+            repo="${src%/*}"
+            file="${src##*/}"
+            [ -z "$output" ] && output="$file"
+
+            echo "Downloading $file from $repo..."
+            curl -L --fail --retry 3 --retry-all-errors --retry-delay 2 \
+              "${HF}/${repo}/resolve/main/${file}" -o "${DEST}/${output}"
+          done
+
+          echo "Downloaded models:"
+          ls -lh "$DEST/"
 
       - name: Generate C++ build
         shell: bash
