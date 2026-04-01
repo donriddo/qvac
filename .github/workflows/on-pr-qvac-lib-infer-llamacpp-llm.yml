@@ -79,9 +79,7 @@ jobs:
     if: needs.authorize.outputs.allowed == 'true'
     uses: tetherto/qvac-devops/.github/workflows/cpp-lint.yaml@v1.1.7
     needs: authorize
-    secrets:
-      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-      PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
+    secrets: inherit
     with:
       sha: ${{ github.event.pull_request.base.sha }}
       pr_head_sha: ${{ github.event.pull_request.head.sha }}
