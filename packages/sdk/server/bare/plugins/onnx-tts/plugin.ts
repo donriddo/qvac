@@ -51,18 +51,20 @@ async function resolveEnhancerArtifacts(
   return paths;
 }
 
-function flattenEnhancerToAddonArgs(
+function buildEnhancerArg(
   enhancer: { type: string; enhance?: boolean | undefined; denoise?: boolean | undefined } | undefined,
   artifacts: Record<string, string | undefined>,
-  args: Record<string, unknown>,
 ) {
-  if (!enhancer || enhancer.type !== "lavasr") return;
+  if (!enhancer || enhancer.type !== "lavasr") return undefined;
 
-  if (enhancer.enhance !== undefined) args["enhance"] = enhancer.enhance;
-  if (enhancer.denoise !== undefined) args["denoise"] = enhancer.denoise;
-  if (artifacts["enhancerBackbonePath"]) args["enhancerBackbonePath"] = artifacts["enhancerBackbonePath"];
-  if (artifacts["enhancerSpecHeadPath"]) args["enhancerSpecHeadPath"] = artifacts["enhancerSpecHeadPath"];
-  if (artifacts["denoiserPath"]) args["denoiserPath"] = artifacts["denoiserPath"];
+  return {
+    type: "lavasr" as const,
+    ...(enhancer.enhance !== undefined && { enhance: enhancer.enhance }),
+    ...(enhancer.denoise !== undefined && { denoise: enhancer.denoise }),
+    ...(artifacts["enhancerBackbonePath"] && { backbonePath: artifacts["enhancerBackbonePath"] }),
+    ...(artifacts["enhancerSpecHeadPath"] && { specHeadPath: artifacts["enhancerSpecHeadPath"] }),
+    ...(artifacts["denoiserPath"] && { denoiserPath: artifacts["denoiserPath"] }),
+  };
 }
 
 async function resolveChatterboxConfig(
@@ -244,7 +246,8 @@ function createChatterboxModel(
   };
 
   if (config.outputSampleRate !== undefined) args["outputSampleRate"] = config.outputSampleRate;
-  flattenEnhancerToAddonArgs(config.enhancer, artifacts, args);
+  const enhancerArg = buildEnhancerArg(config.enhancer, artifacts);
+  if (enhancerArg) args["enhancer"] = enhancerArg;
 
   const modelConfig = { language: config.language ?? "en", useGPU: false };
   const model = new ONNXTTS(args as never, modelConfig);
@@ -290,7 +293,8 @@ function createSupertonicModel(
   };
 
   if (config.outputSampleRate !== undefined) args["outputSampleRate"] = config.outputSampleRate;
-  flattenEnhancerToAddonArgs(config.enhancer, artifacts, args);
+  const enhancerArg = buildEnhancerArg(config.enhancer, artifacts);
+  if (enhancerArg) args["enhancer"] = enhancerArg;
 
   const modelConfig = { language: config.language ?? "en" };
   const model = new ONNXTTS(args as never, modelConfig);
