@@ -63,10 +63,6 @@ jobs:
     runs-on: ${{ matrix.runner || matrix.os }}
     environment: release
     name: cpp-tests-${{ matrix.platform }}-${{ matrix.arch }}
-    permissions:
-      contents: read
-      checks: write
-      pull-requests: write
     env:
       WORKDIR: ${{ inputs.workdir }}
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
