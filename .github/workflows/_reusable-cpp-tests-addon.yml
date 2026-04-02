@@ -125,6 +125,21 @@ jobs:
           needs-rust-targets: "false"
           needs-submodules: "false"
 
+      - name: Install AWS CLI (Windows)
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          if (-not (Get-Command aws -ErrorAction SilentlyContinue)) {
+            Write-Host "Installing AWS CLI..."
+            $msi = "$env:RUNNER_TEMP\AWSCLIV2.msi"
+            Invoke-WebRequest -Uri "https://awscli.amazonaws.com/AWSCLIV2.msi" -OutFile $msi
+            Start-Process msiexec -ArgumentList "/i $msi /qn" -Wait
+            $awsPath = "C:\Program Files\Amazon\AWSCLIV2"
+            echo "$awsPath" >> $env:GITHUB_PATH
+          } else {
+            Write-Host "AWS CLI already installed"
+          }
+
       - name: Setup vcpkg cache
         uses: ./.github/actions/setup-vcpkg-cache
         with:
