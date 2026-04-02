@@ -121,8 +121,16 @@ jobs:
 
       - if: ${{ matrix.os == 'ubuntu-24.04' }}
         name: Configure vcpkg in linux
-        working-directory: ${{ env.WORKDIR }}
-        run: echo "VCPKG_ROOT=$VCPKG_INSTALLATION_ROOT" >> $GITHUB_ENV
+        shell: bash
+        run: |
+          if [ -n "${VCPKG_INSTALLATION_ROOT:-}" ] && [ -d "$VCPKG_INSTALLATION_ROOT" ]; then
+            echo "Using pre-installed vcpkg at $VCPKG_INSTALLATION_ROOT"
+            echo "VCPKG_ROOT=$VCPKG_INSTALLATION_ROOT" >> "$GITHUB_ENV"
+          else
+            git clone --branch 2025.12.12 --single-branch https://github.com/microsoft/vcpkg.git /tmp/vcpkg
+            /tmp/vcpkg/bootstrap-vcpkg.sh -disableMetrics
+            echo "VCPKG_ROOT=/tmp/vcpkg" >> "$GITHUB_ENV"
+          fi
 
       - if: ${{ matrix.os == 'windows-11' }}
         name: Configure CMake generator on Windows
