@@ -186,7 +186,7 @@ jobs:
           npm install
           npm install -g bare bare-make
 
-      - if: ${{ matrix.os == 'ubuntu-24.04' }}
+      - if: ${{ matrix.os == 'ubuntu-24.04' || matrix.os == 'macos-14' }}
         name: Download SD2 model for C++ tests
         working-directory: ${{ env.WORKDIR }}
         run: |
