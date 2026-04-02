@@ -203,6 +203,11 @@ jobs:
           LSAN_OPTIONS: suppressions=${{ github.workspace }}/.lsan-suppressions.txt
           SD_TEST_MODEL_PATH: ${{ github.workspace }}/${{ env.WORKDIR }}/test/model/stable-diffusion-v2-1-Q8_0.gguf
         run: |
+          echo "SD_TEST_MODEL_PATH=$SD_TEST_MODEL_PATH"
+          ls -lh "$SD_TEST_MODEL_PATH"
+          test -f "$SD_TEST_MODEL_PATH"
+          export SD_TEST_MODEL_PATH="$SD_TEST_MODEL_PATH"
+
           EXE="build/test/unit/addon-test"
           if [ -f "build/test/unit/addon-test.exe" ]; then
             EXE="build/test/unit/addon-test.exe"
