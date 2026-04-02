@@ -174,8 +174,11 @@ jobs:
         working-directory: ${{ env.WORKDIR }}
         run: |
           ./scripts/download-model-sd2.sh
+          find . -name "stable-diffusion-v2-1-Q8_0.gguf"
+          MODEL_PATH=$(find . -name "stable-diffusion-v2-1-Q8_0.gguf" | head -n 1)
+          test -f "$MODEL_PATH"
           mkdir -p ./test/model
-          cp -f ./models/stable-diffusion-v2-1-Q8_0.gguf ./test/model/stable-diffusion-v2-1-Q8_0.gguf
+          cp "$MODEL_PATH" ./test/model/stable-diffusion-v2-1-Q8_0.gguf
           test -f ./test/model/stable-diffusion-v2-1-Q8_0.gguf
 
       - if: ${{ matrix.platform == 'darwin' }}
@@ -201,7 +204,7 @@ jobs:
         working-directory: ${{ env.WORKDIR }}
         env:
           LSAN_OPTIONS: suppressions=${{ github.workspace }}/.lsan-suppressions.txt
-          SD_TEST_MODEL_PATH: ${{ github.workspace }}/${{ env.WORKDIR }}/test/model/stable-diffusion-v2-1-Q8_0.gguf
+          SD_TEST_MODEL_PATH: ${{ github.workspace }}/${{ env.WORKDIR }}/test/model/stable-diffusion-v2-1_Q8_0.gguf
         run: |
           echo "SD_TEST_MODEL_PATH=$SD_TEST_MODEL_PATH"
           ls -lh "$SD_TEST_MODEL_PATH"
