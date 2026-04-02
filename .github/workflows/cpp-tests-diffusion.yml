@@ -65,9 +65,11 @@ jobs:
         name: Install llvm-19 on Linux
         working-directory: ${{ env.WORKDIR }}
         run: |
-          wget https://apt.llvm.org/llvm.sh
-          chmod +x llvm.sh
-          sudo ./llvm.sh 19 all
+          curl -fsSL https://apt.llvm.org/llvm-snapshot.gpg.key | gpg --dearmor | sudo tee /usr/share/keyrings/llvm-archive-keyring.gpg > /dev/null
+          sudo chmod 644 /usr/share/keyrings/llvm-archive-keyring.gpg
+          echo "deb [signed-by=/usr/share/keyrings/llvm-archive-keyring.gpg] http://apt.llvm.org/noble/ llvm-toolchain-noble-19 main" | sudo tee /etc/apt/sources.list.d/llvm-toolchain-noble-19.list > /dev/null
+          sudo apt-get update
+          sudo apt-get install -y llvm-19 llvm-19-tools llvm-19-dev clang-19 clang-tidy-19 clang-format-19 lld-19 llvm-19-runtime
 
       - if: ${{ matrix.os == 'ubuntu-24.04' }}
         name: Install Vulkan SDK on Linux
