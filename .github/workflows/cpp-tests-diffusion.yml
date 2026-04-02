@@ -127,6 +127,8 @@ jobs:
             echo "Using pre-installed vcpkg at $VCPKG_INSTALLATION_ROOT"
             echo "VCPKG_ROOT=$VCPKG_INSTALLATION_ROOT" >> "$GITHUB_ENV"
           else
+            sudo apt-get update
+            sudo apt-get install -y zip unzip tar curl
             git clone --branch 2025.12.12 --single-branch https://github.com/microsoft/vcpkg.git /tmp/vcpkg
             /tmp/vcpkg/bootstrap-vcpkg.sh -disableMetrics
             echo "VCPKG_ROOT=/tmp/vcpkg" >> "$GITHUB_ENV"
