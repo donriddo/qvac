@@ -17,6 +17,7 @@ import {
   type TtsChatterboxRuntimeConfig,
   type TtsSupertonicRuntimeConfig,
   type TtsRuntimeConfig,
+  type TtsEnhancerConfig,
 } from "@/schemas";
 import { createStreamLogger, registerAddonLogger } from "@/logging";
 import {
@@ -27,29 +28,41 @@ import { textToSpeech } from "@/server/bare/plugins/onnx-tts/ops/text-to-speech"
 import { attachModelExecutionMs } from "@/profiling/model-execution";
 import { loadReferenceAudioAt24k } from "@/server/bare/plugins/onnx-tts/wav-helper";
 
-async function resolveLavaSRArtifacts(
-  config: TtsChatterboxConfig | TtsSupertonicConfig,
+async function resolveEnhancerArtifacts(
+  enhancer: TtsEnhancerConfig | undefined,
   resolve: ResolveContext["resolveModelPath"],
 ) {
+  if (!enhancer || enhancer.type !== "lavasr") return {};
+
   const paths: Record<string, string> = {};
   const promises: Promise<void>[] = [];
 
-  const bbSrc = config.ttsEnhancerBackboneSrc;
-  const shSrc = config.ttsEnhancerSpecHeadSrc;
-  const dnSrc = config.ttsDenoiserSrc;
-
-  if (bbSrc) {
-    promises.push(resolve(bbSrc).then((p) => { paths["enhancerBackbonePath"] = path.resolve(p); }));
+  if (enhancer.backboneSrc) {
+    promises.push(resolve(enhancer.backboneSrc).then((p) => { paths["enhancerBackbonePath"] = path.resolve(p); }));
   }
-  if (shSrc) {
-    promises.push(resolve(shSrc).then((p) => { paths["enhancerSpecHeadPath"] = path.resolve(p); }));
+  if (enhancer.specHeadSrc) {
+    promises.push(resolve(enhancer.specHeadSrc).then((p) => { paths["enhancerSpecHeadPath"] = path.resolve(p); }));
   }
-  if (dnSrc) {
-    promises.push(resolve(dnSrc).then((p) => { paths["denoiserPath"] = path.resolve(p); }));
+  if (enhancer.denoiserSrc) {
+    promises.push(resolve(enhancer.denoiserSrc).then((p) => { paths["denoiserPath"] = path.resolve(p); }));
   }
 
   await Promise.all(promises);
   return paths;
+}
+
+function flattenEnhancerToAddonArgs(
+  enhancer: { type: string; enhance?: boolean | undefined; denoise?: boolean | undefined } | undefined,
+  artifacts: Record<string, string | undefined>,
+  args: Record<string, unknown>,
+) {
+  if (!enhancer || enhancer.type !== "lavasr") return;
+
+  if (enhancer.enhance !== undefined) args["enhance"] = enhancer.enhance;
+  if (enhancer.denoise !== undefined) args["denoise"] = enhancer.denoise;
+  if (artifacts["enhancerBackbonePath"]) args["enhancerBackbonePath"] = artifacts["enhancerBackbonePath"];
+  if (artifacts["enhancerSpecHeadPath"]) args["enhancerSpecHeadPath"] = artifacts["enhancerSpecHeadPath"];
+  if (artifacts["denoiserPath"]) args["denoiserPath"] = artifacts["denoiserPath"];
 }
 
 async function resolveChatterboxConfig(
@@ -64,9 +77,8 @@ async function resolveChatterboxConfig(
     ttsLanguageModelSrc,
     referenceAudioSrc,
     language,
-    enhance,
-    denoise,
     outputSampleRate,
+    enhancer,
   } = config;
 
   if (
@@ -99,15 +111,18 @@ async function resolveChatterboxConfig(
     resolve(referenceAudioSrc),
   ]);
 
-  const lavaSRArtifacts = await resolveLavaSRArtifacts(config, resolve);
+  const enhancerArtifacts = await resolveEnhancerArtifacts(enhancer, resolve);
+
+  const runtimeEnhancer = enhancer
+    ? { type: enhancer.type as "lavasr", enhance: enhancer.enhance, denoise: enhancer.denoise }
+    : undefined;
 
   return {
     config: {
       ttsEngine: "chatterbox",
       language,
-      ...(enhance !== undefined && { enhance }),
-      ...(denoise !== undefined && { denoise }),
       ...(outputSampleRate !== undefined && { outputSampleRate }),
+      ...(runtimeEnhancer && { enhancer: runtimeEnhancer }),
     } as TtsChatterboxRuntimeConfig,
     artifacts: {
       tokenizerPath,
@@ -116,7 +131,7 @@ async function resolveChatterboxConfig(
       conditionalDecoderPath,
       languageModelPath,
       referenceAudioPath,
-      ...lavaSRArtifacts,
+      ...enhancerArtifacts,
     },
   };
 }
@@ -134,9 +149,8 @@ async function resolveSupertonicConfig(
     ttsSpeed,
     ttsNumInferenceSteps,
     language,
-    enhance,
-    denoise,
     outputSampleRate,
+    enhancer,
   } = config;
 
   if (
@@ -164,7 +178,11 @@ async function resolveSupertonicConfig(
     resolve(ttsVoiceSrc),
   ]);
 
-  const lavaSRArtifacts = await resolveLavaSRArtifacts(config, resolve);
+  const enhancerArtifacts = await resolveEnhancerArtifacts(enhancer, resolve);
+
+  const runtimeEnhancer = enhancer
+    ? { type: enhancer.type as "lavasr", enhance: enhancer.enhance, denoise: enhancer.denoise }
+    : undefined;
 
   return {
     config: {
@@ -172,9 +190,8 @@ async function resolveSupertonicConfig(
       language,
       ttsSpeed,
       ttsNumInferenceSteps,
-      ...(enhance !== undefined && { enhance }),
-      ...(denoise !== undefined && { denoise }),
       ...(outputSampleRate !== undefined && { outputSampleRate }),
+      ...(runtimeEnhancer && { enhancer: runtimeEnhancer }),
     } as TtsSupertonicRuntimeConfig,
     artifacts: {
       tokenizerPath,
@@ -182,7 +199,7 @@ async function resolveSupertonicConfig(
       latentDenoiserPath,
       voiceDecoderPath,
       voicePath,
-      ...lavaSRArtifacts,
+      ...enhancerArtifacts,
     },
   };
 }
@@ -226,12 +243,8 @@ function createChatterboxModel(
     opts: { stats: true },
   };
 
-  if (config.enhance !== undefined) args["enhance"] = config.enhance;
-  if (config.denoise !== undefined) args["denoise"] = config.denoise;
   if (config.outputSampleRate !== undefined) args["outputSampleRate"] = config.outputSampleRate;
-  if (artifacts["enhancerBackbonePath"]) args["enhancerBackbonePath"] = artifacts["enhancerBackbonePath"];
-  if (artifacts["enhancerSpecHeadPath"]) args["enhancerSpecHeadPath"] = artifacts["enhancerSpecHeadPath"];
-  if (artifacts["denoiserPath"]) args["denoiserPath"] = artifacts["denoiserPath"];
+  flattenEnhancerToAddonArgs(config.enhancer, artifacts, args);
 
   const modelConfig = { language: config.language ?? "en", useGPU: false };
   const model = new ONNXTTS(args as never, modelConfig);
@@ -276,12 +289,8 @@ function createSupertonicModel(
     opts: { stats: true },
   };
 
-  if (config.enhance !== undefined) args["enhance"] = config.enhance;
-  if (config.denoise !== undefined) args["denoise"] = config.denoise;
   if (config.outputSampleRate !== undefined) args["outputSampleRate"] = config.outputSampleRate;
-  if (artifacts["enhancerBackbonePath"]) args["enhancerBackbonePath"] = artifacts["enhancerBackbonePath"];
-  if (artifacts["enhancerSpecHeadPath"]) args["enhancerSpecHeadPath"] = artifacts["enhancerSpecHeadPath"];
-  if (artifacts["denoiserPath"]) args["denoiserPath"] = artifacts["denoiserPath"];
+  flattenEnhancerToAddonArgs(config.enhancer, artifacts, args);
 
   const modelConfig = { language: config.language ?? "en" };
   const model = new ONNXTTS(args as never, modelConfig);

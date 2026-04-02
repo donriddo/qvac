@@ -13,9 +13,11 @@ export async function* textToSpeech(
   const model = getModel(modelId);
 
   const runInput: Record<string, unknown> = { input: text, inputType: parsed.inputType };
-  if (parsed.enhance !== undefined) runInput["enhance"] = parsed.enhance;
-  if (parsed.denoise !== undefined) runInput["denoise"] = parsed.denoise;
   if (parsed.outputSampleRate !== undefined) runInput["outputSampleRate"] = parsed.outputSampleRate;
+  if (parsed.enhancer?.type === "lavasr") {
+    if (parsed.enhancer.enhance !== undefined) runInput["enhance"] = parsed.enhancer.enhance;
+    if (parsed.enhancer.denoise !== undefined) runInput["denoise"] = parsed.enhancer.denoise;
+  }
 
   const modelStart = nowMs();
   const response = (await model.run(runInput)) as unknown as TtsResponse;

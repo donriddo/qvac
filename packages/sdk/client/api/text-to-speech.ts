@@ -21,9 +21,8 @@ export function textToSpeech(
     inputType: params.inputType,
     text: params.text,
     stream: params.stream,
-    ...(params.enhance !== undefined && { enhance: params.enhance }),
-    ...(params.denoise !== undefined && { denoise: params.denoise }),
     ...(params.outputSampleRate !== undefined && { outputSampleRate: params.outputSampleRate }),
+    ...(params.enhancer !== undefined && { enhancer: params.enhancer }),
   };
 
   let doneResolver: (value: boolean) => void = () => {};

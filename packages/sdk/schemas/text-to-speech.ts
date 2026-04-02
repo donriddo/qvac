@@ -11,22 +11,30 @@ export const TTS_LANGUAGES = [
 
 const ttsLanguageSchema = z.enum(TTS_LANGUAGES);
 
-const lavaSRRuntimeFields = {
+export const lavaSREnhancerConfigSchema = z.object({
+  type: z.literal("lavasr"),
   enhance: z.boolean().optional(),
   denoise: z.boolean().optional(),
-  outputSampleRate: z.number().int().min(8000).max(192000).optional(),
-};
+  backboneSrc: modelSrcInputSchema.optional(),
+  specHeadSrc: modelSrcInputSchema.optional(),
+  denoiserSrc: modelSrcInputSchema.optional(),
+});
 
-const lavaSRModelFields = {
-  ttsEnhancerBackboneSrc: modelSrcInputSchema.optional(),
-  ttsEnhancerSpecHeadSrc: modelSrcInputSchema.optional(),
-  ttsDenoiserSrc: modelSrcInputSchema.optional(),
-};
+export const ttsEnhancerConfigSchema = z.discriminatedUnion("type", [
+  lavaSREnhancerConfigSchema,
+]);
 
 export const ttsChatterboxRuntimeConfigSchema = z.object({
   ttsEngine: z.literal("chatterbox"),
   language: ttsLanguageSchema,
-  ...lavaSRRuntimeFields,
+  outputSampleRate: z.number().int().min(8000).max(192000).optional(),
+  enhancer: z
+    .object({
+      type: z.literal("lavasr"),
+      enhance: z.boolean().optional(),
+      denoise: z.boolean().optional(),
+    })
+    .optional(),
 });
 
 export const ttsSupertonicRuntimeConfigSchema = z.object({
@@ -34,7 +42,14 @@ export const ttsSupertonicRuntimeConfigSchema = z.object({
   language: ttsLanguageSchema,
   ttsSpeed: z.number().optional(),
   ttsNumInferenceSteps: z.number().optional(),
-  ...lavaSRRuntimeFields,
+  outputSampleRate: z.number().int().min(8000).max(192000).optional(),
+  enhancer: z
+    .object({
+      type: z.literal("lavasr"),
+      enhance: z.boolean().optional(),
+      denoise: z.boolean().optional(),
+    })
+    .optional(),
 });
 
 export const ttsRuntimeConfigSchema = z.union([
@@ -49,7 +64,7 @@ export const ttsChatterboxConfigSchema = ttsChatterboxRuntimeConfigSchema.extend
   ttsConditionalDecoderSrc: modelSrcInputSchema,
   ttsLanguageModelSrc: modelSrcInputSchema,
   referenceAudioSrc: modelSrcInputSchema,
-  ...lavaSRModelFields,
+  enhancer: ttsEnhancerConfigSchema.optional(),
 });
 
 export const ttsSupertonicConfigSchema = ttsSupertonicRuntimeConfigSchema.extend({
@@ -58,7 +73,7 @@ export const ttsSupertonicConfigSchema = ttsSupertonicRuntimeConfigSchema.extend
   ttsLatentDenoiserSrc: modelSrcInputSchema,
   ttsVoiceDecoderSrc: modelSrcInputSchema,
   ttsVoiceSrc: modelSrcInputSchema,
-  ...lavaSRModelFields,
+  enhancer: ttsEnhancerConfigSchema.optional(),
 });
 
 export const ttsConfigSchema = z.union([
@@ -66,14 +81,19 @@ export const ttsConfigSchema = z.union([
   ttsSupertonicConfigSchema,
 ]);
 
+const ttsEnhancerPerRequestSchema = z.object({
+  type: z.literal("lavasr"),
+  enhance: z.boolean().optional(),
+  denoise: z.boolean().optional(),
+});
+
 export const ttsClientParamsSchema = z.object({
   modelId: z.string(),
   inputType: z.string().default("text"),
   text: z.string().trim().min(1, "text must not be empty or whitespace-only"),
   stream: z.boolean().default(true),
-  enhance: z.boolean().optional(),
-  denoise: z.boolean().optional(),
   outputSampleRate: z.number().int().min(8000).max(192000).optional(),
+  enhancer: ttsEnhancerPerRequestSchema.optional(),
 });
 
 export const ttsRequestSchema = ttsClientParamsSchema.extend({
@@ -95,6 +115,8 @@ export const ttsResponseSchema = z.object({
 });
 
 export type TtsLanguage = (typeof TTS_LANGUAGES)[number];
+export type TtsEnhancerConfig = z.infer<typeof ttsEnhancerConfigSchema>;
+export type LavaSREnhancerConfig = z.infer<typeof lavaSREnhancerConfigSchema>;
 export type TtsChatterboxConfig = z.infer<typeof ttsChatterboxConfigSchema>;
 export type TtsSupertonicConfig = z.infer<typeof ttsSupertonicConfigSchema>;
 export type TtsConfig = z.infer<typeof ttsConfigSchema>;

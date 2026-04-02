@@ -16,20 +16,17 @@ import {
   createWavHeader,
 } from "./utils";
 
-// Chatterbox TTS with LavaSR neural speech enhancement.
-// Produces 48kHz enhanced audio from Chatterbox's native 24kHz output.
+// Chatterbox TTS with LavaSR neural speech enhancement (48kHz output).
 // Usage: node chatterbox-enhanced.js <referenceAudioSrc> <enhancerBackbone> <enhancerSpecHead> [denoiserPath]
-const [referenceAudioSrc, enhancerBackbonePath, enhancerSpecHeadPath, denoiserPath] =
+const [referenceAudioSrc, backboneSrc, specHeadSrc, denoiserSrc] =
   process.argv.slice(2);
 
-if (!referenceAudioSrc || !enhancerBackbonePath || !enhancerSpecHeadPath) {
+if (!referenceAudioSrc || !backboneSrc || !specHeadSrc) {
   console.error(
     "Usage: node chatterbox-enhanced.js <referenceAudioSrc> <enhancerBackbone> <enhancerSpecHead> [denoiserPath]",
   );
   process.exit(1);
 }
-
-const ENHANCED_SAMPLE_RATE = 48000;
 
 try {
   const modelId = await loadModel({
@@ -44,11 +41,14 @@ try {
       ttsConditionalDecoderSrc: TTS_CONDITIONAL_DECODER_EN_CHATTERBOX_FP32.src,
       ttsLanguageModelSrc: TTS_LANGUAGE_MODEL_EN_CHATTERBOX_FP32.src,
       referenceAudioSrc,
-      enhance: true,
-      ...(denoiserPath ? { denoise: true } : {}),
-      ttsEnhancerBackboneSrc: enhancerBackbonePath,
-      ttsEnhancerSpecHeadSrc: enhancerSpecHeadPath,
-      ...(denoiserPath ? { ttsDenoiserSrc: denoiserPath } : {}),
+      enhancer: {
+        type: "lavasr",
+        enhance: true,
+        ...(denoiserSrc ? { denoise: true } : {}),
+        backboneSrc,
+        specHeadSrc,
+        ...(denoiserSrc ? { denoiserSrc } : {}),
+      },
     },
     onProgress: (progress: ModelProgressUpdate) => {
       console.log(progress);
@@ -57,7 +57,6 @@ try {
 
   console.log(`Model loaded: ${modelId}`);
 
-  // Enhanced synthesis (48kHz via LavaSR)
   console.log("🎵 Synthesizing with LavaSR enhancement...");
   const result = textToSpeech({
     modelId,
@@ -67,17 +66,17 @@ try {
   });
 
   const audioBuffer = await result.buffer;
-  const sampleRate = (await result.sampleRate) ?? ENHANCED_SAMPLE_RATE;
-  console.log(`TTS complete. ${audioBuffer.length} samples @ ${sampleRate}Hz`);
+  const sampleRate = await result.sampleRate;
+  console.log(`TTS complete. Total samples: ${audioBuffer.length}, sample rate: ${sampleRate}Hz`);
 
   console.log("💾 Saving audio to file...");
-  createWav(audioBuffer, sampleRate, "tts-enhanced-output.wav");
+  createWav(audioBuffer, sampleRate ?? 24000, "tts-enhanced-output.wav");
   console.log("✅ Audio saved to tts-enhanced-output.wav");
 
   console.log("🔊 Playing audio...");
   const audioData = int16ArrayToBuffer(audioBuffer);
   const wavBuffer = Buffer.concat([
-    createWavHeader(audioData.length, sampleRate),
+    createWavHeader(audioData.length, sampleRate ?? 24000),
     audioData,
   ]);
   playAudio(wavBuffer);
