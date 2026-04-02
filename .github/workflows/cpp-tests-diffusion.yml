@@ -69,7 +69,7 @@ jobs:
           sudo chmod 644 /usr/share/keyrings/llvm-archive-keyring.gpg
           echo "deb [signed-by=/usr/share/keyrings/llvm-archive-keyring.gpg] http://apt.llvm.org/noble/ llvm-toolchain-noble-19 main" | sudo tee /etc/apt/sources.list.d/llvm-toolchain-noble-19.list > /dev/null
           sudo apt-get update
-          sudo apt-get install -y llvm-19 llvm-19-tools llvm-19-dev clang-19 clang-tidy-19 clang-format-19 lld-19 llvm-19-runtime
+          sudo apt-get install -y llvm-19 llvm-19-tools llvm-19-dev clang-19 clang-tidy-19 clang-format-19 lld-19 llvm-19-runtime libc++-19-dev libc++abi-19-dev
 
       - if: ${{ matrix.os == 'ubuntu-24.04' }}
         name: Install Vulkan SDK on Linux
