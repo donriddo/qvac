@@ -27,22 +27,11 @@ const char* getToolsDynamicQwen3Template() {
         {%- endif %}
     {%- elif message.role == "assistant" %}
         {%- set content = message.content %}
-        {%- set reasoning_content = '' %}
-        {%- if message.reasoning_content is defined and message.reasoning_content is not none %}
-            {%- set reasoning_content = message.reasoning_content %}
-        {%- else %}
-            {%- if '</think>' in message.content %}
-                {%- set parts = message.content.split('</think>') %}
-                {%- set content = parts[-1] | trim %}
-                {%- set think_parts = parts[0].split('<think>') %}
-                {%- set reasoning_content = think_parts[-1] | trim %}
-            {%- endif %}
+        {%- if '</think>' in message.content %}
+            {%- set parts = message.content.split('</think>') %}
+            {%- set content = parts[-1] | trim %}
         {%- endif %}
-        {%- if reasoning_content %}
-            {{- '<|im_start|>' + message.role + '\n<think>\n' + (reasoning_content | trim) + '\n</think>\n\n' + (content | trim) }}
-        {%- else %}
-            {{- '<|im_start|>' + message.role + '\n' + content }}
-        {%- endif %}
+        {{- '<|im_start|>' + message.role + '\n' + content }}
         {%- if message.tool_calls %}
             {%- for tool_call in message.tool_calls %}
                 {%- if (loop.first and content) or (not loop.first) %}
