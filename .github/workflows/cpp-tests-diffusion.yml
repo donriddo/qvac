@@ -211,7 +211,9 @@ jobs:
         env:
           CC: clang-19
           CXX: clang++-19
-        run: npm run coverage:cpp:build
+        run: |
+          bare-make generate --platform ${{ matrix.platform }} --arch ${{ matrix.arch }} -D BUILD_TESTING=ON -D ENABLE_COVERAGE=ON
+          bare-make build --target addon-test
 
       - name: Build C++ tests
         if: ${{ matrix.os != 'ubuntu-24.04' }}
