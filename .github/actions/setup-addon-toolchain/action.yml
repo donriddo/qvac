@@ -168,7 +168,11 @@ runs:
       shell: powershell
       run: |
         git config --system core.longpaths true
-        choco upgrade llvm --version=19.1.7 -y
+        if (-not (Get-Command clang -ErrorAction SilentlyContinue)) {
+          choco upgrade llvm --version=19.1.7 -y
+        } else {
+          Write-Host "LLVM already installed: $(clang --version | Select-Object -First 1)"
+        }
         "CMAKE_GENERATOR=Visual Studio 17 2022" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8 -Append
         if ("${{ inputs.arch }}" -eq "x64") {
           "CMAKE_GENERATOR_PLATFORM=x64" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8 -Append
