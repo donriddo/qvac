@@ -624,8 +624,9 @@ TEST_F(
       R"("city": {"type": "string"})"
       R"(}, "required": ["city"]}})";
 
-  // Long user message to ensure conversation region > n_discarded (50).
-  // ~150 tokens of user text → safeLimit ≈ 150 > 50, no clamping.
+  // Very long user message to ensure conversation region > n_discarded (100).
+  // ~300 tokens of user text → safeLimit ≈ 300 > 100, no clamping even
+  // after 2 slides (300-200=100 still >= n_discarded).
   std::string userMsg =
       "I am organizing a large outdoor music festival that will span three "
       "full days next weekend and I need comprehensive weather forecasts for "
@@ -636,7 +637,18 @@ TEST_F(
       "times, and any severe weather advisories or watches that may be in "
       "effect. I also need information about overnight low temperatures "
       "since some attendees will be camping. Additionally check for any "
-      "fog advisories for the early morning sound check sessions.";
+      "fog advisories for the early morning sound check sessions. "
+      "Furthermore I need to know about air quality index measurements "
+      "and pollen count forecasts for allergy sensitive attendees. "
+      "Please also include information about road conditions and any "
+      "construction detours that might affect traffic flow to the venue. "
+      "I would appreciate tidal information for the nearby harbor area "
+      "and marine forecasts for the river cruise after party event. "
+      "Finally check the aviation weather for drone filming permits "
+      "and agricultural forecasts for the organic food vendor section. "
+      "The event insurance company requires all of this documentation "
+      "before they will finalize coverage for the outdoor portions "
+      "of the festival including the main stage and acoustic tent areas.";
 
   std::string sessionPath = "test_sliding_unclamped_qwen3.bin";
 
@@ -678,12 +690,10 @@ TEST_F(
   EXPECT_EQ(baselineSlides, 0) << "Baseline must not slide";
   EXPECT_GT(baselineNPBT, 0) << "Baseline anchor must be set";
 
-  // Verify the conversation region is larger than n_discarded.
-  // Use a small n_discarded so the safe limit stays above it.
-  // With safeLimit ~70 and n_discarded=20, we can handle 3 slides
-  // unclamped (70-60=10 still positive). Limit generation to avoid
-  // exhausting the conversation region.
-  constexpr int nDiscarded = 20;
+  // Verify the conversation region is larger than n_discarded (100).
+  // With ~300 tokens of user text, safeLimit ≈ 300 > 100. Even after
+  // 2 slides (300-200=100), the safe limit still equals n_discarded.
+  constexpr int nDiscarded = 100;
   double safeLimit = baselineNPBT - baselineFirstMsg;
   EXPECT_GT(safeLimit, nDiscarded)
       << "Conversation region (" << safeLimit
@@ -691,12 +701,11 @@ TEST_F(
       << ") for unclamped test";
 
   // ── Phase 3: sliding ──
-  // ctx=300 with prefill ~220 leaves ~80 tokens before first slide.
-  // n_predict=-2 fills context. n_discarded=20 means each slide
-  // discards 20 tokens. With safeLimit ~70, first 3 slides are
-  // unclamped (70, 50, 30 tokens remaining). Generation continues
-  // until model hits EOS or context can't slide anymore.
-  config_files["ctx_size"] = "300";
+  // Prefill ≈ 350 tokens (300 user + 50 tools). ctx=512 leaves
+  // ~160 tokens for generation before first slide. n_predict=-2
+  // fills context. Each slide discards exactly 100 tokens (unclamped
+  // because safeLimit ≈ 300 >> 100).
+  config_files["ctx_size"] = "512";
   config_files["n_discarded"] = std::to_string(nDiscarded);
   config_files["n_predict"] = "-2";
   auto slideModel = createModel();
