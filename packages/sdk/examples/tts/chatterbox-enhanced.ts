@@ -28,6 +28,8 @@ if (!referenceAudioSrc || !backboneSrc || !specHeadSrc) {
   process.exit(1);
 }
 
+const ENHANCED_SAMPLE_RATE = 48000;
+
 try {
   const modelId = await loadModel({
     modelSrc: TTS_TOKENIZER_EN_CHATTERBOX.src,
@@ -66,17 +68,16 @@ try {
   });
 
   const audioBuffer = await result.buffer;
-  const sampleRate = await result.sampleRate;
-  console.log(`TTS complete. Total samples: ${audioBuffer.length}, sample rate: ${sampleRate}Hz`);
+  console.log(`TTS complete. Total samples: ${audioBuffer.length}`);
 
   console.log("💾 Saving audio to file...");
-  createWav(audioBuffer, sampleRate ?? 24000, "tts-enhanced-output.wav");
+  createWav(audioBuffer, ENHANCED_SAMPLE_RATE, "tts-enhanced-output.wav");
   console.log("✅ Audio saved to tts-enhanced-output.wav");
 
   console.log("🔊 Playing audio...");
   const audioData = int16ArrayToBuffer(audioBuffer);
   const wavBuffer = Buffer.concat([
-    createWavHeader(audioData.length, sampleRate ?? 24000),
+    createWavHeader(audioData.length, ENHANCED_SAMPLE_RATE),
     audioData,
   ]);
   playAudio(wavBuffer);

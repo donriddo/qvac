@@ -80,7 +80,6 @@ async function resolveChatterboxConfig(
     ttsLanguageModelSrc,
     referenceAudioSrc,
     language,
-    outputSampleRate,
     enhancer,
   } = config;
 
@@ -121,7 +120,6 @@ async function resolveChatterboxConfig(
     config: {
       ttsEngine: "chatterbox",
       language,
-      ...(outputSampleRate !== undefined && { outputSampleRate }),
       ...(runtimeEnhancer && { enhancer: runtimeEnhancer }),
     } as TtsChatterboxRuntimeConfig,
     artifacts: {
@@ -149,7 +147,6 @@ async function resolveSupertonicConfig(
     ttsSpeed,
     ttsNumInferenceSteps,
     language,
-    outputSampleRate,
     enhancer,
   } = config;
 
@@ -187,7 +184,6 @@ async function resolveSupertonicConfig(
       language,
       ttsSpeed,
       ttsNumInferenceSteps,
-      ...(outputSampleRate !== undefined && { outputSampleRate }),
       ...(runtimeEnhancer && { enhancer: runtimeEnhancer }),
     } as TtsSupertonicRuntimeConfig,
     artifacts: {
@@ -239,7 +235,6 @@ function createChatterboxModel(
     referenceAudio,
     logger,
     opts: { stats: true },
-    ...(config.outputSampleRate !== undefined && { outputSampleRate: config.outputSampleRate }),
     ...(enhancerArg && { enhancer: enhancerArg }),
   };
 
@@ -285,7 +280,6 @@ function createSupertonicModel(
     numInferenceSteps: config.ttsNumInferenceSteps ?? 5,
     logger,
     opts: { stats: true },
-    ...(config.outputSampleRate !== undefined && { outputSampleRate: config.outputSampleRate }),
     ...(enhancerArg && { enhancer: enhancerArg }),
   };
 
@@ -340,7 +334,6 @@ export const ttsPlugin = definePlugin({
               type: "textToSpeech" as const,
               buffer: result.value.buffer,
               done: false,
-              ...(result.value.sampleRate !== undefined && { sampleRate: result.value.sampleRate }),
             };
             result = await stream.next();
           }
@@ -351,7 +344,6 @@ export const ttsPlugin = definePlugin({
             buffer: [],
             done: true,
             ...(stats && { stats }),
-            ...(stats?.sampleRate !== undefined && { sampleRate: stats.sampleRate }),
           }, modelExecutionMs);
         } finally {
           await stream.return?.(undefined as never);

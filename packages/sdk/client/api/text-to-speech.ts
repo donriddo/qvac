@@ -2,18 +2,13 @@ import {
   ttsResponseSchema,
   type TtsClientParams,
   type TtsRequest,
-  type RPCOptions,
 } from "@/schemas";
 import { stream as streamRpc } from "@/client/rpc/rpc-client";
 
-export function textToSpeech(
-  params: TtsClientParams,
-  options?: RPCOptions,
-): {
+export function textToSpeech(params: TtsClientParams): {
   bufferStream: AsyncGenerator<number>;
   buffer: Promise<number[]>;
   done: Promise<boolean>;
-  sampleRate: Promise<number | undefined>;
 } {
   const request: TtsRequest = {
     type: "textToSpeech",
@@ -21,8 +16,6 @@ export function textToSpeech(
     inputType: params.inputType,
     text: params.text,
     stream: params.stream,
-    ...(params.outputSampleRate !== undefined && { outputSampleRate: params.outputSampleRate }),
-    ...(params.enhancer !== undefined && { enhancer: params.enhancer }),
   };
 
   let doneResolver: (value: boolean) => void = () => {};
@@ -30,31 +23,18 @@ export function textToSpeech(
     doneResolver = resolve;
   });
 
-  let sampleRateResolver: (value: number | undefined) => void = () => {};
-  const sampleRatePromise = new Promise<number | undefined>((resolve) => {
-    sampleRateResolver = resolve;
-  });
-
   if (params.stream) {
     const bufferStream = (async function* () {
-      let lastSampleRate: number | undefined;
-      try {
-        for await (const response of streamRpc(request, options)) {
-          if (response.type === "textToSpeech") {
-            const streamResponse = ttsResponseSchema.parse(response);
-            if (streamResponse.sampleRate !== undefined) lastSampleRate = streamResponse.sampleRate;
-            if (streamResponse.buffer.length > 0) {
-              yield* streamResponse.buffer;
-            }
-            if (streamResponse.done) {
-              sampleRateResolver(lastSampleRate ?? streamResponse.stats?.sampleRate);
-              doneResolver(true);
-            }
+      for await (const response of streamRpc(request)) {
+        if (response.type === "textToSpeech") {
+          const streamResponse = ttsResponseSchema.parse(response);
+          if (streamResponse.buffer.length > 0) {
+            yield* streamResponse.buffer;
+          }
+          if (streamResponse.done) {
+            doneResolver(true);
           }
         }
-      } finally {
-        sampleRateResolver(lastSampleRate);
-        doneResolver(false);
       }
     })();
 
@@ -62,7 +42,6 @@ export function textToSpeech(
       bufferStream,
       buffer: Promise.resolve([]),
       done: donePromise,
-      sampleRate: sampleRatePromise,
     };
   } else {
     const bufferStream = (async function* () {
@@ -71,22 +50,14 @@ export function textToSpeech(
 
     const bufferPromise = (async () => {
       let buffer: number[] = [];
-      let lastSampleRate: number | undefined;
-      try {
-        for await (const response of streamRpc(request, options)) {
-          if (response.type === "textToSpeech") {
-            const streamResponse = ttsResponseSchema.parse(response);
-            if (streamResponse.sampleRate !== undefined) lastSampleRate = streamResponse.sampleRate;
-            buffer = buffer.concat(streamResponse.buffer);
-            if (streamResponse.done) {
-              sampleRateResolver(lastSampleRate ?? streamResponse.stats?.sampleRate);
-              doneResolver(true);
-            }
+      for await (const response of streamRpc(request)) {
+        if (response.type === "textToSpeech") {
+          const streamResponse = ttsResponseSchema.parse(response);
+          buffer = buffer.concat(streamResponse.buffer);
+          if (streamResponse.done) {
+            doneResolver(true);
           }
         }
-      } finally {
-        sampleRateResolver(lastSampleRate);
-        doneResolver(false);
       }
       return buffer;
     })();
@@ -95,7 +66,6 @@ export function textToSpeech(
       bufferStream,
       buffer: bufferPromise,
       done: donePromise,
-      sampleRate: sampleRatePromise,
     };
   }
 }

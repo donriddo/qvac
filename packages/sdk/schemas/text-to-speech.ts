@@ -30,7 +30,6 @@ export const ttsEnhancerConfigSchema = z.discriminatedUnion("type", [
 export const ttsChatterboxRuntimeConfigSchema = z.object({
   ttsEngine: z.literal("chatterbox"),
   language: ttsLanguageSchema,
-  outputSampleRate: z.number().int().min(8000).max(192000).optional(),
   enhancer: ttsEnhancerRuntimeSchema.optional(),
 });
 
@@ -39,7 +38,6 @@ export const ttsSupertonicRuntimeConfigSchema = z.object({
   language: ttsLanguageSchema,
   ttsSpeed: z.number().optional(),
   ttsNumInferenceSteps: z.number().optional(),
-  outputSampleRate: z.number().int().min(8000).max(192000).optional(),
   enhancer: ttsEnhancerRuntimeSchema.optional(),
 });
 
@@ -77,8 +75,6 @@ export const ttsClientParamsSchema = z.object({
   inputType: z.string().default("text"),
   text: z.string().trim().min(1, "text must not be empty or whitespace-only"),
   stream: z.boolean().default(true),
-  outputSampleRate: z.number().int().min(8000).max(192000).optional(),
-  enhancer: ttsEnhancerRuntimeSchema.optional(),
 });
 
 export const ttsRequestSchema = ttsClientParamsSchema.extend({
@@ -88,7 +84,6 @@ export const ttsRequestSchema = ttsClientParamsSchema.extend({
 export const ttsStatsSchema = z.object({
   audioDuration: z.number().optional(),
   totalSamples: z.number().optional(),
-  sampleRate: z.number().optional(),
 });
 
 export const ttsResponseSchema = z.object({
@@ -96,7 +91,6 @@ export const ttsResponseSchema = z.object({
   buffer: z.array(z.number()),
   done: z.boolean().default(false),
   stats: ttsStatsSchema.optional(),
-  sampleRate: z.number().optional(),
 });
 
 export type TtsLanguage = (typeof TTS_LANGUAGES)[number];
