@@ -39,6 +39,13 @@ export function setupToolGrammar(
   modelConfig["grammar"] = grammar;
 }
 
+function isInsideThinkBlock(text: string): boolean {
+  const lastOpen = text.lastIndexOf("<think>");
+  if (lastOpen === -1) return false;
+  const lastClose = text.lastIndexOf("</think>");
+  return lastClose < lastOpen;
+}
+
 export function checkForToolEvents(
   accumulatedText: string,
   currentToken: string,
@@ -46,6 +53,10 @@ export function checkForToolEvents(
   emittedToolCallPositions: Set<number>,
 ): ToolCallEvent[] {
   const events: ToolCallEvent[] = [];
+
+  if (isInsideThinkBlock(accumulatedText)) {
+    return events;
+  }
 
   if (currentToken.includes("</tool_call>") || currentToken.includes("}")) {
     const { toolCalls, errors } = parseToolCalls(accumulatedText, tools);

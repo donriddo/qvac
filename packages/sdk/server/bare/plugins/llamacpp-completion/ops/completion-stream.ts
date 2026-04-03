@@ -11,6 +11,7 @@ import {
   logCacheDisabled,
   logCacheInit,
   logCacheSave,
+  logCacheSaveError,
   logCacheStatus,
   logMessagesToAddon,
 } from "@/server/bare/plugins/llamacpp-completion/ops/cache-logger";
@@ -37,20 +38,22 @@ import {
 } from "@/server/utils/tool-integration";
 import { parseToolCalls } from "@/server/utils/tool-parser";
 import { AttachmentNotFoundError } from "@/utils/errors-server";
+import { nowMs } from "@/profiling";
+import { buildStreamResult, hasDefinedValues } from "@/profiling/model-execution";
+import type { LlmStats } from "@/server/bare/types/addon-responses";
 import fs from "bare-fs";
 
+type DebugStats = {
+  promptTokens: number;
+  generatedTokens: number;
+  contextSlides: number;
+  nPastBeforeTools: number;
+  firstMsgTokens: number;
+  toolsTrimmed: number;
+}
+
 interface ResponseWithStats {
-  stats?: {
-    TTFT: number;
-    TPS: number;
-    CacheTokens: number;
-    promptTokens: number;
-    generatedTokens: number;
-    contextSlides: number;
-    nPastBeforeTools: number;
-    firstMsgTokens: number;
-    toolsTrimmed: number;
-  };
+  stats?: LlmStats & DebugStats;
 }
 
 interface ChatHistory {
@@ -244,7 +247,7 @@ async function* processModelResponse(
   generationParams?: GenerationParams,
 ): AsyncGenerator<
   { token: string; toolCallEvent?: ToolCallEvent },
-  { stats: CompletionStats; toolCalls: ToolCall[] },
+  { modelExecutionMs: number; stats?: CompletionStats; toolCalls: ToolCall[] },
   unknown
 > {
   const runFn = model.run.bind(model) as (
@@ -252,6 +255,8 @@ async function* processModelResponse(
     opts?: unknown,
   ) => ReturnType<typeof model.run>;
   const runOptions = generationParams ? { generationParams } : undefined;
+
+  const modelStart = nowMs();
   const response = await runFn(messagesToSend, runOptions);
 
   let accumulatedText = "";
@@ -277,6 +282,7 @@ async function* processModelResponse(
       }
     }
   }
+  const modelExecutionMs = nowMs() - modelStart;
 
   if (tools && tools.length > 0) {
     const { toolCalls } = parseToolCalls(accumulatedText, tools);
@@ -287,31 +293,49 @@ async function* processModelResponse(
     const sessionMsg = messagesToSend.find((m) => m.role === "session");
     if (sessionMsg?.content) {
       logCacheSave(sessionMsg.content);
+      const cachePath = sessionMsg.content;
+      const saveResp = await model.run([
+        { role: "session", content: cachePath },
+        { role: "session", content: "save" },
+      ]);
+      try {
+        await saveResp.await();
+      } catch (err: unknown) {
+        logCacheSaveError(cachePath, err);
+      }
     }
-    await model.run([{ role: "session", content: "save" }]);
   }
 
   const responseWithStats = response as unknown as ResponseWithStats;
-  const stats = {
-    timeToFirstToken: responseWithStats.stats?.TTFT ?? 0,
-    tokensPerSecond: responseWithStats.stats?.TPS ?? 0,
-    cacheTokens: responseWithStats.stats?.CacheTokens ?? 0,
+  const stats: CompletionStats = {
+    ...(responseWithStats.stats?.TTFT !== undefined && {
+      timeToFirstToken: responseWithStats.stats.TTFT,
+    }),
+    ...(responseWithStats.stats?.TPS !== undefined && {
+      tokensPerSecond: responseWithStats.stats.TPS,
+    }),
+    ...(responseWithStats.stats?.CacheTokens !== undefined && {
+      cacheTokens: responseWithStats.stats.CacheTokens,
+    }),
     promptTokens: responseWithStats.stats?.promptTokens ?? 0,
     generatedTokens: responseWithStats.stats?.generatedTokens ?? 0,
     contextSlides: responseWithStats.stats?.contextSlides ?? 0,
     nPastBeforeTools: responseWithStats.stats?.nPastBeforeTools ?? 0,
     firstMsgTokens: responseWithStats.stats?.firstMsgTokens ?? 0,
     toolsTrimmed: (responseWithStats.stats?.toolsTrimmed ?? 0) === 1,
-  };
+  } as CompletionStats;
 
-  return { stats, toolCalls: toolCallsResult };
+  return {
+    ...buildStreamResult(modelExecutionMs, hasDefinedValues(stats) ? stats : undefined),
+    toolCalls: toolCallsResult,
+  };
 }
 
 export async function* completion(
   params: CompletionParams & { tools?: Tool[]; generationParams?: GenerationParams },
 ): AsyncGenerator<
   { token: string; toolCallEvent?: ToolCallEvent },
-  { stats: CompletionStats; toolCalls: ToolCall[] },
+  { modelExecutionMs: number; stats?: CompletionStats; toolCalls: ToolCall[] },
   unknown
 > {
   const { history, modelId, kvCache, tools, generationParams } = params;
