@@ -166,39 +166,6 @@ type HistoryMsg = {
   attachments?: { path: string }[] | undefined;
 }
 
-function lastMessagesWithAssistantFirst (history: HistoryMsg[]): HistoryMsg[] {
-  const userMsg = history[history.length - 1] as HistoryMsg
-  const lastMessages = [userMsg]
-  const prevLLMMsg = history[history.length - 2]
-  /*
-   * Dynamic Tools mode specific: pass prev 'assistant' msg to preserve llm correct history
-   * because at this point llm cache has only 'user' msg
-   */
-  if (userMsg?.role === 'tool') {
-    if (prevLLMMsg?.role === 'assistant') {
-      lastMessages.unshift(prevLLMMsg)
-    } else if (prevLLMMsg?.role === 'tool'){
-      // multiple tool results, find recent 'assistant'
-      lastMessages.unshift(prevLLMMsg)
-      let backIdx = history.length - 3
-      while (backIdx > 0) {
-        const nextMsg = history[backIdx]
-        if (nextMsg?.role === 'tool') {
-          lastMessages.unshift(nextMsg)
-        } else  if (nextMsg?.role === 'assistant') {
-          lastMessages.unshift(nextMsg)
-          break
-        }
-        backIdx -= 1
-      }
-    }
-  }
-  if (userMsg?.role === 'user' && prevLLMMsg?.role === 'assistant') {
-    lastMessages.unshift(prevLLMMsg)
-  }
-  return lastMessages
-}
-
 /**
  * Dynamic tools (anchored) cache contract:
  *
@@ -223,16 +190,14 @@ function prepareMessagesForCache(
   cacheExists: boolean,
   history: HistoryMsg[],
   tools?: Tool[],
-  toolsMode?: string
 ): ChatHistory[] {
   const addTools = tools?.length ? transformMessages(tools) : [];
   if (cacheExists && history.length > 0) {
     const lastMsg = history[history.length - 1] as HistoryMsg;
-    const isToolChainContinuation = toolsMode === ToolsModeType.dynamic && lastMsg.role === 'tool';
+    const isToolChainContinuation = lastMsg.role === 'tool';
     let lastMessages: HistoryMsg[];
     if (isToolChainContinuation) {
       // Collect all consecutive tool responses from the end of history.
-      // The assistant message and tools are already in the KV cache.
       lastMessages = [];
       for (let i = history.length - 1; i >= 0; i--) {
         if ((history[i] as HistoryMsg).role === 'tool') {
@@ -241,8 +206,6 @@ function prepareMessagesForCache(
           break;
         }
       }
-    } else if (toolsMode === ToolsModeType.dynamic) {
-      lastMessages = lastMessagesWithAssistantFirst(history);
     } else {
       lastMessages = [lastMsg];
     }
@@ -390,7 +353,7 @@ export async function* completion(
 
     if (typeof kvCache === "string") {
       cachePathToUse = await getCacheFilePath(modelId, configHash, kvCache);
-      let cacheExists = await customCacheExists(modelId, configHash, kvCache);
+      const cacheExists = await customCacheExists(modelId, configHash, kvCache);
       logCacheStatus(kvCache, cacheExists);
 
       if (!cacheExists) {
@@ -402,7 +365,6 @@ export async function* completion(
           systemTools ? tools : undefined,
         );
         markCacheInitialized(modelId, configHash, kvCache);
-        cacheExists = true;
       }
 
       const messagesToSend = prepareMessagesForCache(
@@ -410,7 +372,6 @@ export async function* completion(
         cacheExists,
         history,
         dynamicTools ? tools : undefined,
-        toolsMode
       );
       logMessagesToAddon(messagesToSend, "PROMPT_SEND");
 
@@ -459,7 +420,6 @@ export async function* completion(
         cacheExists,
         history,
         dynamicTools ? tools : undefined,
-        toolsMode
       );
       logMessagesToAddon(messagesToSend, "PROMPT_SEND");
 
