@@ -99,7 +99,7 @@ test('FLUX.2 klein txt2img — generates a valid PNG image', { timeout: 1800000,
     const tGen = Date.now()
 
     const response = await model.run({
-      prompt: 'a red fox in a snowy forest, laying on a rock with a santa hat, photorealistic',
+      prompt: 'a red fox in a snowy forest, laying on a rock with a santa hat, cartoon, watercolor',
       steps: 10,
       width: 512,
       height: 512,
