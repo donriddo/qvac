@@ -45,9 +45,9 @@ const chatterboxConfig = {
   referenceAudioSrc,
 };
 
-const onProgress = (progress: ModelProgressUpdate) => {
+function onProgress(progress: ModelProgressUpdate) {
   console.log(progress);
-};
+}
 
 function saveAndPlay(samples: number[], sampleRate: number, filename: string) {
   createWav(samples, sampleRate, filename);

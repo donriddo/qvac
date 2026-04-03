@@ -94,6 +94,7 @@ export const ttsResponseSchema = z.object({
 });
 
 export type TtsLanguage = (typeof TTS_LANGUAGES)[number];
+export type TtsEnhancerRuntimeConfig = z.infer<typeof ttsEnhancerRuntimeSchema>;
 export type TtsEnhancerConfig = z.infer<typeof ttsEnhancerConfigSchema>;
 export type LavaSREnhancerConfig = z.infer<typeof lavaSREnhancerConfigSchema>;
 export type TtsChatterboxConfig = z.infer<typeof ttsChatterboxConfigSchema>;

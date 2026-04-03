@@ -179,3 +179,52 @@ test("ttsChatterboxConfigSchema: accepts config without enhancer", (t) => {
   });
   t.is(result.success, true);
 });
+
+test("ttsSupertonicConfigSchema: accepts config without enhancer", (t) => {
+  const result = ttsSupertonicConfigSchema.safeParse({
+    ttsEngine: "supertonic",
+    language: "en",
+    ttsTokenizerSrc: "tok.bin",
+    ttsTextEncoderSrc: "enc.onnx",
+    ttsLatentDenoiserSrc: "den.onnx",
+    ttsVoiceDecoderSrc: "vdec.onnx",
+    ttsVoiceSrc: "voice.bin",
+  });
+  t.is(result.success, true);
+});
+
+// --- Runtime schemas reject load-time model source fields ---
+
+test("ttsChatterboxRuntimeConfigSchema: strips load-time model source fields from enhancer", (t) => {
+  const result = ttsChatterboxRuntimeConfigSchema.safeParse({
+    ttsEngine: "chatterbox",
+    language: "en",
+    enhancer: {
+      type: "lavasr",
+      enhance: true,
+      backboneSrc: "backbone.onnx",
+      specHeadSrc: "spechead.onnx",
+    },
+  });
+  t.is(result.success, true);
+  const keys = Object.keys(result.data?.enhancer ?? {});
+  t.ok(!keys.includes("backboneSrc"), "backboneSrc should be stripped from runtime config");
+  t.ok(!keys.includes("specHeadSrc"), "specHeadSrc should be stripped from runtime config");
+});
+
+test("ttsSupertonicRuntimeConfigSchema: strips load-time model source fields from enhancer", (t) => {
+  const result = ttsSupertonicRuntimeConfigSchema.safeParse({
+    ttsEngine: "supertonic",
+    language: "en",
+    enhancer: {
+      type: "lavasr",
+      enhance: true,
+      backboneSrc: "backbone.onnx",
+      specHeadSrc: "spechead.onnx",
+    },
+  });
+  t.is(result.success, true);
+  const keys = Object.keys(result.data?.enhancer ?? {});
+  t.ok(!keys.includes("backboneSrc"), "backboneSrc should be stripped from runtime config");
+  t.ok(!keys.includes("specHeadSrc"), "specHeadSrc should be stripped from runtime config");
+});

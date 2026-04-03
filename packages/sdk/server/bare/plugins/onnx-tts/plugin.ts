@@ -18,6 +18,7 @@ import {
   type TtsSupertonicRuntimeConfig,
   type TtsRuntimeConfig,
   type TtsEnhancerConfig,
+  type TtsEnhancerRuntimeConfig,
 } from "@/schemas";
 import { createStreamLogger, registerAddonLogger } from "@/logging";
 import {
@@ -34,17 +35,17 @@ async function resolveEnhancerArtifacts(
 ) {
   if (!enhancer || enhancer.type !== "lavasr") return {};
 
-  const paths: Record<string, string> = {};
-  const promises: Promise<void>[] = [];
+  const [enhancerBackbonePath, enhancerSpecHeadPath, denoiserPath] = await Promise.all([
+    resolve(enhancer.backboneSrc),
+    resolve(enhancer.specHeadSrc),
+    enhancer.denoiserSrc ? resolve(enhancer.denoiserSrc) : undefined,
+  ]);
 
-  promises.push(resolve(enhancer.backboneSrc).then((p) => { paths["enhancerBackbonePath"] = path.resolve(p); }));
-  promises.push(resolve(enhancer.specHeadSrc).then((p) => { paths["enhancerSpecHeadPath"] = path.resolve(p); }));
-  if (enhancer.denoiserSrc) {
-    promises.push(resolve(enhancer.denoiserSrc).then((p) => { paths["denoiserPath"] = path.resolve(p); }));
-  }
-
-  await Promise.all(promises);
-  return paths;
+  return {
+    enhancerBackbonePath,
+    enhancerSpecHeadPath,
+    ...(denoiserPath && { denoiserPath }),
+  };
 }
 
 function buildRuntimeEnhancer(enhancer: TtsEnhancerConfig | undefined) {
@@ -53,7 +54,7 @@ function buildRuntimeEnhancer(enhancer: TtsEnhancerConfig | undefined) {
 }
 
 function buildEnhancerArg(
-  enhancer: { type: string; enhance?: boolean | undefined; denoise?: boolean | undefined } | undefined,
+  enhancer: TtsEnhancerRuntimeConfig | undefined,
   artifacts: Record<string, string | undefined>,
 ) {
   if (!enhancer || enhancer.type !== "lavasr") return undefined;
@@ -62,9 +63,9 @@ function buildEnhancerArg(
     type: "lavasr" as const,
     ...(enhancer.enhance !== undefined && { enhance: enhancer.enhance }),
     ...(enhancer.denoise !== undefined && { denoise: enhancer.denoise }),
-    ...(artifacts["enhancerBackbonePath"] !== undefined && { backbonePath: artifacts["enhancerBackbonePath"] }),
-    ...(artifacts["enhancerSpecHeadPath"] !== undefined && { specHeadPath: artifacts["enhancerSpecHeadPath"] }),
-    ...(artifacts["denoiserPath"] !== undefined && { denoiserPath: artifacts["denoiserPath"] }),
+    ...(artifacts["enhancerBackbonePath"] && { backbonePath: artifacts["enhancerBackbonePath"] }),
+    ...(artifacts["enhancerSpecHeadPath"] && { specHeadPath: artifacts["enhancerSpecHeadPath"] }),
+    ...(artifacts["denoiserPath"] && { denoiserPath: artifacts["denoiserPath"] }),
   };
 }
 
@@ -97,6 +98,7 @@ async function resolveChatterboxConfig(
   }
 
   const resolve = ctx.resolveModelPath;
+  const enhancerArtifactsPromise = resolveEnhancerArtifacts(enhancer, resolve);
   const [
     tokenizerPath,
     speechEncoderPath,
@@ -113,7 +115,7 @@ async function resolveChatterboxConfig(
     resolve(referenceAudioSrc),
   ]);
 
-  const enhancerArtifacts = await resolveEnhancerArtifacts(enhancer, resolve);
+  const enhancerArtifacts = await enhancerArtifactsPromise;
   const runtimeEnhancer = buildRuntimeEnhancer(enhancer);
 
   return {
@@ -161,6 +163,7 @@ async function resolveSupertonicConfig(
   }
 
   const resolve = ctx.resolveModelPath;
+  const enhancerArtifactsPromise = resolveEnhancerArtifacts(enhancer, resolve);
   const [
     tokenizerPath,
     textEncoderPath,
@@ -175,7 +178,7 @@ async function resolveSupertonicConfig(
     resolve(ttsVoiceSrc),
   ]);
 
-  const enhancerArtifacts = await resolveEnhancerArtifacts(enhancer, resolve);
+  const enhancerArtifacts = await enhancerArtifactsPromise;
   const runtimeEnhancer = buildRuntimeEnhancer(enhancer);
 
   return {
