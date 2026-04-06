@@ -204,9 +204,9 @@ jobs:
       - name: Verify and prepare prebuilds
         working-directory: ${{ env.ADDON_WORKDIR }}
         run: |
-          if [ -d "${{ runner.temp }}/prebuilds-download" ]; then
+          if [ -d "${{ runner.temp }}/qvac-lib-infer-llamacpp-llm" ] && [ "$(ls -A ${{ runner.temp }}/qvac-lib-infer-llamacpp-llm)" ]; then
             mkdir -p prebuilds
-            cp -r ${{ runner.temp }}/prebuilds-download/* ./prebuilds/
+            cp -r ${{ runner.temp }}/qvac-lib-infer-llamacpp-llm/* ./prebuilds/
           fi
           echo "Checking for prebuilds..."
           if [ -d "prebuilds" ] && [ "$(ls -A prebuilds)" ]; then
