@@ -184,6 +184,7 @@ jobs:
         id: publish
         uses: tetherto/qvac-devops/.github/actions/publish-library-to-npm@feat/npm-trust-action
         with:
+          secret-token: ${{ secrets.NPM_TOKEN }}
           tag: "latest"
           repo_name: "decoder-audio"
           git-token: ${{ secrets.GITHUB_TOKEN }}
