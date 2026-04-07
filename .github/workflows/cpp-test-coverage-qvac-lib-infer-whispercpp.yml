@@ -27,7 +27,8 @@ env:
   WORKDIR: ${{ inputs.workdir || github.event.inputs.workdir }}
 
 permissions:
-      contents: read
+  contents: read
+  packages: read
 
 jobs:
   cpp-tests:

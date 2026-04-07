@@ -16,7 +16,8 @@ env:
   PKG_DIR: packages/qvac-lib-infer-parakeet
 
 permissions:
-      contents: read
+  contents: read
+  packages: read
 
 jobs:
   cpp-tests:

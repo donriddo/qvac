@@ -38,6 +38,10 @@ env:
   BUILD_TYPE: Debug
   ENABLE_COVERAGE: ON
 
+permissions:
+  contents: read
+  packages: read
+
 jobs:
   cpp-tests:
     runs-on: ${{ matrix.os }}
@@ -45,6 +49,8 @@ jobs:
     name: ${{ matrix.platform }}-${{ matrix.arch }}-cpp-tests
     permissions:
       contents: read
+      pull-requests: write
+      checks: write
       id-token: write
 
     strategy:
