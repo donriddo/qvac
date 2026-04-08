@@ -171,7 +171,12 @@ function setupJsLogger (binding) {
 
 function saveGeneratedImageArtifact(modelDir, filename, imageData) {
   if (os.platform() !== 'android') {
-    const primaryOutPath = path.join(modelDir, filename)
+    // using a separate directory for iOS to avoid pulling the model file on device farm runs
+    const artifactDir = os.platform() === 'ios'
+      ? path.resolve(__dirname, '../generated-images')
+      : modelDir
+    fs.mkdirSync(artifactDir, { recursive: true })
+    const primaryOutPath = path.join(artifactDir, filename)
     fs.writeFileSync(primaryOutPath, imageData)
     console.log(`\nImage saved to ${primaryOutPath}`)
     return
