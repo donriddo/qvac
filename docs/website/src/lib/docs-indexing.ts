@@ -6,20 +6,17 @@ import type { Metadata } from 'next';
  * preview, PR, and local builds. Pair with the root layout hostname script so
  * a production artifact served on a non-production host stays non-indexable.
  *
- * Enable indexing only for the deploy that serves `https://docs.qvac.tether.io`:
- * - Vercel production: `VERCEL_ENV=production` is set automatically.
- * - Other CI: set `DOCS_ALLOW_INDEXING=1` on that build only.
+ * Enable indexing only for the deploy that serves `https://docs.qvac.tether.io`.
+ * On Sevalla, set **`DOCS_ALLOW_INDEXING=1`** for that application at **build time**
+ * (Next reads this when generating static metadata).
  *
- * Optional: `DOCS_FORCE_NOINDEX=1` forces noindex even on Vercel production.
+ * Optional: `DOCS_FORCE_NOINDEX=1` forces noindex even when `DOCS_ALLOW_INDEXING` is set.
  */
 export function allowDocsIndexingAtBuildTime() {
   if (process.env.DOCS_FORCE_NOINDEX === '1' || process.env.DOCS_FORCE_NOINDEX === 'true') {
     return false;
   }
-  if (process.env.DOCS_ALLOW_INDEXING === '1' || process.env.DOCS_ALLOW_INDEXING === 'true') {
-    return true;
-  }
-  return process.env.VERCEL_ENV === 'production';
+  return process.env.DOCS_ALLOW_INDEXING === '1' || process.env.DOCS_ALLOW_INDEXING === 'true';
 }
 
 export function docsRootMetadataRobots(): Metadata['robots'] {
