@@ -6,6 +6,10 @@ require('./integration-runtime.cjs')
 
 /* global runIntegrationModule */
 
+async function runAfriquegemmaEdgeCasesTest (options = {}) { // eslint-disable-line no-unused-vars
+  return runIntegrationModule('../integration/afriquegemma-edge-cases.test.js', options)
+}
+
 async function runAfriquegemmaTranslationTest (options = {}) { // eslint-disable-line no-unused-vars
   return runIntegrationModule('../integration/afriquegemma-translation.test.js', options)
 }
