@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.1] - 2026-04-08
+
+### Changed
+
+- Migrated Bergamot vcpkg dependencies (bergamot-translator, intgemm, ruy, simd-utils, ssplit) from local overlay ports to the shared qvac-registry-vcpkg registry
+- Removed local marian-dev vcpkg port (unused legacy port)
+- Updated `vcpkg-configuration.json` to reference registry for Bergamot ports
+
 ## [0.6.1] - 2026-03-11
 
 This release fixes a critical issue where pivot translation would hang indefinitely after completing the translation. The fix ensures proper job completion signaling for pivot translation workflows in Bergamot models.
