@@ -38,6 +38,8 @@ class WhisperInterface {
     this._activeJobId = null
     this._bufferedAudio = []
     this._bufferedBytes = 0
+    this._jobEndPromise = null
+    this._resolveJobEnd = null
     this._state = state.LOADING
     this._audioFormat = configurationParams?.audio_format || 's16le'
 
@@ -81,6 +83,12 @@ class WhisperInterface {
       // WhisperModel::process returns an empty vector to avoid duplicate
       // segment emissions; skip forwarding this noop event.
       return
+    }
+
+    if ((mappedEvent === 'Error' || mappedEvent === 'JobEnded') && this._resolveJobEnd) {
+      const resolve = this._resolveJobEnd
+      this._resolveJobEnd = null
+      resolve()
     }
 
     const jobId = this._activeJobId
@@ -248,10 +256,12 @@ class WhisperInterface {
       }
 
       if (this._activeJobId === targetJobId) {
+        const jobEndPromise = this._jobEndPromise
+        this._activeJobId = null
         await this._binding.cancel(this._handle)
+        if (jobEndPromise) await jobEndPromise
         this._bufferedAudio = []
         this._bufferedBytes = 0
-        this._activeJobId = null
         this._setState(state.LISTENING)
         return
       }
@@ -305,6 +315,7 @@ class WhisperInterface {
         }
 
         this._activeJobId = currentJobId
+        this._jobEndPromise = new Promise(resolve => { this._resolveJobEnd = resolve })
         this._nextJobId = nextSafeId(this._nextJobId)
         this._bufferedAudio = []
         this._bufferedBytes = 0
@@ -363,16 +374,18 @@ class WhisperInterface {
     }
 
     try {
-      try {
-        if (this._activeJobId !== null) {
+      if (this._activeJobId !== null) {
+        const jobEndPromise = this._jobEndPromise
+        this._activeJobId = null
+        try {
           await this._binding.cancel(this._handle)
-        }
-      } catch {}
+          if (jobEndPromise) await jobEndPromise
+        } catch {}
+      }
       this._binding.destroyInstance(this._handle)
       this._handle = null
       this._bufferedAudio = []
       this._bufferedBytes = 0
-      this._activeJobId = null
       this._setState(state.IDLE)
     } catch (err) {
       throw new QvacErrorAddonWhisper({
@@ -398,6 +411,7 @@ class WhisperInterface {
         return false
       }
       this._activeJobId = currentJobId
+      this._jobEndPromise = new Promise(resolve => { this._resolveJobEnd = resolve })
       this._nextJobId = nextSafeId(this._nextJobId)
       this._setState(state.PROCESSING)
       return true
@@ -415,6 +429,7 @@ class WhisperInterface {
   startStreaming (config = {}) {
     try {
       this._activeJobId = this._nextJobId
+      this._jobEndPromise = new Promise(resolve => { this._resolveJobEnd = resolve })
       this._nextJobId = nextSafeId(this._nextJobId)
       this._setState(state.PROCESSING)
       this._binding.startStreaming(this._handle, {

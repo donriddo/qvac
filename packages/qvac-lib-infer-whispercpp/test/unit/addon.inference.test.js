@@ -197,7 +197,7 @@ test('WhisperInterface runJob preserves active job when native rejects new job',
   t.is(await addon.status(), 'processing', 'State should remain unchanged for the current active job')
 })
 
-test('WhisperInterface cancel clears active job only after cancel resolves', async (t) => {
+test('WhisperInterface cancel clears active job before native cancel to prevent stale callbacks', async (t) => {
   const binding = new MockedBinding()
   const addon = new WhisperInterface(binding, {
     contextParams: {
@@ -215,17 +215,19 @@ test('WhisperInterface cancel clears active job only after cancel resolves', asy
 
   addon._activeJobId = 7
   addon._setState('processing')
-  let sawActiveJobDuringCancel = false
+  addon._jobEndPromise = Promise.resolve()
+  addon._resolveJobEnd = null
+  let sawNullJobDuringCancel = false
 
   binding.cancel = async (handle) => {
     t.is(handle, addon._handle, 'cancel should be called with current handle')
-    sawActiveJobDuringCancel = addon._activeJobId === 7
+    sawNullJobDuringCancel = addon._activeJobId === null
     await wait(5)
   }
 
   await addon.cancel(7)
 
-  t.ok(sawActiveJobDuringCancel, 'Active job should still be set while cancel is in-flight')
+  t.ok(sawNullJobDuringCancel, 'Active job should be cleared before native cancel to prevent stale callback misattribution')
   t.is(addon._activeJobId, null, 'Active job should be cleared after cancel resolves')
   t.is(await addon.status(), 'listening', 'State should return to listening after cancel resolves')
 })
