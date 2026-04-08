@@ -1,7 +1,6 @@
 'use strict'
 
 const test = require('brittle')
-const FilesystemDL = require('@qvac/dl-filesystem')
 
 const LlmLlamacpp = require('../../index.js')
 const { ensureModel } = require('./utils')
@@ -48,7 +47,7 @@ test('filesystem loader can run inference end-to-end', { timeout: 600_000, skip:
     downloadUrl: DEFAULT_MODEL.url
   })
 
-  const loader = new FilesystemDL({ dirPath })
+  const modelPath = path.join(dirPath, modelName)
   const config = {
     gpu_layers: '999',
     ctx_size: '1024',
@@ -58,12 +57,11 @@ test('filesystem loader can run inference end-to-end', { timeout: 600_000, skip:
   }
 
   const addon = new LlmLlamacpp({
-    loader,
-    modelName,
-    diskPath: dirPath,
+    files: { model: [modelPath] },
+    config,
     logger: console,
     opts: { stats: true }
-  }, config)
+  })
 
   try {
     await addon.load()
@@ -76,7 +74,6 @@ test('filesystem loader can run inference end-to-end', { timeout: 600_000, skip:
     t.fail('filesystem-loaded model should generate output', error)
   } finally {
     await addon.unload().catch(() => {})
-    await loader.close().catch(() => {})
   }
 })
 
@@ -86,7 +83,7 @@ test('model unload is clean and idempotent', { timeout: 600_000 }, async t => {
     downloadUrl: DEFAULT_MODEL.url
   })
 
-  const loader = new FilesystemDL({ dirPath })
+  const modelPath = path.join(dirPath, modelName)
   const config = {
     gpu_layers: '512',
     ctx_size: '1024',
@@ -96,34 +93,29 @@ test('model unload is clean and idempotent', { timeout: 600_000 }, async t => {
   }
 
   const addon = new LlmLlamacpp({
-    loader,
-    modelName,
-    diskPath: dirPath,
+    files: { model: [modelPath] },
+    config,
     logger: console,
     opts: { stats: true }
-  }, config)
+  })
 
-  try {
-    await addon.load()
-    const firstResponse = await addon.run(BASE_PROMPT)
-    await collectResponse(firstResponse)
+  await addon.load()
+  const firstResponse = await addon.run(BASE_PROMPT)
+  await collectResponse(firstResponse)
 
-    await addon.unload()
-    t.pass('first unload succeeded')
+  await addon.unload()
+  t.pass('first unload succeeded')
 
-    await addon.load()
-    const secondResponse = await addon.run(BASE_PROMPT)
-    await collectResponse(secondResponse)
+  await addon.load()
+  const secondResponse = await addon.run(BASE_PROMPT)
+  await collectResponse(secondResponse)
 
-    await addon.unload()
-    t.pass('second unload succeeded')
+  await addon.unload()
+  t.pass('second unload succeeded')
 
-    await addon.unload().catch(err => {
-      if (err) t.fail('unload should be idempotent', err)
-    })
-  } finally {
-    await loader.close().catch(() => {})
-  }
+  await addon.unload().catch(err => {
+    if (err) t.fail('unload should be idempotent', err)
+  })
 })
 
 const SHARDED_MODEL = {
@@ -150,9 +142,10 @@ test('network loader can run inference end-to-end with sharded model', { timeout
     loader,
     modelName: SHARDED_MODEL.name,
     diskPath: modelDir,
+    config,
     logger: console,
     opts: { stats: true }
-  }, config)
+  })
 
   let progressMade = 0
   let lastLogTime = 0
