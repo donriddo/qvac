@@ -1,6 +1,7 @@
 'use strict'
 
 const test = require('brittle')
+const path = require('bare-path')
 const os = require('bare-os')
 const proc = require('bare-process')
 const binding = require('../../binding')
@@ -49,20 +50,19 @@ async function setupModel (t) {
     downloadUrl: MODEL.url
   })
 
-  const model = new ImgStableDiffusion(
-    {
-      logger: console,
-      diskPath: modelDir,
-      modelName
+  const model = new ImgStableDiffusion({
+    files: {
+      model: path.join(modelDir, modelName)
     },
-    {
+    config: {
       device: useCpu ? 'cpu' : 'gpu',
       vae_on_cpu: isAndroid,
       threads: 4,
       prediction: 'v',
       verbosity: '2'
-    }
-  )
+    },
+    logger: console
+  })
 
   await model.load()
 
