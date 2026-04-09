@@ -547,9 +547,8 @@ std::any SdModel::process(const std::any& input) {
       const int imgW = static_cast<int>(initImg.width);
       const int imgH = static_cast<int>(initImg.height);
 
-      const bool useRefImages =
-          config_.prediction == FLUX2_FLOW_PRED ||
-          config_.prediction == FLUX_FLOW_PRED;
+      const bool useRefImages = config_.prediction == FLUX2_FLOW_PRED ||
+                                config_.prediction == FLUX_FLOW_PRED;
 
       if (useRefImages) {
         // FLUX in-context conditioning: ref_images handles its own resizing
@@ -562,8 +561,7 @@ std::any SdModel::process(const std::any& input) {
 
         QLOG_IF(
             qvac_lib_inference_addon_cpp::logger::Priority::INFO,
-            "img2img: " + std::to_string(imgW) + "x" +
-                std::to_string(imgH) +
+            "img2img: " + std::to_string(imgW) + "x" + std::to_string(imgH) +
                 " — FLUX in-context conditioning (ref_images)");
 
         genParams.ref_images = &initImg;
@@ -605,15 +603,17 @@ std::any SdModel::process(const std::any& input) {
             }
           }
           free(initImg.data);
-          initImg = {static_cast<uint32_t>(alignedW),
-                     static_cast<uint32_t>(alignedH), ch, resized};
+          initImg = {
+              static_cast<uint32_t>(alignedW),
+              static_cast<uint32_t>(alignedH),
+              ch,
+              resized};
         }
 
         QLOG_IF(
             qvac_lib_inference_addon_cpp::logger::Priority::INFO,
             "img2img: " + std::to_string(alignedW) + "x" +
-                std::to_string(alignedH) +
-                " — SDEdit (init_image, strength=" +
+                std::to_string(alignedH) + " — SDEdit (init_image, strength=" +
                 std::to_string(gen.strength) + ")");
 
         genParams.init_image = initImg;
@@ -627,9 +627,11 @@ std::any SdModel::process(const std::any& input) {
               static_cast<size_t>(alignedW) * static_cast<size_t>(alignedH);
           auto* maskData = static_cast<uint8_t*>(malloc(maskSize));
           memset(maskData, 255, maskSize);
-          genParams.mask_image = {static_cast<uint32_t>(alignedW),
-                                  static_cast<uint32_t>(alignedH), 1,
-                                  maskData};
+          genParams.mask_image = {
+              static_cast<uint32_t>(alignedW),
+              static_cast<uint32_t>(alignedH),
+              1,
+              maskData};
         }
       }
     }
