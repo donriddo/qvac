@@ -2,7 +2,7 @@ import './global.css';
 import { Inter } from 'next/font/google';
 import type { Metadata } from 'next';
 import { GoogleTagManager } from '@next/third-parties/google';
-import { InkeepScript } from "@/components/inkeep-script";
+import { InkeepScript } from '@/components/inkeep-script';
 import { Provider } from "./provider";
 import 'katex/dist/katex.css';
 import { docsRootMetadataRobots } from '@/lib/docs-indexing';
