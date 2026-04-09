@@ -1,0 +1,320 @@
+#!/usr/bin/env python3
+"""
+Convert BrainWhisperer checkpoint to a proper GGML model for whisper.cpp.
+
+Architecture in the GGML model:
+  - n_mels=512 (neural signal channels, replaces mel bins)
+  - encoder_layers=6 (BCI-trained transformer)
+  - conv1: (384, 512, 7) from embedder (not standard whisper conv1)
+  - conv2: (384, 384, 3) from embedder
+  - positional_embedding: (1500, 384) baked day-0 encoding
+  - decoder: 4 layers with LoRA merged
+  - All other weights from BCI checkpoint
+
+Usage:
+    python3 scripts/convert-model.py \\
+        --checkpoint /path/to/epoch=93-val_wer=0.0910.ckpt \\
+        --output models/ggml-bci.bin
+"""
+
+import argparse
+import json
+import math
+import os
+import struct
+import sys
+
+import numpy as np
+import torch
+
+
+def merge_lora_weights(state_dict, alpha=16, r=8):
+    scaling = alpha / r
+    merged = {}
+    lora_pairs = {}
+
+    for key, tensor in state_dict.items():
+        if ".lora_A.default.weight" in key:
+            base_key = key.replace(".lora_A.default.weight", "")
+            lora_pairs.setdefault(base_key, {})["A"] = tensor
+        elif ".lora_B.default.weight" in key:
+            base_key = key.replace(".lora_B.default.weight", "")
+            lora_pairs.setdefault(base_key, {})["B"] = tensor
+        elif ".base_layer." in key:
+            clean_key = key.replace(".base_layer.", ".")
+            merged[clean_key] = tensor.clone()
+        else:
+            merged[key] = tensor
+
+    for base_key, pair in lora_pairs.items():
+        if "A" not in pair or "B" not in pair:
+            continue
+        A, B = pair["A"], pair["B"]
+        delta = (B @ A) * scaling
+        weight_key = base_key + ".weight"
+        if weight_key in merged:
+            merged[weight_key] = merged[weight_key] + delta
+
+    return merged
+
+
+def build_day0_positional_embedding(d_model=384):
+    """Build the positional embedding for day 0.
+    The BCI model uses sinusoidal day encoding in the last d_model//2 dims.
+    For day 0, the PositionalEncoding returns sin(0)/cos(0) = [0,1,0,1,...].
+    """
+    half = d_model - d_model // 2  # 192
+    pe = np.zeros((1500, d_model), dtype=np.float32)
+    # Day 0 encoding: pe[position=0] for PositionalEncoding(192)
+    day_enc = np.zeros(half, dtype=np.float32)
+    day_enc[0::2] = 0.0   # sin(0)
+    day_enc[1::2] = 1.0   # cos(0)
+    # Place in last 192 dims, broadcast across all 1500 frames
+    pe[:, -half:] = day_enc
+    return pe
+
+
+# Byte encoder/decoder for tokenizer (from whisper.cpp converter)
+def bytes_to_unicode():
+    bs = list(range(ord("!"), ord("~")+1)) + list(range(ord("¡"), ord("¬")+1)) + list(range(ord("®"), ord("ÿ")+1))
+    cs = bs[:]
+    n = 0
+    for b in range(2**8):
+        if b not in bs:
+            bs.append(b)
+            cs.append(2**8+n)
+            n += 1
+    cs = [chr(n) for n in cs]
+    return dict(zip(bs, cs))
+
+
+# GGML tensor name mapping (HuggingFace → whisper.cpp)
+CONV_MAP = {
+    'self_attn.k_proj':              'attn.key',
+    'self_attn.q_proj':              'attn.query',
+    'self_attn.v_proj':              'attn.value',
+    'self_attn.out_proj':            'attn.out',
+    'self_attn_layer_norm':          'attn_ln',
+    'encoder_attn.q_proj':           'cross_attn.query',
+    'encoder_attn.v_proj':           'cross_attn.value',
+    'encoder_attn.out_proj':         'cross_attn.out',
+    'encoder_attn_layer_norm':       'cross_attn_ln',
+    'fc1':                           'mlp.0',
+    'fc2':                           'mlp.2',
+    'final_layer_norm':              'mlp_ln',
+}
+
+
+def rename_key(hf_key):
+    """Convert HuggingFace key to whisper.cpp GGML key."""
+    parts = hf_key.split(".")
+    if len(parts) < 2:
+        return hf_key
+
+    section = parts[0]  # encoder or decoder
+    rest = parts[1:]
+
+    if rest[0] == "layers":
+        rest[0] = "blocks"
+        layer_idx = rest[1]
+        inner = ".".join(rest[2:-1])
+
+        if inner == "encoder_attn.k_proj":
+            mapped = "cross_attn.key"
+        elif inner in CONV_MAP:
+            mapped = CONV_MAP[inner]
+        else:
+            mapped = inner
+
+        return f"{section}.blocks.{layer_idx}.{mapped}.{rest[-1]}"
+    else:
+        simple_map = {
+            "layer_norm.bias": f"{section}.ln_post.bias" if section == "encoder" else f"{section}.ln.bias",
+            "layer_norm.weight": f"{section}.ln_post.weight" if section == "encoder" else f"{section}.ln.weight",
+            "embed_positions.weight": f"{section}.positional_embedding",
+            "embed_tokens.weight": f"{section}.token_embedding.weight",
+        }
+        rest_str = ".".join(rest)
+        if rest_str in simple_map:
+            return simple_map[rest_str]
+        return f"{section}.{rest_str}"
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--checkpoint", required=True)
+    parser.add_argument("--output", default="models/ggml-bci.bin")
+    parser.add_argument("--whisper-assets", default=None,
+                        help="Path to whisper python package assets dir (for mel_filters)")
+    args = parser.parse_args()
+
+    os.makedirs(os.path.dirname(args.output) or ".", exist_ok=True)
+
+    # Load checkpoint
+    print(f"Loading checkpoint: {args.checkpoint}")
+    ckpt = torch.load(args.checkpoint, map_location="cpu", weights_only=False)
+    state_dict = ckpt["state_dict"]
+    config = ckpt["hyper_parameters"]["config"]
+
+    # Merge LoRA
+    print("Merging LoRA weights...")
+    merged = merge_lora_weights(state_dict, alpha=16, r=8)
+
+    # Build the model state dict for GGML
+    # We need: encoder (conv1/conv2 from embedder, layers 0-5 from encoder, layer_norm)
+    #          decoder (LoRA-merged layers 0-3, embed_tokens, embed_positions, layer_norm)
+    #          proj_out
+
+    model_sd = {}
+
+    # --- Encoder conv1 from EMBEDDER (k=7, 512->384) — patched whisper.cpp supports this ---
+    model_sd["encoder.conv1.weight"] = merged["model.embedders.0.conv1.weight"]  # (384, 512, 7)
+    model_sd["encoder.conv1.bias"] = merged["model.embedders.0.conv1.bias"]      # (384,)
+
+    # --- Encoder conv2 from EMBEDDER (k=3, stride=2) ---
+    model_sd["encoder.conv2.weight"] = merged["model.embedders.0.conv2.weight"]  # (384, 384, 3)
+    model_sd["encoder.conv2.bias"] = merged["model.embedders.0.conv2.bias"]      # (384,)
+
+    # --- Encoder positional embedding (baked day-0 encoding) ---
+    model_sd["encoder.positional_embedding"] = torch.from_numpy(
+        build_day0_positional_embedding(384))
+
+    # --- Encoder transformer layers 0-5 ---
+    for layer_idx in range(6):
+        prefix_src = f"model.whisper.model.encoder.layers.{layer_idx}."
+        for key, tensor in merged.items():
+            if key.startswith(prefix_src):
+                suffix = key[len("model.whisper.model.encoder."):]
+                ggml_name = rename_key(f"encoder.{suffix}")
+                model_sd[ggml_name] = tensor
+
+    # --- Encoder layer norm ---
+    model_sd["encoder.ln_post.weight"] = merged["model.whisper.model.encoder.layer_norm.weight"]
+    model_sd["encoder.ln_post.bias"] = merged["model.whisper.model.encoder.layer_norm.bias"]
+
+    # --- Decoder (LoRA-merged) ---
+    dec_prefix = "model.whisper.model.decoder."
+    for key, tensor in merged.items():
+        if not key.startswith(dec_prefix):
+            continue
+        # Remove PEFT wrapper
+        clean = key[len("model.whisper.model."):]
+        clean = clean.replace("decoder.base_model.model.", "decoder.")
+        ggml_name = rename_key(clean)
+        model_sd[ggml_name] = tensor
+
+    # --- proj_out ---
+    if "model.whisper.proj_out.weight" in merged:
+        # whisper.cpp skips proj_out (uses decoder.token_embedding transposed)
+        pass
+
+    # Model hyperparameters
+    d_model = 384
+    n_audio_head = 6
+    n_audio_layer = 6
+    n_text_head = 6
+    n_text_layer = 4
+    n_mels = 512  # neural signal channels (conv1 k=7 in patched whisper.cpp)
+    n_conv1_kernel = 7
+    n_vocab = 51864
+    n_audio_ctx = 1500
+    n_text_ctx = 448
+
+    print(f"\nGGML model: n_mels={n_mels}, encoder_layers={n_audio_layer}, "
+          f"decoder_layers={n_text_layer}, d_model={d_model}")
+    print(f"Tensors to write: {len(model_sd)}")
+
+    # Mel filters: must have n_mel rows matching the header n_mels value,
+    # because whisper_set_mel_with_state validates n_mel == filters.n_mel.
+    mel_filters = np.zeros((n_mels, 201), dtype=np.float32)
+
+    # Load tokenizer
+    from transformers import WhisperTokenizer
+    tokenizer = WhisperTokenizer.from_pretrained("openai/whisper-tiny.en")
+    tokens_dict = tokenizer.get_vocab()
+    tokens_sorted = sorted(tokens_dict.items(), key=lambda x: x[1])
+
+    byte_decoder = {v: k for k, v in bytes_to_unicode().items()}
+
+    # Write GGML file
+    print(f"\nWriting GGML model to: {args.output}")
+    with open(args.output, "wb") as fout:
+        # Magic
+        fout.write(struct.pack("i", 0x67676d6c))
+
+        # Header (matches whisper.cpp expected order)
+        fout.write(struct.pack("i", n_vocab))
+        fout.write(struct.pack("i", n_audio_ctx))
+        fout.write(struct.pack("i", d_model))
+        fout.write(struct.pack("i", n_audio_head))
+        fout.write(struct.pack("i", n_audio_layer))
+        fout.write(struct.pack("i", n_text_ctx))
+        fout.write(struct.pack("i", d_model))
+        fout.write(struct.pack("i", n_text_head))
+        fout.write(struct.pack("i", n_text_layer))
+        fout.write(struct.pack("i", n_mels))
+        fout.write(struct.pack("i", 1))  # ftype=1 (f16)
+        fout.write(struct.pack("i", n_conv1_kernel))  # BCI extension
+
+        # Mel filters (n_mels x 201, must match n_mels for whisper_set_mel validation)
+        fout.write(struct.pack("i", mel_filters.shape[0]))
+        fout.write(struct.pack("i", mel_filters.shape[1]))
+        for i in range(mel_filters.shape[0]):
+            for j in range(mel_filters.shape[1]):
+                fout.write(struct.pack("f", mel_filters[i][j]))
+
+        # Tokenizer
+        fout.write(struct.pack("i", len(tokens_sorted)))
+        for token_str, token_id in tokens_sorted:
+            try:
+                text = bytearray([byte_decoder[c] for c in token_str])
+            except KeyError:
+                text = token_str.encode("utf-8")
+            fout.write(struct.pack("i", len(text)))
+            fout.write(text)
+
+        # Write tensors
+        for name, tensor in model_sd.items():
+            data = tensor.squeeze().numpy()
+
+            # Reshape conv bias from [n] to [n, 1]
+            if name in ["encoder.conv1.bias", "encoder.conv2.bias"]:
+                data = data.reshape(data.shape[0], 1)
+
+            n_dims = len(data.shape)
+
+            # f16 for 2D+ tensors, f32 for 1D and special tensors
+            use_f16 = True
+            ftype = 1
+            if n_dims < 2 or \
+                    name == "encoder.conv1.bias" or \
+                    name == "encoder.conv2.bias" or \
+                    name == "encoder.positional_embedding" or \
+                    name == "decoder.positional_embedding":
+                use_f16 = False
+                ftype = 0
+
+            if use_f16:
+                data = data.astype(np.float16)
+            else:
+                data = data.astype(np.float32)
+
+            # Tensor header: n_dims, name_len, ftype
+            name_bytes = name.encode("utf-8")
+            fout.write(struct.pack("iii", n_dims, len(name_bytes), ftype))
+
+            # Dims (reversed from numpy, as GGML expects)
+            for i in range(n_dims):
+                fout.write(struct.pack("i", data.shape[n_dims - 1 - i]))
+
+            fout.write(name_bytes)
+            data.tofile(fout)
+
+            print(f"  {name}: {data.shape} ({'f16' if ftype == 1 else 'f32'})")
+
+    size_mb = os.path.getsize(args.output) / (1024 * 1024)
+    print(f"\nDone. Output: {args.output} ({size_mb:.1f} MB)")
+
+
+if __name__ == "__main__":
+    main()
