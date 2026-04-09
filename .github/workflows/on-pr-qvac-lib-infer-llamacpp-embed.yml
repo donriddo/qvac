@@ -67,7 +67,7 @@ jobs:
   merge-guard:
     needs: [on-pr, integration-tests, run-mobile-integration-tests]
     if: always()
-    uses: tetherto/qvac-devops/.github/workflows/public-pr.yml@v1.1.8
+    uses: tetherto/oss-actions/.github/workflows/public-pr.yml@v1.1.0
     with:
       sanity-checks-status: ${{ needs.on-pr.result == 'success' }}
       build-status: ${{ needs.on-pr.result == 'success' }}
