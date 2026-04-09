@@ -1,12 +1,23 @@
+declare interface BCIConfig {
+  smooth_kernel_std?: number;
+  smooth_kernel_size?: number;
+  sample_rate?: number;
+}
+
+declare interface WhisperConfig {
+  language?: string;
+  n_threads?: number;
+  temperature?: number;
+  suppress_nst?: boolean;
+  duration_ms?: number;
+  translate?: boolean;
+  no_timestamps?: boolean;
+  single_segment?: boolean;
+  [key: string]: unknown;
+}
+
 declare interface BCIWhispercppArgs {
-  /** Path to BrainWhisperer .ckpt file */
-  checkpoint: string;
-  /** Path to rnn_args.yaml */
-  rnnArgs: string;
-  /** Directory containing model.py, pl_wrapper.py, dataset.py, utils.py */
-  modelDir: string;
-  /** Path to cleaned_val_data.pkl (required for batch mode) */
-  dataPath?: string;
+  modelPath: string;
   logger?: {
     debug(...args: unknown[]): void;
     info(...args: unknown[]): void;
@@ -15,63 +26,77 @@ declare interface BCIWhispercppArgs {
   };
 }
 
-declare interface TranscribeOptions {
-  /** Expected text for WER computation */
-  expected?: string;
-  /** Day index for day-specific projection (default: 0) */
-  dayIdx?: number;
-  /** Timeout in ms (default: 120000) */
-  timeout?: number;
+declare interface BCIWhispercppConfig {
+  whisperConfig?: WhisperConfig;
+  bciConfig?: BCIConfig;
+  contextParams?: {
+    model?: string;
+    use_gpu?: boolean;
+    flash_attn?: boolean;
+    gpu_device?: number;
+  };
+  miscConfig?: {
+    caption_enabled?: boolean;
+  };
+}
+
+declare interface TranscriptSegment {
+  text: string;
+  toAppend: boolean;
+  start: number;
+  end: number;
+  id: number;
 }
 
 declare interface TranscriptionResult {
   text: string;
-  textClean: string;
-  expected?: string;
-  expectedClean?: string;
-  wer?: number;
-}
-
-declare interface BatchTranscriptionResult extends TranscriptionResult {
-  index: number;
-}
-
-declare interface BatchOptions {
-  /** Comma-separated sample indices (default: '0,1,2,3,4') */
-  samples?: string;
-  /** Timeout in ms (default: 120000) */
-  timeout?: number;
+  segments: TranscriptSegment[];
+  stats: Record<string, number> | null;
 }
 
 /**
- * BCI neural signal transcription adapter.
- *
- * Uses the BrainWhisperer Python model with identical beam search
- * parameters to the research notebook, achieving ~8.86% WER.
- * Built on top of @qvac/transcription-whispercpp.
+ * BCI neural signal transcription client powered by whisper.cpp.
  */
 declare class BCIWhispercpp {
-  constructor(args: BCIWhispercppArgs);
+  constructor(args: BCIWhispercppArgs, config?: BCIWhispercppConfig);
 
-  /** Transcribe a single .bin neural signal file (exact notebook match). */
-  transcribe(signalPath: string, opts?: TranscribeOptions): TranscriptionResult;
+  /** Load and activate the model. */
+  load(): Promise<void>;
 
-  /** Transcribe a batch via DataLoader pipeline (exact notebook match). */
-  transcribeBatch(opts?: BatchOptions): BatchTranscriptionResult[];
+  /** Transcribe a neural signal binary file. */
+  transcribeFile(filePath: string): Promise<TranscriptionResult>;
+
+  /** Transcribe neural signal data (batch). */
+  transcribe(neuralData: Uint8Array): Promise<TranscriptionResult>;
+
+  /** Transcribe a stream of neural signal chunks. */
+  transcribeStream(
+    signalStream: AsyncIterable<Uint8Array>
+  ): Promise<TranscriptionResult>;
+
+  /** Cancel current inference. */
+  cancel(): Promise<void>;
+
+  /** Destroy the instance and release resources. */
+  destroy(): Promise<void>;
 }
 
-/** Compute Word Error Rate between hypothesis and reference. */
+/**
+ * Compute Word Error Rate between hypothesis and reference strings.
+ * @returns WER as a ratio (0.0 = perfect).
+ */
 declare function computeWER(hypothesis: string, reference: string): number;
 
 declare namespace BCIWhispercpp {
   export {
     BCIWhispercpp as default,
     BCIWhispercpp,
+    BCIConfig,
+    WhisperConfig,
     BCIWhispercppArgs,
-    TranscribeOptions,
+    BCIWhispercppConfig,
+    TranscriptSegment,
     TranscriptionResult,
-    BatchTranscriptionResult,
-    BatchOptions,
     computeWER,
   };
 }

@@ -1,148 +1,260 @@
 'use strict'
 
-const { execSync } = require('child_process')
-const fs = require('fs')
-const path = require('path')
+const fs = require('bare-fs')
+const path = require('bare-path')
 
-const INFER_SCRIPT = path.join(__dirname, 'scripts', 'infer.py')
+const { BCIInterface } = require('./bci')
+const { checkConfig } = require('./configChecker')
+const { QvacErrorAddonBCI, ERR_CODES } = require('./lib/error')
+
+const END_OF_INPUT = 'end of job'
 
 /**
- * BCI neural signal transcription adapter.
- *
- * Uses the BrainWhisperer Python model with identical beam search parameters
- * to the research notebook, achieving ~8.86% WER. Delegates to
- * @qvac/transcription-whispercpp for the underlying whisper.cpp engine
- * when running in fast/approximate mode.
+ * High-level BCI transcription client powered by whisper.cpp.
+ * Accepts neural signal streams and returns text transcriptions.
  */
 class BCIWhispercpp {
   /**
-   * @param {object} args
-   * @param {string} args.checkpoint - Path to BrainWhisperer .ckpt file
-   * @param {string} args.rnnArgs    - Path to rnn_args.yaml
-   * @param {string} args.modelDir   - Directory containing model.py, pl_wrapper.py, etc.
-   * @param {string} [args.dataPath] - Path to cleaned_val_data.pkl (for batch mode)
-   * @param {object} [args.logger]
+   * @param {Object} args
+   * @param {string} args.modelPath - path to whisper GGML model file
+   * @param {Object} [args.logger] - optional logger
+   * @param {Object} config - inference configuration
+   * @param {Object} config.whisperConfig - whisper decoding params
+   * @param {Object} [config.bciConfig] - BCI-specific params
+   * @param {Object} [config.contextParams] - whisper context params
    */
-  constructor ({ checkpoint, rnnArgs, modelDir, dataPath = null, logger = null }) {
-    this._checkpoint = checkpoint
-    this._rnnArgs = rnnArgs
-    this._modelDir = modelDir
-    this._dataPath = dataPath
+  constructor ({ modelPath, logger = null }, config = {}) {
+    this._modelPath = modelPath
     this._logger = logger || { debug () {}, info () {}, warn () {}, error () {} }
+    this._config = config
+    this._addon = null
+    this._hasActiveResponse = false
+    this._jobToResponse = new Map()
 
-    if (!fs.existsSync(this._checkpoint)) {
-      throw new Error(`Checkpoint not found: ${this._checkpoint}`)
-    }
-    if (!fs.existsSync(this._rnnArgs)) {
-      throw new Error(`rnn_args.yaml not found: ${this._rnnArgs}`)
-    }
-    if (!fs.existsSync(this._modelDir)) {
-      throw new Error(`Model directory not found: ${this._modelDir}`)
+    if (!this._modelPath || !fs.existsSync(this._modelPath)) {
+      throw new Error(`Model file doesn't exist: ${this._modelPath}`)
     }
   }
 
   /**
-   * Transcribe a single neural signal file.
-   *
-   * Uses the exact BrainWhisperer model with group beam search
-   * (num_beams=4, num_beam_groups=2, diversity_penalty=0.25, etc.)
-   * for notebook-identical output.
-   *
-   * @param {string} signalPath - Path to .bin neural signal file
-   * @param {object} [opts]
-   * @param {string} [opts.expected] - Expected text for WER computation
-   * @param {number} [opts.dayIdx=0] - Day index for day-specific projection
-   * @param {number} [opts.timeout=120000] - Timeout in ms
-   * @returns {{ text: string, textClean: string, expected?: string, wer?: number }}
+   * Load and activate the model.
    */
-  transcribe (signalPath, opts = {}) {
-    if (!fs.existsSync(signalPath)) {
-      throw new Error(`Signal file not found: ${signalPath}`)
+  async load () {
+    const whisperConfig = {
+      language: 'en',
+      temperature: 0.0,
+      suppress_nst: true,
+      n_threads: 0,
+      ...(this._config.whisperConfig || {})
     }
 
-    const args = [
-      'python3', `"${INFER_SCRIPT}"`,
-      `--signal "${signalPath}"`,
-      `--checkpoint "${this._checkpoint}"`,
-      `--args "${this._rnnArgs}"`,
-      `--model-dir "${this._modelDir}"`
-    ]
-
-    if (opts.expected) {
-      args.push(`--expected "${opts.expected}"`)
-    }
-    if (opts.dayIdx !== undefined) {
-      args.push(`--day-idx ${opts.dayIdx}`)
+    const configurationParams = {
+      contextParams: {
+        model: this._modelPath,
+        ...(this._config.contextParams || {})
+      },
+      whisperConfig,
+      miscConfig: {
+        caption_enabled: false,
+        ...(this._config.miscConfig || {})
+      }
     }
 
-    const stdout = execSync(args.join(' '), {
-      encoding: 'utf8',
-      timeout: opts.timeout || 120000,
-      stdio: ['pipe', 'pipe', 'pipe']
-    })
-
-    const line = stdout.trim().split('\n').find(l => l.startsWith('{'))
-    if (!line) {
-      throw new Error('No JSON output from inference script')
+    if (this._config.bciConfig) {
+      configurationParams.bciConfig = this._config.bciConfig
     }
 
-    const result = JSON.parse(line)
-    return {
-      text: result.text,
-      textClean: result.text_clean,
-      expected: result.expected || undefined,
-      expectedClean: result.expected_clean || undefined,
-      wer: result.wer !== undefined ? result.wer : undefined
+    checkConfig(configurationParams)
+
+    const binding = require('./binding')
+    this._addon = new BCIInterface(
+      binding,
+      configurationParams,
+      this._outputCallback.bind(this),
+      this._logger.info.bind(this._logger)
+    )
+
+    await this._addon.activate()
+    this._logger.info('BCI addon activated')
+  }
+
+  /**
+   * Transcribe a neural signal from a binary file.
+   * Binary format: [uint32 numTimesteps, uint32 numChannels, float32[] data]
+   * @param {string} filePath - path to .bin neural signal file
+   * @param {Object} [opts] - { mode: 'onnx'|'native' }
+   * @returns {Promise<Object>} - { text, segments, stats }
+   */
+  async transcribeFile (filePath, opts = {}) {
+    if (opts.mode === 'onnx' && this._onnxConfig) {
+      return this._transcribeOnnx(filePath, opts)
+    }
+    const data = fs.readFileSync(filePath)
+    return this.transcribe(new Uint8Array(data))
+  }
+
+  /**
+   * Configure ONNX inference mode for Python-matching output.
+   * @param {Object} onnxConfig
+   * @param {string} onnxConfig.modelsDir - path to directory with bci_encoder.onnx, bci_decoder.onnx, vocab.json
+   * @param {string} onnxConfig.checkpoint - path to .ckpt file
+   * @param {string} onnxConfig.argsPath - path to rnn_args.yaml
+   * @param {string} onnxConfig.modelDir - path to brainwhisperer source dir (with pl_wrapper.py)
+   * @param {string} [onnxConfig.pythonBin='python3'] - python binary
+   */
+  configureOnnx (onnxConfig) {
+    this._onnxConfig = {
+      pythonBin: 'python3',
+      ...onnxConfig
+    }
+  }
+
+  async _transcribeOnnx (signalPath, opts = {}) {
+    const { execSync } = require('bare-subprocess') || require('child_process')
+    const cfg = this._onnxConfig
+    const dayIdx = (this._config.bciConfig && this._config.bciConfig.day_idx) || opts.dayIdx || 1
+    const scriptPath = path.join(__dirname, 'scripts', 'onnx-infer.py')
+
+    const cmd = [
+      cfg.pythonBin, scriptPath,
+      '--signal', signalPath,
+      '--models-dir', cfg.modelsDir,
+      '--checkpoint', cfg.checkpoint,
+      '--args', cfg.argsPath,
+      '--model-dir', cfg.modelDir,
+      '--day-idx', String(dayIdx)
+    ].join(' ')
+
+    try {
+      const stdout = execSync(cmd, { encoding: 'utf8', timeout: 120000 })
+      const result = JSON.parse(stdout.trim())
+      return {
+        text: result.text,
+        segments: [{ text: result.text, start: 0, end: 0, id: 0, toAppend: false }],
+        stats: { mode: 'onnx', tokens: result.tokens ? result.tokens.length : 0 }
+      }
+    } catch (err) {
+      throw new Error('ONNX inference failed: ' + (err.stderr || err.message))
     }
   }
 
   /**
-   * Transcribe a batch of samples using the DataLoader pipeline
-   * (exact notebook match — processes all samples together with proper padding).
-   *
-   * Requires `dataPath` to be set in the constructor (path to cleaned_val_data.pkl).
-   *
-   * @param {object} [opts]
-   * @param {string} [opts.samples='0,1,2,3,4'] - Comma-separated sample indices
-   * @param {number} [opts.timeout=120000]
-   * @returns {Array<{ index: number, text: string, textClean: string, expected?: string, wer?: number }>}
+   * Transcribe neural signal data (batch mode).
+   * @param {Uint8Array} neuralData - binary neural signal
+   * @returns {Promise<Object>} - { text, segments, stats }
    */
-  transcribeBatch (opts = {}) {
-    if (!this._dataPath || !fs.existsSync(this._dataPath)) {
-      throw new Error(`Data path not set or not found: ${this._dataPath}`)
+  async transcribe (neuralData) {
+    if (this._hasActiveResponse) {
+      throw new QvacErrorAddonBCI({ code: ERR_CODES.JOB_ALREADY_RUNNING })
     }
 
-    const samples = opts.samples || '0,1,2,3,4'
+    return new Promise((resolve, reject) => {
+      const segments = []
+      let stats = null
 
-    const args = [
-      'python3', `"${INFER_SCRIPT}"`,
-      '--batch',
-      `--data "${this._dataPath}"`,
-      `--checkpoint "${this._checkpoint}"`,
-      `--args "${this._rnnArgs}"`,
-      `--model-dir "${this._modelDir}"`,
-      `--samples ${samples}`
-    ]
+      const jobId = Date.now()
+      this._hasActiveResponse = true
 
-    const stdout = execSync(args.join(' '), {
-      encoding: 'utf8',
-      timeout: opts.timeout || 120000,
-      stdio: ['pipe', 'pipe', 'pipe']
-    })
-
-    return stdout.trim().split('\n')
-      .filter(l => l.startsWith('{'))
-      .map(l => {
-        const r = JSON.parse(l)
-        return {
-          index: r.index,
-          text: r.text,
-          textClean: r.text_clean,
-          expected: r.expected || undefined,
-          expectedClean: r.expected_clean || undefined,
-          wer: r.wer !== undefined ? r.wer : undefined
+      const origCb = this._outputCallback.bind(this)
+      const tempCb = (addon, event, jid, data, error) => {
+        if (event === 'Output') {
+          if (Array.isArray(data)) {
+            segments.push(...data)
+          } else if (data && data.text) {
+            segments.push(data)
+          }
+        } else if (event === 'JobEnded') {
+          stats = data
+          this._hasActiveResponse = false
+          const text = segments.map(s => s.text).join('').trim()
+          resolve({ text, segments, stats })
+        } else if (event === 'Error') {
+          this._hasActiveResponse = false
+          reject(new Error(error || 'Transcription failed'))
         }
+      }
+
+      // Override addon output callback temporarily
+      this._addon._outputCb = tempCb
+
+      this._addon.runJob({ input: neuralData }).catch((err) => {
+        this._hasActiveResponse = false
+        reject(err)
       })
+    })
+  }
+
+  /**
+   * Streaming transcription: accepts an async iterable of neural signal chunks.
+   * Each chunk is appended and processing starts on end-of-stream.
+   * @param {AsyncIterable<Uint8Array>} signalStream
+   * @returns {Promise<Object>} - { text, segments, stats }
+   */
+  async transcribeStream (signalStream) {
+    if (this._hasActiveResponse) {
+      throw new QvacErrorAddonBCI({ code: ERR_CODES.JOB_ALREADY_RUNNING })
+    }
+
+    return new Promise(async (resolve, reject) => {
+      const segments = []
+      let stats = null
+
+      this._hasActiveResponse = true
+      this._addon._outputCb = (addon, event, jid, data, error) => {
+        if (event === 'Output') {
+          if (Array.isArray(data)) {
+            segments.push(...data)
+          } else if (data && data.text) {
+            segments.push(data)
+          }
+        } else if (event === 'JobEnded') {
+          stats = data
+          this._hasActiveResponse = false
+          const text = segments.map(s => s.text).join('').trim()
+          resolve({ text, segments, stats })
+        } else if (event === 'Error') {
+          this._hasActiveResponse = false
+          reject(new Error(error || 'Transcription failed'))
+        }
+      }
+
+      try {
+        // Start a job
+        await this._addon.append({ type: 'neural', input: new Uint8Array() })
+
+        // Feed chunks
+        for await (const chunk of signalStream) {
+          await this._addon.append({
+            type: 'neural',
+            input: new Uint8Array(chunk.buffer, chunk.byteOffset, chunk.byteLength)
+          })
+        }
+
+        // Signal end
+        await this._addon.append({ type: END_OF_INPUT })
+      } catch (err) {
+        this._hasActiveResponse = false
+        reject(err)
+      }
+    })
+  }
+
+  _outputCallback (addon, event, jobId, data, error) {
+    // Base callback - overridden per-call in transcribe/transcribeStream
+  }
+
+  async cancel () {
+    if (this._addon?.cancel) {
+      await this._addon.cancel()
+    }
+    this._hasActiveResponse = false
+  }
+
+  async destroy () {
+    await this.cancel()
+    if (this._addon) {
+      await this._addon.destroyInstance()
+    }
   }
 }
 
@@ -150,7 +262,7 @@ class BCIWhispercpp {
  * Compute Word Error Rate between hypothesis and reference.
  * @param {string} hypothesis
  * @param {string} reference
- * @returns {number} WER as a ratio (0.0 = perfect)
+ * @returns {number} WER as a ratio (0.0 = perfect, 1.0 = 100% errors)
  */
 function computeWER (hypothesis, reference) {
   const hyp = hypothesis.toLowerCase().trim().split(/\s+/).filter(Boolean)
@@ -170,7 +282,11 @@ function computeWER (hypothesis, reference) {
       if (ref[i - 1] === hyp[j - 1]) {
         dp[i][j] = dp[i - 1][j - 1]
       } else {
-        dp[i][j] = 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1])
+        dp[i][j] = 1 + Math.min(
+          dp[i - 1][j],     // deletion
+          dp[i][j - 1],     // insertion
+          dp[i - 1][j - 1]  // substitution
+        )
       }
     }
   }

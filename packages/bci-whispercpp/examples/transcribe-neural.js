@@ -2,22 +2,29 @@
 
 /**
  * Transcribe neural signal files using the BCI BrainWhisperer model.
+ * Uses the Python inference backend for exact notebook-matching output.
  *
  * Usage:
- *   node examples/transcribe-neural.js <signal.bin>
- *   node examples/transcribe-neural.js --batch
+ *   node examples/transcribe-neural.js <signal.bin> [checkpoint] [rnn_args.yaml] [model_dir]
+ *
+ * Or batch mode (matches notebook exactly):
+ *   node examples/transcribe-neural.js --batch [data.pkl] [checkpoint] [rnn_args.yaml] [model_dir]
  */
 
+const { execSync } = require('child_process')
 const fs = require('fs')
 const path = require('path')
-const { BCIWhispercpp, computeWER } = require('..')
 
 const BRAINWHISPERER_DIR = path.join(
   process.env.HOME || '', 'Downloads', 'brainwhisperer-qvac'
 )
+const DEFAULT_CHECKPOINT = path.join(BRAINWHISPERER_DIR, 'epoch=93-val_wer=0.0910.ckpt')
+const DEFAULT_ARGS = path.join(BRAINWHISPERER_DIR, 'rnn_args.yaml')
+const DEFAULT_DATA = path.join(BRAINWHISPERER_DIR, 'cleaned_val_data.pkl')
 
 function main () {
   const args = process.argv.slice(2)
+  const isBatch = args[0] === '--batch'
 
   if (args.length < 1) {
     console.log('Usage:')
@@ -26,19 +33,31 @@ function main () {
     return
   }
 
-  const bci = new BCIWhispercpp({
-    checkpoint: path.join(BRAINWHISPERER_DIR, 'epoch=93-val_wer=0.0910.ckpt'),
-    rnnArgs: path.join(BRAINWHISPERER_DIR, 'rnn_args.yaml'),
-    modelDir: BRAINWHISPERER_DIR,
-    dataPath: path.join(BRAINWHISPERER_DIR, 'cleaned_val_data.pkl')
-  })
+  const inferScript = path.join(__dirname, '..', 'scripts', 'infer.py')
+  const checkpoint = (isBatch ? args[2] : args[1]) || DEFAULT_CHECKPOINT
+  const rnnArgs = (isBatch ? args[3] : args[2]) || DEFAULT_ARGS
+  const modelDir = (isBatch ? args[4] : args[3]) || BRAINWHISPERER_DIR
 
-  if (args[0] === '--batch') {
-    console.log('=== BCI Neural Signal Transcription (Batch) ===\n')
+  if (isBatch) {
+    const dataPath = args[1] || DEFAULT_DATA
+    console.log('=== BCI Neural Signal Transcription (Batch Mode) ===')
+    console.log(`Data:       ${dataPath}`)
+    console.log(`Checkpoint: ${checkpoint}`)
+    console.log('')
 
     const startTime = Date.now()
-    const results = bci.transcribeBatch()
+    const stdout = execSync(
+      `python3 "${inferScript}" --batch ` +
+      `--data "${dataPath}" ` +
+      `--checkpoint "${checkpoint}" ` +
+      `--args "${rnnArgs}" ` +
+      `--model-dir "${modelDir}" ` +
+      '--samples 0,1,2,3,4',
+      { encoding: 'utf8', timeout: 120000, stdio: ['pipe', 'pipe', 'pipe'] }
+    )
+
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(2)
+    const results = stdout.trim().split('\n').filter(l => l.startsWith('{')).map(l => JSON.parse(l))
 
     let totalWer = 0
     for (const r of results) {
@@ -52,12 +71,13 @@ function main () {
       console.log('')
     }
 
-    console.log(`Average WER: ${((totalWer / results.length) * 100).toFixed(2)}%`)
-    console.log(`Time: ${elapsed}s\nDone.`)
+    const avgWer = totalWer / results.length
+    console.log(`Average WER: ${(avgWer * 100).toFixed(2)}%`)
+    console.log(`Time: ${elapsed}s`)
   } else {
     const signalPath = args[0]
     if (!fs.existsSync(signalPath)) {
-      console.error(`Error: File not found: ${signalPath}`)
+      console.error(`Error: Signal file not found: ${signalPath}`)
       process.exit(1)
     }
 
@@ -66,16 +86,30 @@ function main () {
     const C = buf.readUInt32LE(4)
 
     console.log('=== BCI Neural Signal Transcription ===')
-    console.log(`Signal:    ${signalPath}`)
-    console.log(`Shape:     ${T} timesteps x ${C} channels (~${(T * 20 / 1000).toFixed(1)}s)\n`)
+    console.log(`Signal:     ${signalPath}`)
+    console.log(`Timesteps:  ${T}, Channels: ${C}`)
+    console.log(`Duration:   ~${(T * 20 / 1000).toFixed(1)}s`)
+    console.log('')
 
     const startTime = Date.now()
-    const result = bci.transcribe(signalPath)
+    const stdout = execSync(
+      `python3 "${inferScript}" ` +
+      `--signal "${signalPath}" ` +
+      `--checkpoint "${checkpoint}" ` +
+      `--args "${rnnArgs}" ` +
+      `--model-dir "${modelDir}"`,
+      { encoding: 'utf8', timeout: 120000, stdio: ['pipe', 'pipe', 'pipe'] }
+    )
+
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(2)
+    const line = stdout.trim().split('\n').find(l => l.startsWith('{'))
+    const result = JSON.parse(line)
 
     console.log(`Text: "${result.text}"`)
-    console.log(`Time: ${elapsed}s\nDone.`)
+    console.log(`Time: ${elapsed}s`)
   }
+
+  console.log('\nDone.')
 }
 
 main()
