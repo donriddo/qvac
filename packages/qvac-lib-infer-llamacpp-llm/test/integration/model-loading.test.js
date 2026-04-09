@@ -126,10 +126,43 @@ const SHARDED_MODEL = {
 // This test can take longer to download and execute. To avoid blowing up testing time on all
 // platforms, just use Linux for now. C++ tests already have faster coverage for each type
 // of load.
-test('network loader can run inference end-to-end with sharded model', { timeout: 4 * 60 * 1000, skip: !isLinuxX64 }, async t => {
+test('sharded model can run inference end-to-end', { timeout: 4 * 60 * 1000, skip: !isLinuxX64 }, async t => {
+  const fs = require('bare-fs')
   const modelDir = path.resolve(__dirname, '../model')
+  fs.mkdirSync(modelDir, { recursive: true })
+
+  const shardPattern = /^(.+)-(\d+)-of-(\d+)\.gguf$/
+  const match = shardPattern.exec(SHARDED_MODEL.name)
+  if (!match) {
+    t.fail('Test model name does not match shard pattern')
+    return
+  }
+
+  const [, basename, , totalShards] = match
+  const totalShardsNum = parseInt(totalShards, 10)
+  const shardFiles = []
+  shardFiles.push(`${basename}.tensors.txt`)
+  for (let i = 1; i <= totalShardsNum; i++) {
+    const num = i.toString().padStart(5, '0')
+    shardFiles.push(`${basename}-${num}-of-${totalShards}.gguf`)
+  }
 
   const loader = new HttpDL({ baseUrl: SHARDED_MODEL.baseUrl })
+  for (const filename of shardFiles) {
+    const dest = path.join(modelDir, filename)
+    if (fs.existsSync(dest)) continue
+    console.log(`  Downloading shard: ${filename}`)
+    const stream = await loader.getStream(filename)
+    const ws = fs.createWriteStream(dest)
+    for await (const chunk of stream) {
+      ws.write(chunk)
+    }
+    ws.end()
+    await new Promise(resolve => ws.on('close', resolve))
+  }
+  await loader.close().catch(() => {})
+
+  const shardPaths = shardFiles.map(f => path.join(modelDir, f))
   const config = {
     gpu_layers: '999',
     ctx_size: '1024',
@@ -139,40 +172,19 @@ test('network loader can run inference end-to-end with sharded model', { timeout
   }
 
   const addon = new LlmLlamacpp({
-    loader,
-    modelName: SHARDED_MODEL.name,
-    diskPath: modelDir,
+    files: { model: shardPaths },
     config,
     logger: console,
     opts: { stats: true }
   })
 
-  let progressMade = 0
-  let lastLogTime = 0
-  const LOG_INTERVAL_MS = 3000
-  const onProgress = (data) => {
-    if (typeof data !== 'object' || data === null) return
-    const now = Date.now()
-    const shard = data.currentFile.replace(/^.*\//, '')
-    progressMade = Math.max(progressMade, data.overallProgress)
-    if (data.action === 'loadingFile' && now - lastLogTime >= LOG_INTERVAL_MS) {
-      console.log(`\r  Loading ${shard}: ${data.currentFileProgress}%  (overall ${data.overallProgress}%)   `)
-      lastLogTime = now
-    } else if (data.action === 'completeFile') {
-      console.log(`\r  Loaded  ${shard}: 100.00% (overall ${data.overallProgress}%) [${data.filesProcessed}/${data.totalFiles}]\n`)
-      lastLogTime = now
-    }
-  }
-
   try {
-    await addon.load(true, onProgress)
+    await addon.load()
     const response = await addon.run(BASE_PROMPT)
     const output = await collectResponse(response)
-    t.ok(output.length > 0, 'network-loaded sharded model should generate output')
-    t.ok(progressMade > 0, 'network-loaded sharded model should make progress')
+    t.ok(output.length > 0, 'sharded model should generate output')
   } finally {
     await addon.unload().catch(() => {})
-    await loader.close().catch(() => {})
   }
 })
 
