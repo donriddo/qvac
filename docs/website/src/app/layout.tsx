@@ -21,6 +21,9 @@ export const metadata: Metadata = {
   icons: {
     icon: '/qvac-favicon.svg',
   },
+  other: {
+    'og:logo': '/qvac-logo.svg',
+  },
 };
 
 const gtmId = process.env.NEXT_PUBLIC_GTM_ID ?? 'GTM-WDD9NCZ4';
