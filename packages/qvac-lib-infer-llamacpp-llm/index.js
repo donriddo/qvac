@@ -299,11 +299,18 @@ class LlmLlamacpp {
       this._job.fail(error)
     } else if (eventType === 'Output') {
       this._job.output(data)
+    } else if (eventType === 'FinetuneProgress') {
+      if (this.opts.stats && data && data.stats) {
+        this._job.active?.updateStats(data.stats)
+      }
     } else if (eventType === 'JobEnded') {
       this.logger.info('Job completed')
-      this._job.end(this.opts.stats ? data : null)
-    } else if (eventType === 'FinetuneProgress') {
-      this._job.output(data)
+      const isFinetuneTerminal = data && typeof data === 'object' && data.op === 'finetune' && typeof data.status === 'string'
+      if (isFinetuneTerminal) {
+        this._job.end(null, data)
+      } else {
+        this._job.end(this.opts.stats ? data : null)
+      }
     }
   }
 
