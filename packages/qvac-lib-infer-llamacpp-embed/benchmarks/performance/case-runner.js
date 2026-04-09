@@ -3,7 +3,6 @@
 const fs = require('bare-fs')
 const path = require('bare-path')
 const process = require('bare-process')
-const FilesystemDL = require('@qvac/dl-filesystem')
 const {
   elapsedMs,
   round,
@@ -145,7 +144,6 @@ function aggregateRunMetrics (runMetrics) {
 }
 
 async function runCaseWithRepeats ({ AddonCtor, modelDir, modelName, runtimeConfig, inputs, repeats, onRepeatComplete, debugEnabled }) {
-  const loader = new FilesystemDL({ dirPath: modelDir })
   const configString = buildConfigString(runtimeConfig, { debugEnabled })
   const addonRuntimeLogger = createAddonRuntimeLogger(debugEnabled)
 
@@ -160,12 +158,11 @@ async function runCaseWithRepeats ({ AddonCtor, modelDir, modelName, runtimeConf
 
   try {
     model = new AddonCtor({
-      modelName,
-      loader,
+      files: { model: [path.join(modelDir, modelName)] },
+      config: configString,
       logger: addonRuntimeLogger,
-      diskPath: modelDir,
       opts: { stats: true }
-    }, configString)
+    })
 
     const loadStart = process.hrtime()
     await model.load()
@@ -208,11 +205,6 @@ async function runCaseWithRepeats ({ AddonCtor, modelDir, modelName, runtimeConf
       }
     } catch (unloadError) {
       cleanupErrors.push(`unload_error=${unloadError && unloadError.message ? unloadError.message : String(unloadError)}`)
-    }
-    try {
-      await loader.close()
-    } catch (closeError) {
-      cleanupErrors.push(`loader_close_error=${closeError && closeError.message ? closeError.message : String(closeError)}`)
     }
   }
 
