@@ -81,8 +81,8 @@ test('Chatterbox TTS: English + Spanish synthesis and WER verification', { timeo
   if (isDarwin) {
     console.log('\n=== Ensuring Whisper model ===')
     const whisperModelPath = path.join(whisperModelDir, 'ggml-small.bin')
-    await ensureWhisperModel(whisperModelPath)
-    t.pass('Whisper model downloaded')
+    const whisperDownload = await ensureWhisperModel(whisperModelPath)
+    t.ok(whisperDownload.success, 'Whisper model should be downloaded')
   }
 
   const expectation = {

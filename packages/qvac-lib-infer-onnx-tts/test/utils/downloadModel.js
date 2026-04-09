@@ -207,7 +207,8 @@ async function ensureFileDownloaded (url, filepath) {
       if (isJson) {
         const result = spawnSync('curl', [
           '-L', url,
-          '--fail', '--silent', '--show-error',
+          '--fail', '--show-error',
+          '--retry', '3', '--retry-delay', '5',
           '--connect-timeout', '30',
           '--max-time', '300'
         ], { stdio: ['inherit', 'pipe', 'pipe'] })
@@ -233,9 +234,10 @@ async function ensureFileDownloaded (url, filepath) {
         // For binary files (.onnx), download directly to file
         const result = spawnSync('curl', [
           '-L', '-o', filepath, url,
-          '--fail', '--silent', '--show-error',
+          '--fail', '--show-error',
+          '--retry', '3', '--retry-delay', '5',
           '--connect-timeout', '30',
-          '--max-time', '1000'
+          '--max-time', '1800'
         ], { stdio: ['inherit', 'inherit', 'pipe'] })
 
         if (result.status === 0 && fs.existsSync(filepath)) {
@@ -255,14 +257,6 @@ async function ensureFileDownloaded (url, filepath) {
     }
   }
 
-  // Only create placeholder for binary files (not JSON) - JSON placeholders would
-  // pass the size check (1024 > 100) and cause parse errors on subsequent runs
-  if (!isJson) {
-    console.log(' Creating placeholder model for error testing')
-    fs.writeFileSync(filepath, Buffer.alloc(1024))
-  } else {
-    console.log(' Skipping placeholder creation for JSON file')
-  }
   return { success: false, path: filepath, isReal: false }
 }
 
@@ -318,8 +312,9 @@ async function ensureWhisperModel (targetPath = null) {
       const downloadResult = spawnSync('curl', [
         '-L', '-o', targetPath, url,
         '--fail', '--show-error',
+        '--retry', '3', '--retry-delay', '5',
         '--connect-timeout', '30',
-        '--max-time', '1000'
+        '--max-time', '1800'
       ], { stdio: ['inherit', 'inherit', 'pipe'] })
       downloadSuccess = downloadResult.status === 0 && fs.existsSync(targetPath)
       if (!downloadSuccess) {
@@ -343,14 +338,7 @@ async function ensureWhisperModel (targetPath = null) {
     }
   }
 
-  // If all URLs failed, create a placeholder for error handling
   console.log(' Warning: All download attempts failed')
-  console.log(' Creating placeholder file for error testing')
-  try {
-    fs.writeFileSync(targetPath, Buffer.alloc(1024))
-  } catch (writeError) {
-    // Ignore
-  }
   return { success: false, path: targetPath }
 }
 
@@ -541,6 +529,7 @@ async function ensureChatterboxModels (options = {}) {
         const downloadResult = spawnSync('curl', [
           '-L', '-o', targetPath, url,
           '--fail', '--show-error',
+          '--retry', '3', '--retry-delay', '5',
           '--connect-timeout', '30',
           '--max-time', '1800'
         ], { stdio: ['inherit', 'inherit', 'pipe'] })
@@ -649,7 +638,8 @@ async function fetchUrlBody (url) {
   const { spawnSync } = require('bare-subprocess')
   const result = spawnSync('curl', [
     '-L', url,
-    '--fail', '--silent', '--show-error',
+    '--fail', '--show-error',
+    '--retry', '3', '--retry-delay', '5',
     '--connect-timeout', '30',
     '--max-time', '300'
   ], { encoding: 'utf8', stdio: ['inherit', 'pipe', 'pipe'] })
@@ -695,6 +685,7 @@ function downloadOnnxFile (url, targetPath, minSize, label) {
       const downloadResult = spawnSync('curl', [
         '-L', '-o', targetPath, url,
         '--fail', '--show-error',
+        '--retry', '3', '--retry-delay', '5',
         '--connect-timeout', '30',
         '--max-time', '1800'
       ], { stdio: ['inherit', 'inherit', 'pipe'] })
