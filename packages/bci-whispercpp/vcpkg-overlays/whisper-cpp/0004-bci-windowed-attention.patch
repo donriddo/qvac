@@ -1,0 +1,76 @@
+Description: Add windowed attention support and BCI-specific SOS tokens for whisper.cpp
+
+This patch adds three features required for BCI neural signal transcription:
+
+1. Windowed attention mask in encoder self-attention (layers 0 through
+   n_audio_last_window_layer use a window of n_audio_window_size)
+2. Two new hyperparameters in the model header: n_audio_window_size and
+   n_audio_last_window_layer (read after n_audio_conv1_kernel)
+3. Force full SOS token sequence [SOT, en, transcribe, notimestamps] for
+   BCI models (detected via n_audio_window_size > 0), even on English-only
+   base models where whisper_is_multilingual() returns false
+
+Changes to src/whisper.cpp:
+
+--- a. Hyperparameters struct (after n_audio_conv1_kernel line) ---
+
++    int32_t n_audio_window_size  = 0;
++    int32_t n_audio_last_window_layer = -1;
+
+--- b. Model loading (after read_safe n_audio_conv1_kernel) ---
+
++        read_safe(loader, hparams.n_audio_window_size);
++        read_safe(loader, hparams.n_audio_last_window_layer);
+
+--- c. Encoder graph builder (before the layer loop, after inpL = cur) ---
+
++    struct ggml_tensor * window_mask = nullptr;
++    const int window_size = hparams.n_audio_window_size;
++    const int last_window_layer = hparams.n_audio_last_window_layer;
++    if (window_size > 0 && last_window_layer >= 0) {
++        window_mask = ggml_new_tensor_3d(ctx0, GGML_TYPE_F32, n_ctx, n_ctx, 1);
++        ggml_set_name(window_mask, "window_mask");
++        ggml_set_input(window_mask);
++    }
+
+--- d. Encoder self-attention softmax (non-flash path) ---
+
+-                struct ggml_tensor * KQ_soft_max = ggml_soft_max_ext(ctx0, KQ, nullptr, KQscale, 0.0f);
++                struct ggml_tensor * enc_attn_mask = (window_mask && il <= last_window_layer) ? window_mask : nullptr;
++                struct ggml_tensor * KQ_soft_max = ggml_soft_max_ext(ctx0, KQ, enc_attn_mask, KQscale, 0.0f);
+
+--- e. Encoder self-attention (flash path) ---
+
+-                cur = ggml_flash_attn_ext(ctx0, Q, K, V, nullptr, KQscale, 0.0f, 0.0f);
++                struct ggml_tensor * attn_mask_fa = (window_mask && il <= last_window_layer) ? window_mask : nullptr;
++                cur = ggml_flash_attn_ext(ctx0, Q, K, V, attn_mask_fa, KQscale, 0.0f, 0.0f);
+
+--- f. whisper_encode_internal (after encoder graph alloc, before compute) ---
+
++        {
++            struct ggml_tensor * wmask = ggml_graph_get_tensor(gf, "window_mask");
++            if (wmask) {
++                const int n_ctx = wstate.exp_n_audio_ctx > 0
++                    ? wstate.exp_n_audio_ctx : wctx.model.hparams.n_audio_ctx;
++                const int ws = wctx.model.hparams.n_audio_window_size;
++                const int half_w = ws / 2;
++                std::vector<float> mask_data(n_ctx * n_ctx);
++                for (int i = 0; i < n_ctx; ++i) {
++                    for (int j = 0; j < n_ctx; ++j) {
++                        mask_data[i * n_ctx + j] =
++                            (abs(i - j) <= half_w) ? 0.0f : -INFINITY;
++                    }
++                }
++                ggml_backend_tensor_set(wmask, mask_data.data(), 0,
++                    n_ctx * n_ctx * sizeof(float));
++            }
++        }
+
+--- g. prompt_init SOS tokens (after the whisper_is_multilingual block) ---
+
++    } else if (ctx->model.hparams.n_audio_window_size > 0) {
++        const int lang_id = whisper_lang_id(params.language);
++        state->lang_id = lang_id;
++        prompt_init.push_back(whisper_token_lang(ctx, lang_id));
++        prompt_init.push_back(whisper_token_transcribe(ctx));
++    }
