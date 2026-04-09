@@ -70,7 +70,7 @@ protected:
   }
 };
 
-TEST_F(TextLlmContextQwen3Test, DoubleTokenizeWithToolsAtEnd) {
+TEST_F(TextLlmContextQwen3Test, DoubleTokenizeWithToolsCompact) {
   if (!isQwen3Model()) {
     GTEST_SKIP() << "Test requires Qwen3 model for tools_compact feature";
   }

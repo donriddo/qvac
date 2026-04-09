@@ -146,6 +146,7 @@ public:
 
   // Shift nPastBeforeTools left after a context slide so the trim
   // boundary stays accurate. No-op when tools_compact is off.
+  // Precondition: discard must have been clamped by clampDiscard()
   void adjustAfterSlide(llama_pos discard, llama_pos firstMsgTokens) {
     if (toolsCompact_ && nPastBeforeTools_ > firstMsgTokens) {
       nPastBeforeTools_ -= discard;

@@ -41,7 +41,7 @@ TEST_F(ChatTemplateUtilsTest, IsQwen3ModelWithNullptr) {
 
 TEST_F(
     ChatTemplateUtilsTest,
-    GetChatTemplateForModelWithManualOverrideToolsAtEndFalse) {
+    GetChatTemplateForModelWithManualOverrideToolsCompactFalse) {
   std::string manual_override = "custom template";
   std::string result = getChatTemplateForModel(nullptr, manual_override, false);
   EXPECT_EQ(result, manual_override);
@@ -49,7 +49,7 @@ TEST_F(
 
 TEST_F(
     ChatTemplateUtilsTest,
-    GetChatTemplateForModelWithManualOverrideToolsAtEndTrue) {
+    GetChatTemplateForModelWithManualOverrideToolsCompactTrue) {
   std::string manual_override = "custom template";
   std::string result = getChatTemplateForModel(nullptr, manual_override, true);
   EXPECT_EQ(result, manual_override);
@@ -57,14 +57,14 @@ TEST_F(
 
 TEST_F(
     ChatTemplateUtilsTest,
-    GetChatTemplateForModelEmptyOverrideNullptrToolsAtEndFalse) {
+    GetChatTemplateForModelEmptyOverrideNullptrToolsCompactFalse) {
   std::string result = getChatTemplateForModel(nullptr, "", false);
   EXPECT_EQ(result, "");
 }
 
 TEST_F(
     ChatTemplateUtilsTest,
-    GetChatTemplateForModelEmptyOverrideNullptrToolsAtEndTrue) {
+    GetChatTemplateForModelEmptyOverrideNullptrToolsCompactTrue) {
   std::string result = getChatTemplateForModel(nullptr, "", true);
   EXPECT_EQ(result, "");
 }
@@ -151,7 +151,7 @@ TEST_F(ChatTemplateUtilsTest, TemplatesAreDifferent) {
   EXPECT_STRNE(fixedTemplate, dynamicTemplate);
 }
 
-TEST_F(ChatTemplateUtilsTest, ManualOverrideTakesPrecedenceOverToolsAtEnd) {
+TEST_F(ChatTemplateUtilsTest, ManualOverrideTakesPrecedenceOverToolsCompact) {
   common_params params;
   params.chat_template = "my_custom_template";
   params.use_jinja = true;
@@ -161,7 +161,7 @@ TEST_F(ChatTemplateUtilsTest, ManualOverrideTakesPrecedenceOverToolsAtEnd) {
 }
 
 TEST_F(
-    ChatTemplateUtilsTest, ManualOverrideTakesPrecedenceOverToolsAtEndFalse) {
+    ChatTemplateUtilsTest, ManualOverrideTakesPrecedenceOverToolsCompactFalse) {
   common_params params;
   params.chat_template = "my_custom_template";
   params.use_jinja = true;

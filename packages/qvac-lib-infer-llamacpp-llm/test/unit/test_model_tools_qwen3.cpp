@@ -13,6 +13,8 @@
 #include "test_common.hpp"
 
 namespace {
+constexpr std::string_view THINK_START = "<think>";
+
 double getStatValue(
     const qvac_lib_inference_addon_cpp::RuntimeStats& stats,
     const std::string& key) {
@@ -45,7 +47,6 @@ bool isQwen3ModelPath(const std::string& path) {
 } // namespace
 
 namespace fs = std::filesystem;
-std::string THINK_START = "<think>";
 
 class ModelToolsQwen3Test : public ::testing::Test {
 protected:
@@ -164,7 +165,7 @@ TEST_F(ModelToolsQwen3Test, CacheEnabledWithToolMessage) {
   }
 }
 
-TEST_F(ModelToolsQwen3Test, CacheEnabledWithToolMessageToolsAtEndFalse) {
+TEST_F(ModelToolsQwen3Test, CacheEnabledWithToolMessageToolsCompactFalse) {
   if (!isQwen3ModelPath(test_model_path)) {
     GTEST_SKIP() << "Test model not found";
   }

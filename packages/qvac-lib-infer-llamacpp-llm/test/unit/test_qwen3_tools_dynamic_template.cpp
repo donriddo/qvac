@@ -228,7 +228,7 @@ TEST_F(Qwen3ToolsDynamicTemplateRenderTest, MultipleToolResponses) {
 // Edge case: tools present but no user message. In practice, the outer logic
 // (tokenizeChat / processPrompt) should set add_generation_prompt correctly;
 // the template's job is to honour the config it receives.
-TEST_F(Qwen3ToolsDynamicTemplateRenderTest, NoUserMessagesToolsAtEnd) {
+TEST_F(Qwen3ToolsDynamicTemplateRenderTest, NoUserMessagesToolsCompact) {
   auto inputs = makeInputs(
       {msg("system", "You are a helpful assistant.")}, {weatherTool()});
 

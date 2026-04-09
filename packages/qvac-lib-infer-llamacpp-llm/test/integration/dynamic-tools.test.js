@@ -18,12 +18,20 @@ const QWEN3_MODEL = {
 }
 
 const SYSTEM_MESSAGE = { role: 'system', content: 'You are a helpful assistant.' }
+const SYSTEM_MESSAGE_TOKENS = 11
+const CUT_PREDICT_LIMIT = '32'
+/*
+ * a model should produce full output during tests,
+ * since the logic parses tool response blocks or ensure tool multi-turn usage
+ * limited model output is tested with CUT_PREDICT_LIMIT
+ */
+const FULL_PREDICT_LIMIT = '1024'
 
 const BASE_CONFIG = {
   device: useCpu ? 'cpu' : 'gpu',
   gpu_layers: '999',
   ctx_size: '4096',
-  n_predict: '64',
+  n_predict: FULL_PREDICT_LIMIT,
   temp: '0.1',
   seed: '1',
   verbosity: '2',
@@ -41,6 +49,7 @@ const TOOL_A = {
     required: ['city']
   }
 }
+const TOOL_A_TOKENS = 148
 
 const TOOL_B = {
   type: 'function',
@@ -126,13 +135,18 @@ async function runAndCollect (model, prompt) {
     chain = chain.onError(err => { throw err })
   }
   await chain.await()
+  const output = chunks.join('')
+  if (output.length >= (FULL_PREDICT_LIMIT - 1)) {
+    throw new Error('Full output limit reached: consider re-run or increase limit, tests flaky')
+  }
+
   return {
-    output: chunks.join(''),
+    output,
     stats: normalizeStats(response.stats)
   }
 }
 
-test('[dynamic-tools] multi-turn session with changing tools does not accumulate stale tokens', { timeout: 600_000 }, async t => {
+test('[dynamic-tools] multi-turn session with wrong tools provided', { timeout: 600_000 }, async t => {
   const { model, dirPath } = await setupModel(t)
   const sessionName = path.join(dirPath, 'dynamic-tools-changing.bin')
 
@@ -144,25 +158,29 @@ test('[dynamic-tools] multi-turn session with changing tools does not accumulate
   ]
   const r1 = await runAndCollect(model, prompt1)
   t.ok(r1.output.length > 0, 'turn 1 produces output')
+  t.ok(r1.output.length < FULL_PREDICT_LIMIT, 'turn 1 output is within predict limit')
   t.ok(r1.stats.CacheTokens > 0, 'turn 1 has cache tokens')
+  t.ok(r1.stats.CacheTokens < TOOL_A_TOKENS, 'turn 1 has tool tokens removed')
 
   const prompt2 = [
     { role: 'session', content: sessionName },
-    { role: 'user', content: 'Search for laptops' },
-    TOOL_B
+    { role: 'user', content: 'Check weather in Tokyo' },
+    TOOL_C
   ]
   const r2 = await runAndCollect(model, prompt2)
   t.ok(r2.output.length > 0, 'turn 2 produces output')
-  t.ok(r2.stats.CacheTokens > 0, 'turn 2 has cache tokens')
+  t.ok(r2.stats.CacheTokens > r1.stats.CacheTokens, 'turn 2 has cache tokens added')
+  t.ok(r2.stats.CacheTokens < r1.stats.CacheTokens + (TOOL_A_TOKENS / 2), 'turn 2 has tools removed')
 
   const prompt3 = [
     { role: 'session', content: sessionName },
-    { role: 'user', content: 'Send a report' },
-    TOOL_C
+    { role: 'user', content: 'Find best NHL player' },
+    TOOL_B
   ]
   const r3 = await runAndCollect(model, prompt3)
   t.ok(r3.output.length > 0, 'turn 3 produces output')
-  t.ok(r3.stats.CacheTokens > 0, 'turn 3 has cache tokens')
+  t.ok(r3.stats.CacheTokens > r2.stats.CacheTokens, 'turn 3 has cache tokens added')
+  t.ok(r3.stats.CacheTokens < r2.stats.CacheTokens + (TOOL_A_TOKENS / 2), 'turn 3 has tools removed')
 
   const naiveAccumulation = r1.stats.CacheTokens + r2.stats.promptTokens + r2.stats.generatedTokens + r3.stats.promptTokens + r3.stats.generatedTokens
   t.ok(
@@ -176,6 +194,33 @@ test('[dynamic-tools] multi-turn session with changing tools does not accumulate
   )
 })
 
+test('[dynamic-tools] multi-turn session with same tools and cut LLM output', { timeout: 600_000 }, async t => {
+  const { model, dirPath } = await setupModel(t, { n_predict: CUT_PREDICT_LIMIT })
+  const sessionName = path.join(dirPath, 'dynamic-tools-cut-output.bin')
+
+  const prompt1 = [
+    { role: 'session', content: sessionName },
+    SYSTEM_MESSAGE,
+    { role: 'user', content: 'What is the weather in Paris?' },
+    TOOL_A
+  ]
+  const PROMPT_1_TOKENS = { USER: 12, SYSTEM: SYSTEM_MESSAGE_TOKENS }
+  const r1 = await runAndCollect(model, prompt1)
+  t.ok(r1.output.length > 0, 'turn 1 produces output')
+  t.is(r1.stats.CacheTokens, PROMPT_1_TOKENS.SYSTEM + PROMPT_1_TOKENS.USER, 'turn 1 has exact cache tokens prompt only - tools removed')
+
+  const prompt2 = [
+    { role: 'session', content: sessionName },
+    { role: 'user', content: 'What about London?' },
+    TOOL_A
+  ]
+  const PROMPT_2_TOKENS = { USER: 9 }
+  const r2 = await runAndCollect(model, prompt2)
+  t.ok(r2.output.length > 0, 'turn 2 produces output')
+  t.is(r2.stats.CacheTokens, r1.stats.CacheTokens + PROMPT_2_TOKENS.USER, 'turn 2 has exact prompt tokens added')
+  t.end()
+})
+
 test('[dynamic-tools] multi-turn session with same tools works correctly', { timeout: 600_000 }, async t => {
   const { model, dirPath } = await setupModel(t)
   const sessionName = path.join(dirPath, 'dynamic-tools-same.bin')
@@ -186,18 +231,46 @@ test('[dynamic-tools] multi-turn session with same tools works correctly', { tim
     { role: 'user', content: 'What is the weather in Paris?' },
     TOOL_A
   ]
+  const PROMPT_1_TOKENS = { USER: 12, TOOLS: TOOL_A_TOKENS }
   const r1 = await runAndCollect(model, prompt1)
   t.ok(r1.output.length > 0, 'turn 1 produces output')
   t.ok(r1.stats.CacheTokens > 0, 'turn 1 has cache tokens')
+  t.ok(r1.stats.CacheTokens > PROMPT_1_TOKENS.TOOLS, 'turn 1 cache has tools tokens included')
+
+  const toolResponse = [
+    { role: 'session', content: sessionName },
+    { role: 'assistant', content: r1.output },
+    { role: 'tool', content: 'sunny in Paris' },
+    TOOL_A
+  ]
+  const rTool = await runAndCollect(model, toolResponse)
+  t.ok(rTool.output.length > 0, 'turn rTool produces output')
+  t.ok(rTool.stats.CacheTokens > 0, 'turn rTool has cache tokens')
+  t.ok(rTool.stats.CacheTokens < r1.stats.CacheTokens, 'turn rTool has cache tokens removed')
 
   const prompt2 = [
     { role: 'session', content: sessionName },
+    { role: 'assistant', content: rTool.output },
     { role: 'user', content: 'What about London?' },
     TOOL_A
   ]
+  const PROMPT_2_TOKENS = { USER: 9, TOOLS: TOOL_A_TOKENS }
   const r2 = await runAndCollect(model, prompt2)
   t.ok(r2.output.length > 0, 'turn 2 produces output')
   t.ok(r2.stats.CacheTokens > 0, 'turn 2 has cache tokens')
+  t.ok(r2.stats.CacheTokens > rTool.stats.CacheTokens, 'turn 2 has cache tokens more than prev')
+  t.ok(r2.stats.CacheTokens > PROMPT_2_TOKENS.TOOLS, 'turn 2 has cache tokens with tools')
+
+  const toolResponse2 = [
+    { role: 'session', content: sessionName },
+    { role: 'assistant', content: r1.output },
+    { role: 'tool', content: 'sunny in Paris' },
+    TOOL_A
+  ]
+  const rTool2 = await runAndCollect(model, toolResponse2)
+  t.ok(rTool2.output.length > 0, 'turn rTool2 produces output')
+  t.ok(rTool2.stats.CacheTokens > 0, 'turn rTool2 has cache tokens')
+  t.ok(rTool2.stats.CacheTokens < TOOL_A_TOKENS, 'turn rTool2 has all tools removed')
   t.ok(
     r2.stats.CacheTokens < 2 * r1.stats.CacheTokens,
     `CacheTokens after turn 2 (${r2.stats.CacheTokens}) should be less than 2x turn 1 (${2 * r1.stats.CacheTokens})`

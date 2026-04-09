@@ -1033,7 +1033,7 @@ TEST_F(LlamaModelTest, ReloadDuringProcessingWaitsAndDoesNotCrash) {
   });
 }
 
-TEST_F(LlamaModelTest, CommonParamsParseToolsAtEndTrue) {
+TEST_F(LlamaModelTest, CommonParamsParseToolsCompactTrue) {
   if (!fs::exists(getValidModelPath())) {
     FAIL() << "Test model not found at: " << getValidModelPath();
   }
@@ -1062,7 +1062,7 @@ TEST_F(LlamaModelTest, CommonParamsParseToolsAtEndTrue) {
   });
 }
 
-TEST_F(LlamaModelTest, CommonParamsParseToolsAtEndFalse) {
+TEST_F(LlamaModelTest, CommonParamsParseToolsCompactFalse) {
   if (!fs::exists(getValidModelPath())) {
     FAIL() << "Test model not found at: " << getValidModelPath();
   }
@@ -1091,7 +1091,7 @@ TEST_F(LlamaModelTest, CommonParamsParseToolsAtEndFalse) {
   });
 }
 
-TEST_F(LlamaModelTest, CommonParamsParseToolsAtEndUppercase) {
+TEST_F(LlamaModelTest, CommonParamsParseToolsCompactUppercase) {
   if (!fs::exists(getValidModelPath())) {
     FAIL() << "Test model not found at: " << getValidModelPath();
   }

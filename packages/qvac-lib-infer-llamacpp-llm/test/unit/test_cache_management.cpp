@@ -1009,7 +1009,7 @@ TEST_F(CacheManagementTest, CacheTokensExceedContextSize) {
       qvac_errors::StatusError);
 }
 
-TEST_F(CacheManagementTest, CacheWithToolsAtEndFalseSavesFullCache) {
+TEST_F(CacheManagementTest, CacheWithToolsCompactFalseSavesFullCache) {
   if (!hasValidModel()) {
     FAIL() << "Test model not found";
   }
