@@ -8,7 +8,24 @@ const LOG_METHODS = ['error', 'warn', 'info', 'debug']
 
 const RUN_BUSY_ERROR_MESSAGE = 'Cannot set new job: a job is already set or being processed'
 
+/**
+ * Text-to-image and image-to-image generation using stable-diffusion.cpp.
+ * Supports SD1.x, SD2.x, SDXL, SD3, and FLUX.2 [klein].
+ */
 class ImgStableDiffusion {
+  /**
+   * @param {object} args
+   * @param {object} args.files - Absolute file paths for model components
+   * @param {string} args.files.model - Main model weights
+   * @param {string} [args.files.clipL] - CLIP-L text encoder (FLUX.1 / SD3)
+   * @param {string} [args.files.clipG] - CLIP-G text encoder (SDXL / SD3)
+   * @param {string} [args.files.t5Xxl] - T5-XXL text encoder (FLUX.1 / SD3)
+   * @param {string} [args.files.llm] - LLM text encoder (FLUX.2 klein)
+   * @param {string} [args.files.vae] - VAE file
+   * @param {object} args.config - SD context configuration (threads, device, type, etc.)
+   * @param {object} [args.logger] - Structured logger
+   * @param {object} [args.opts] - Optional inference options
+   */
   constructor ({ files, config, logger = null, opts = {} }) {
     this._files = files
     this._config = config
@@ -35,6 +52,10 @@ class ImgStableDiffusion {
   async _load () {
     this.logger.info('Starting stable-diffusion model load')
 
+    // Route the primary model file to the correct stable-diffusion.cpp param:
+    //   path              — all-in-one checkpoints (SD1.x, SD2.x, SDXL, SD3 all-in-one GGUF)
+    //   diffusionModelPath — standalone diffusion weights requiring separate encoders
+    //                        (FLUX.2 klein → llm, SD3 pure GGUF → t5Xxl + clipL + clipG)
     const isSplitLayout = !!this._files.llm || !!this._files.t5Xxl
     const configurationParams = {
       path: isSplitLayout ? '' : (this._files.model || ''),
