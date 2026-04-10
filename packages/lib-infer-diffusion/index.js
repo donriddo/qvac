@@ -135,6 +135,9 @@ class ImgStableDiffusion {
   }
 
   async _runInternal (params) {
+    if (!this.addon) {
+      throw new Error('Addon not initialized. Call load() first.')
+    }
     if (params.init_image) {
       throw new Error('img2img is not yet supported — omit init_image to run txt2img')
     }

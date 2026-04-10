@@ -183,6 +183,30 @@ test('cancel | run: can run again after cancel', { timeout: 600000 }, async t =>
   t.ok(images.length > 0, 'can run again after cancel')
 })
 
+test('run() before load() throws clear initialization error', { timeout: 60000 }, async t => {
+  const [, modelDir] = await ensureModel({
+    modelName: MODEL.name,
+    downloadUrl: MODEL.url
+  })
+
+  const model = new ImgStableDiffusion({
+    files: { model: path.join(modelDir, MODEL.name) },
+    config: { device: useCpu ? 'cpu' : 'gpu', threads: 4 },
+    logger: console,
+    opts: { stats: true }
+  })
+
+  let caught = null
+  try {
+    await model.run(SHORT_PARAMS)
+  } catch (err) {
+    caught = err
+  }
+
+  t.ok(caught, 'run() before load() throws')
+  t.ok(/load\(\) first/i.test(caught?.message || ''), 'error message instructs to call load() first')
+})
+
 // Keep event loop alive briefly to let pending async operations complete.
 // Prevents C++ destructors from running while async cleanup is still happening.
 setImmediate(() => {
