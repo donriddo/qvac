@@ -9,13 +9,12 @@ This native C++ addon, built using the `Bare` Runtime, simplifies running text e
 - [Building from Source](#building-from-source)
 - [Usage](#usage)
   - [1. Import the Model Class](#1-import-the-model-class)
-  - [2. Create a Data Loader](#2-create-a-data-loader)
-  - [3. Create the `args` obj](#3-create-the-args-obj)
-  - [4. Create `config`](#4-create-config)
-  - [5. Instanstiate the model](#5-instanstiate-the-model)
-  - [6. Load the model](#6-load-the-model)
-  - [7. Generate embeddings for input sequence](#7-generate-embeddings-for-input-sequence)
-  - [8. Unload the model](#8-unload-the-model)
+  - [2. Create the `args` obj](#2-create-the-args-obj)
+  - [3. Create `config`](#3-create-config)
+  - [4. Instanstiate the model](#4-instanstiate-the-model)
+  - [5. Load the model](#5-load-the-model)
+  - [6. Generate embeddings for input sequence](#6-generate-embeddings-for-input-sequence)
+  - [7. Release Resources](#7-release-resources)
 - [API behavior by state](#api-behavior-by-state)
 - [Quickstart Example](#quickstart-example)
 - [Other Examples](#other-examples)
@@ -69,55 +68,67 @@ See [build.md](./build.md) for detailed instructions on how to build the addon f
 const GGMLBert = require('@qvac/embed-llamacpp')
 ```
 
-### 2. Create a Data Loader
-
-Data Loaders abstract the way model files are accessed. Use a [`FileSystemDataLoader`](../dl-filesystem) to load model files from your local file system. Models can be downloaded directly from HuggingFace.
+### 2. Create the `args` obj
 
 ```js
-const FilesystemDL = require('@qvac/dl-filesystem')
+const path = require('bare-path')
 
-// Download model from HuggingFace (see examples/utils.js for downloadModel helper)
-const [modelName, dirPath] = await downloadModel(
-  'https://huggingface.co/ChristianAzinn/gte-large-gguf/resolve/main/gte-large_fp16.gguf',
-  'gte-large_fp16.gguf'
-)
-
-const fsDL = new FilesystemDL({ dirPath })
-```
-
-### 3. Create the `args` obj
-
-```js
 const args = {
-  loader: fsDL,
+  files: { model: [path.join(dirPath, modelName)] },
+  config: {
+    device: 'gpu',
+    gpu_layers: '99',
+    batch_size: '1024',
+    ctx_size: '512'
+  },
   logger: console,
-  opts: { stats: true },
-  diskPath: dirPath,
-  modelName
+  opts: { stats: true }
 }
 ```
 
 The `args` obj contains the following properties:
 
-* `loader`: The Data Loader instance from which the model file will be streamed.
-* `logger`: This property is used to create a [`QvacLogger`](../logging) instance, which handles all logging functionality. 
+* `files.model`: An array of absolute paths to the model file(s) on disk. For sharded models, provide all shard paths.
+* `config`: A dictionary of hyper-parameters used to tweak the behaviour of the model (see [Create `config`](#3-create-config) below).
+* `logger`: This property is used to create a [`QvacLogger`](../logging) instance, which handles all logging functionality.
 * `opts.stats`: This flag determines whether to calculate inference stats.
-* `diskPath`: The local directory where the model file will be downloaded to.
-* `modelName`: The name of model file in the Data Loader.
 
-### 4. Create `config`
+#### Sharded model usage
 
-The `config` is a dictionary (object) consisting of hyper-parameters which can be used to tweak the behaviour of the model.  
-All parameter values should be strings.
+The addon does not discover companion files on disk — the caller MUST pass every file the model needs, in order, via `files.model`. For sharded GGUF models this includes the `.tensors.txt` companion file followed by each `.gguf` shard in numerical order.
 
 ```js
-const config = {
-  device: 'gpu',
-  gpu_layers: '99',
-  batch_size: '1024',
-  ctx_size: '512'
-}
+const path = require('bare-path')
+
+const dir = '/path/to/models'
+const model = new GGMLBert({
+  files: {
+    model: [
+      path.join(dir, 'gte-large.Q2_K.tensors.txt'),
+      path.join(dir, 'gte-large.Q2_K-00001-of-00005.gguf'),
+      path.join(dir, 'gte-large.Q2_K-00002-of-00005.gguf'),
+      path.join(dir, 'gte-large.Q2_K-00003-of-00005.gguf'),
+      path.join(dir, 'gte-large.Q2_K-00004-of-00005.gguf'),
+      path.join(dir, 'gte-large.Q2_K-00005-of-00005.gguf')
+    ]
+  },
+  config: { device: 'gpu', gpu_layers: '99' },
+  logger: console,
+  opts: { stats: true }
+})
 ```
+
+Rules for the `files.model` array:
+
+* **Order matters.** The `.tensors.txt` file must come first, then shards in ascending numerical order (`00001-of-00005`, `00002-of-00005`, ...).
+* **All shards are required.** Missing any shard or the `.tensors.txt` companion will fail loading.
+* **Non-sharded models** pass a single absolute path: `files: { model: [modelPath] }`.
+* **Absolute paths only.** The addon reads each file directly via `bare-fs` during `load()`.
+
+### 3. Create `config`
+
+The `config` is a dictionary (object) consisting of hyper-parameters which can be used to tweak the behaviour of the model.
+All parameter values should be strings.
 
 | Parameter         | Range / Type                                | Default                      | Description                                           |
 |-------------------|---------------------------------------------|------------------------------|-------------------------------------------------------|
@@ -141,43 +152,21 @@ const config = {
 | System with both                | ✅ Uses dedicated GPU (preferred)     | ✅ Uses dedicated GPU               | ✅ Uses integrated GPU              |
 
 
-### 5. Instantiate the model
+### 4. Instantiate the model
 
 ```js
-const model = new GGMLBert(args, config)
+const model = new GGMLBert(args)
 ```
 
-### 6. Load the model
+### 5. Load the model
 
 ```js
 await model.load()
 ```
 
-_Optionally_ you can pass the following parameters to tweak the loading behaviour.
-* `close?`: This boolean value determines whether to close the Data Loader after loading. Defaults to `true`
-* `reportProgressCallback?`: A callback function which gets called periodically with progress updates. It can be used to display overall progress percentage.
+`load()` takes no arguments. The addon streams each file listed in `files.model` directly from disk via `bare-fs` and then activates the model. There is no data loader, no progress callback, and no download step — the caller is responsible for ensuring the files already exist at the paths passed to the constructor.
 
-_For example:_
-
-```js
-await model.load(false, progress => process.stdout.write(`\rOverall Progress: ${progress.overallProgress}%`))
-```
-
-**Progress Callback Data**
-
-The progress callback receives an object with the following properties:
-
-| Property            | Type   | Description                             |
-|---------------------|--------|-----------------------------------------|
-| `action`            | string | Current operation being performed       |
-| `totalSize`         | number | Total bytes to be loaded                |
-| `totalFiles`        | number | Total number of files to process        |
-| `filesProcessed`    | number | Number of files completed so far        |
-| `currentFile`       | string | Name of file currently being processed  |
-| `currentFileProgress` | string | Percentage progress on current file     |
-| `overallProgress`   | string | Overall loading progress percentage     |
-
-### 7. Generate embeddings for input sequence
+### 6. Generate embeddings for input sequence
 
 The model outputs a vector for the input sequence.
 
@@ -189,14 +178,13 @@ const embeddings = await response.await()
 
 When `opts.stats` is enabled, `response.stats` includes runtime metrics such as `total_tokens`, `total_time_ms`, `tokens_per_second`, and `backendDevice` (`"cpu"` or `"gpu"`). `backendDevice` reflects the resolved device used at runtime after backend selection/fallback logic, not only the requested config.
 
-### 8. Release Resources
+### 7. Release Resources
 
 Unload the model when finished:
 
 ```javascript
 try {
   await model.unload()
-  await fsDL.close()
 } catch (error) {
   console.error('Failed to unload model:', error)
 }
