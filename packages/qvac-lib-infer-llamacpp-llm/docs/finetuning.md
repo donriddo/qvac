@@ -41,7 +41,7 @@ The library supports **LoRA finetuning** of GGUF models. LoRA trains small adapt
 
 ### Architecture
 
-Finetune and inference use the same job queue (JobRunner): both submit a job via `runJob()` and a single processing thread runs one job at a time (either inference or finetune). In JS, inference waits on `_lastJobResult`, while finetune uses `_finetuneActive` to block overlapping `run()`/`finetune()` calls; JobRunner enforces serialization on the native side.
+Finetune and inference use the same job queue (JobRunner): both submit a job via `runJob()` and a single processing thread runs one job at a time (either inference or finetune). In JS, both `run()` and `finetune()` go through the same `exclusiveRunQueue` (`_run`) and share a `createJobHandler`-managed `_hasActiveResponse` flag; JobRunner enforces serialization on the native side.
 
 1. **Model loading**: Load a base GGUF model (e.g., Qwen3-0.6B-Q8_0.gguf) with `model.load()`.
 2. **Dataset preparation**: Training data is read from JSONL (chat format) or plain text files. Validation uses either a fraction of that data (when `validation.type` is `'split'`), a separate eval file (`'dataset'`), or none (`'none'`).
@@ -247,7 +247,7 @@ sequenceDiagram
     participant Queue as outputQueue
 
     User->>LlamaModel: finetune(opts) or finetune() (no args → stored params)
-    LlamaModel->>LlamaModel: _finetuneActive check, store params, normalize opts (validation object required; dataset requires validation.path; emits validationSplit/useEvalDatasetForValidation/evalDatasetPath)
+    LlamaModel->>LlamaModel: enqueue on exclusiveRunQueue (_run), check _hasActiveResponse, normalize opts (validation object required; dataset requires validation.path; emits validationSplit/useEvalDatasetForValidation/evalDatasetPath)
     LlamaModel->>Addon: finetune(params)
 
     Addon->>Binding: _binding.finetune(handle, params)
@@ -270,7 +270,7 @@ sequenceDiagram
     end
     LlamaModelCpp->>Queue: queueJobEnded({ op:'finetune', status, stats? })
     Queue->>LlamaModel: _addonOutputCallback(...) -> _outputCallback(..., 'JobEnded', 'OnlyOneJob', data)
-    LlamaModel->>LlamaModel: BaseInference routes JobEnded to QvacResponse.ended(data)
+    LlamaModel->>LlamaModel: _handleAddonOutputEvent routes JobEnded to active QvacResponse via createJobHandler
     LlamaModel->>User: handle.await() resolves with { op:'finetune', status:'COMPLETED'|'PAUSED', stats? } (errors reject)
 ```
 
@@ -324,7 +324,7 @@ sequenceDiagram
 
 | Layer | Component | Role |
 |-------|-----------|------|
-| JS | `index.js` → `LlmLlamacpp` | Public API: `finetune()`, `pause()`, `cancel()`. `pause()` requests a resumable stop; `cancel()` stops and removes `pause_checkpoint_step_*` directories for a fresh next run. Normalizes opts: requires `validation`, rejects top-level `evalDatasetPath`, maps dataset validation to `evalDatasetPath`, and emits `validationSplit` / `useEvalDatasetForValidation` before calling addon. Uses `_finetuneActive` and `QvacResponse` (`OnlyOneJob`) for lifecycle; `_addonOutputCallback` maps terminal finetune payloads to `JobEnded`. |
+| JS | `index.js` → `LlmLlamacpp` | Public API: `finetune()`, `pause()`, `cancel()`. `pause()` requests a resumable stop; `cancel()` stops and removes `pause_checkpoint_step_*` directories for a fresh next run. Normalizes opts: requires `validation`, rejects top-level `evalDatasetPath`, maps dataset validation to `evalDatasetPath`, and emits `validationSplit` / `useEvalDatasetForValidation` before calling addon. Serializes public API via `exclusiveRunQueue` (`_run`) and tracks the active job via `createJobHandler` (`_job`) plus `_hasActiveResponse`; `_addonOutputCallback` maps terminal finetune payloads to `JobEnded` on the active `QvacResponse`. |
 | JS | `addon.js` → `LlamaInterface` | Thin wrapper: `finetune(params)` → `_binding.finetune(handle, params)`, `cancel()` → `_binding.cancel(handle)` (used by both `pause()` and `cancel()` in JS). |
 | C++ | `binding.cpp` | BARE exports: `finetune`, `cancel` → `qvac_lib_inference_addon_llama::*`. |
 | C++ | `AddonJs.hpp` | Parses JS args, gets `LlamaModel*` via `getLlamaModel(instance)`; `tryGetObject()` for params; builds `Prompt` with `finetuningParams` and `outputCallback`, calls `addonCpp->runJob(any(prompt))` (same path as inference). C++ auto-detects resume via `pauseCheckpointExists(checkpointSaveDir)`. `cancel()`: if `isFinetuneRunning()` then `requestPause()` + `JsAsyncTask::run(waitUntilFinetuningPauseComplete)`, else `cancelJob()`; always returns Promise via `JsAsyncTask::run`. |
@@ -405,28 +405,24 @@ Minimal example: load model, run finetuning, wait for completion.
 'use strict'
 
 const LlmLlamacpp = require('@qvac/llm-llamacpp')
-const FilesystemDL = require('@qvac/dl-filesystem')
 const path = require('bare-path')
 
 async function main() {
   const modelDir = path.resolve('./models')
-  const loader = new FilesystemDL({ dirPath: modelDir })
 
-  const model = new LlmLlamacpp(
-    {
-      loader,
-      opts: { stats: true },
-      logger: console,
-      diskPath: modelDir,
-      modelName: 'Qwen3-0.6B-Q8_0.gguf'
+  const model = new LlmLlamacpp({
+    files: {
+      model: [path.join(modelDir, 'Qwen3-0.6B-Q8_0.gguf')]
     },
-    {
+    config: {
       gpu_layers: '999',
       ctx_size: '512',
       device: 'gpu',
       flash_attn: 'off'
-    }
-  )
+    },
+    opts: { stats: true },
+    logger: console
+  })
 
   await model.load()
 
@@ -491,7 +487,13 @@ const config = {
   lora: './finetuned-model-direct/trained-lora-adapter.gguf'
 }
 
-const model = new LlmLlamacpp(args, config)
+const model = new LlmLlamacpp({
+  files: {
+    model: [path.join(modelDir, 'Qwen3-0.6B-Q8_0.gguf')]
+  },
+  config,
+  logger: console
+})
 await model.load()
 
 const messages = [
