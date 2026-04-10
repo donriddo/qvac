@@ -9,6 +9,7 @@ This native C++ addon, built using the `Bare` Runtime, simplifies running Large 
 - [Usage](#usage)
   - [1. Import the Model Class](#1-import-the-model-class)
   - [2. Create the `args` obj](#2-create-the-args-obj)
+    - [Sharded models](#sharded-models)
   - [3. Create the `config` obj](#3-create-the-config-obj)
   - [4. Create Model Instance](#4-create-model-instance)
   - [5. Load Model](#5-load-model)
@@ -93,11 +94,53 @@ const args = {
 
 The `args` obj contains the following properties:
 
-* `files.model`: Required. An array of absolute paths to the GGUF model file(s) to load.
+* `files.model`: Required. An array of absolute paths to the GGUF model file(s) to load. The caller is responsible for passing the complete set of files for the model, including every shard and the `.tensors.txt` companion for multi-shard models (see [Sharded models](#sharded-models) below).
 * `files.projectionModel`: Optional. Absolute path to the projection model file. This is required for multimodal support.
 * `config`: The model configuration object (see next section).
 * `logger`: This property is used to create a [`QvacLogger`](../logging) instance, which handles all logging functionality.
 * `opts.stats`: This flag determines whether to calculate inference stats.
+
+#### Sharded models
+
+The addon no longer expands sharded models internally. If you are loading a multi-shard GGUF model, **the caller MUST pass every file** — including the `.tensors.txt` companion file that lives alongside the shards — in `files.model`. Anything missing will cause the addon to fail during weight streaming.
+
+**Required ordering for multi-shard models:**
+1. The `.tensors.txt` companion file **first**.
+2. Each `*-NNNNN-of-MMMMM.gguf` shard in **numerical order** (shard `00001` before `00002`, and so on).
+
+Example — loading a 5-shard model:
+
+```js
+const path = require('bare-path')
+const LlmLlamacpp = require('@qvac/llm-llamacpp')
+
+const dir = './models'
+const modelBase = 'my-big-model-Q4_K_M'
+
+const model = new LlmLlamacpp({
+  files: {
+    model: [
+      path.join(dir, `${modelBase}.tensors.txt`),
+      path.join(dir, `${modelBase}-00001-of-00005.gguf`),
+      path.join(dir, `${modelBase}-00002-of-00005.gguf`),
+      path.join(dir, `${modelBase}-00003-of-00005.gguf`),
+      path.join(dir, `${modelBase}-00004-of-00005.gguf`),
+      path.join(dir, `${modelBase}-00005-of-00005.gguf`)
+    ]
+  },
+  config,
+  logger: console,
+  opts: { stats: true }
+})
+
+await model.load()
+```
+
+For single-file GGUF models, pass a one-element array:
+
+```js
+files: { model: [path.join(dir, 'Llama-3.2-1B-Instruct-Q4_0.gguf')] }
+```
 
 ### 3. Create the `config` obj
 
