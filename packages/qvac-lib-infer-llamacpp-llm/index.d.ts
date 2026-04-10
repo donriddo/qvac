@@ -7,6 +7,13 @@ export interface AddonMessage {
   type: 'text'
   input: string
   prefill?: boolean
+  /**
+   * Per-call sampling overrides forwarded by `LlmLlamacpp.run()` from
+   * `RunOptions.generationParams`. Carried on the `text` message and consumed
+   * by the native binding so each `runJob` can use a different temp / top_p /
+   * seed / etc. without re-loading the model.
+   */
+  generationParams?: GenerationParams
 }
 export interface AddonMediaMessage {
   type: 'media'

@@ -39,7 +39,9 @@ async function main () {
   })
   await model.load()
 
-  // 4. Preparing media. We will use both the path and the buffer in different inferences
+  // 4. Preparing media. The addon's `media` message type only accepts a
+  //    `Uint8Array` payload — file paths are not supported. Read the file
+  //    once and reuse the buffer for both inferences.
   const imageFilePath = 'media/news-paper.jpg'
   const imageBuffer = new Uint8Array(fs.readFileSync(imageFilePath))
 
@@ -76,7 +78,7 @@ async function main () {
     console.log(`Inference stats: ${JSON.stringify(response1.stats)}`)
     console.log('\n')
 
-    // 6. Second inference with image file path
+    // 6. Second inference reusing the same image buffer with a different prompt
     const messages2 = [
       {
         role: 'system',
@@ -85,11 +87,11 @@ async function main () {
       {
         role: 'user',
         type: 'media',
-        content: imageFilePath
+        content: imageBuffer
       },
       {
         role: 'user',
-        content: 'what is in the image?'
+        content: 'Describe the image in one sentence.'
       }
     ]
 
