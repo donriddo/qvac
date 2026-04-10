@@ -85,20 +85,28 @@ function normalizeFinetuneParams (opts) {
   return out
 }
 
+const SHARD_REGEX = /-\d+-of-\d+\.gguf$/
+
 class LlmLlamacpp {
   constructor ({ files, config, logger = null, opts = {} }) {
+    if (!files || !Array.isArray(files.model) || files.model.length === 0) {
+      throw new TypeError('files.model must be a non-empty array of absolute paths')
+    }
     this._files = files.model
     this._projectionModelPath = files.projectionModel || ''
     this._config = config
     this.logger = new QvacLogger(logger)
     this.opts = opts
-    this._job = createJobHandler({ cancel: () => this.addon.cancel() })
+    // The cancel closure dereferences `this.addon` lazily, so it is safe even though
+    // `this.addon` is `null` at construction time — it is only invoked from
+    // `response.cancel()` after `_load()` has assigned the addon. The optional chain
+    // also makes a stale `response.cancel()` after `unload()` a no-op.
+    this._job = createJobHandler({ cancel: () => this.addon?.cancel() })
     this._run = exclusiveRunQueue()
     this.addon = null
     this._checkpointSaveDir = null
     this._hasActiveResponse = false
     this._skipNextRuntimeStats = false
-    this._originalLogger = this.logger
     this.state = { configLoaded: false }
   }
 
@@ -113,18 +121,31 @@ class LlmLlamacpp {
 
   async _load () {
     this.logger.info('Starting model load')
+    // Pick the primary GGUF path that goes into `configurationParams.path`. For
+    // sharded models the caller passes [tensors.txt, shard-00001-of-NNNNN.gguf, ..., shard-NNNNN-of-NNNNN.gguf];
+    // we pass the FIRST entry that matches the shard regex (skipping `tensors.txt` at index 0)
+    // so the value matches the C++ `GGUFShards::expandGGUFIntoShards` regex contract.
+    // For non-sharded single-file models there is only one entry and the find returns it.
+    const primaryGgufPath = this._files.find((p) => SHARD_REGEX.test(p)) || this._files[0]
     const configurationParams = {
-      path: this._files[this._files.length - 1],
+      path: primaryGgufPath,
       projectionPath: this._projectionModelPath,
       config: { ...this._config }
     }
     this.addon = this._createAddon(configurationParams)
 
-    if (this._files.length > 1) {
-      await this._streamShards()
+    try {
+      if (this._files.length > 1) {
+        await this._streamShards()
+      }
+      await this.addon.activate()
+    } catch (loadError) {
+      // Best-effort cleanup of the partially-initialized addon so a subsequent
+      // load() does not leak a zombie native instance.
+      try { await this.addon?.unload?.() } catch (_) {}
+      this.addon = null
+      throw loadError
     }
-
-    await this.addon.activate()
     this.logger.info('Model load completed successfully')
   }
 
@@ -145,6 +166,9 @@ class LlmLlamacpp {
   }
 
   async _runInternal (prompt, runOptions = {}) {
+    if (!this.addon) {
+      throw new Error('Addon not initialized. Call load() first.')
+    }
     if (this._hasActiveResponse) {
       throw new Error(RUN_BUSY_ERROR_MESSAGE)
     }
@@ -247,42 +271,6 @@ class LlmLlamacpp {
     })
   }
 
-  _isSuppressedNoResponseLog (args) {
-    const message = args.map(arg => {
-      if (typeof arg === 'string') return arg
-      if (arg && typeof arg === 'object') {
-        if (arg.message && typeof arg.message === 'string') return arg.message
-        return JSON.stringify(arg)
-      }
-      return String(arg)
-    }).join(' ')
-    return message && message.includes('No response found for job')
-  }
-
-  _createFilteredLogger (sourceLogger) {
-    const filteredLogger = sourceLogger ? Object.create(Object.getPrototypeOf(sourceLogger)) : {}
-    Object.assign(filteredLogger, sourceLogger)
-
-    const originalInfo = sourceLogger && typeof sourceLogger.info === 'function'
-      ? sourceLogger.info.bind(sourceLogger)
-      : null
-    const originalWarn = sourceLogger && typeof sourceLogger.warn === 'function'
-      ? sourceLogger.warn.bind(sourceLogger)
-      : null
-
-    filteredLogger.info = (...args) => {
-      if (this._isSuppressedNoResponseLog(args)) return
-      if (originalInfo) return originalInfo.apply(sourceLogger, args)
-    }
-
-    filteredLogger.warn = (...args) => {
-      if (this._isSuppressedNoResponseLog(args)) return
-      if (originalWarn) return originalWarn.apply(sourceLogger, args)
-    }
-
-    return filteredLogger
-  }
-
   _handleAddonOutputEvent (eventType, data, error) {
     if (eventType === 'JobEnded' || eventType === 'Error') {
       this._hasActiveResponse = false
@@ -290,12 +278,12 @@ class LlmLlamacpp {
 
     if (eventType === 'LogMsg') {
       const logMsg = typeof data === 'string' ? data : (data?.message || JSON.stringify(data))
-      this._originalLogger?.info?.(logMsg)
+      this.logger?.info?.(logMsg)
       return
     }
 
     if (eventType === 'Error') {
-      this.logger.error(`Job failed with error: ${error}`)
+      this.logger.error('Job failed with error:', error)
       this._job.fail(error)
     } else if (eventType === 'Output') {
       this._job.output(data)
@@ -357,7 +345,6 @@ class LlmLlamacpp {
 
   _createAddon (configurationParams) {
     const binding = require('./binding')
-    this.logger = this._createFilteredLogger(this._originalLogger)
     return new LlamaInterface(
       binding,
       configurationParams,
@@ -366,13 +353,13 @@ class LlmLlamacpp {
   }
 
   async pause () {
-    if (this.addon) {
+    if (this.addon?.cancel) {
       await this.addon.cancel()
     }
   }
 
   async cancel () {
-    if (this.addon) {
+    if (this.addon?.cancel) {
       await this.addon.cancel()
     }
     this._clearPauseCheckpoints()
@@ -404,6 +391,9 @@ class LlmLlamacpp {
       this._hasActiveResponse = false
       if (this.addon) {
         await this.addon.unload()
+        // Null the addon reference so post-unload `cancel()` / `run()` calls hit the
+        // `if (!this.addon)` guard instead of dereferencing a disposed native handle.
+        this.addon = null
       }
       this.state.configLoaded = false
     })
