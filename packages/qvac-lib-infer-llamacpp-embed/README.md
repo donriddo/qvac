@@ -9,13 +9,12 @@ This native C++ addon, built using the `Bare` Runtime, simplifies running text e
 - [Building from Source](#building-from-source)
 - [Usage](#usage)
   - [1. Import the Model Class](#1-import-the-model-class)
-  - [2. Create a Data Loader](#2-create-a-data-loader)
-  - [3. Create the `args` obj](#3-create-the-args-obj)
-  - [4. Create `config`](#4-create-config)
-  - [5. Instanstiate the model](#5-instanstiate-the-model)
-  - [6. Load the model](#6-load-the-model)
-  - [7. Generate embeddings for input sequence](#7-generate-embeddings-for-input-sequence)
-  - [8. Unload the model](#8-unload-the-model)
+  - [2. Create the `args` obj](#2-create-the-args-obj)
+  - [3. Create `config`](#3-create-config)
+  - [4. Instanstiate the model](#4-instanstiate-the-model)
+  - [5. Load the model](#5-load-the-model)
+  - [6. Generate embeddings for input sequence](#6-generate-embeddings-for-input-sequence)
+  - [7. Release Resources](#7-release-resources)
 - [API behavior by state](#api-behavior-by-state)
 - [Quickstart Example](#quickstart-example)
 - [Other Examples](#other-examples)
@@ -69,55 +68,35 @@ See [build.md](./build.md) for detailed instructions on how to build the addon f
 const GGMLBert = require('@qvac/embed-llamacpp')
 ```
 
-### 2. Create a Data Loader
-
-Data Loaders abstract the way model files are accessed. Use a [`FileSystemDataLoader`](../dl-filesystem) to load model files from your local file system. Models can be downloaded directly from HuggingFace.
+### 2. Create the `args` obj
 
 ```js
-const FilesystemDL = require('@qvac/dl-filesystem')
+const path = require('bare-path')
 
-// Download model from HuggingFace (see examples/utils.js for downloadModel helper)
-const [modelName, dirPath] = await downloadModel(
-  'https://huggingface.co/ChristianAzinn/gte-large-gguf/resolve/main/gte-large_fp16.gguf',
-  'gte-large_fp16.gguf'
-)
-
-const fsDL = new FilesystemDL({ dirPath })
-```
-
-### 3. Create the `args` obj
-
-```js
 const args = {
-  loader: fsDL,
+  files: { model: [path.join(dirPath, modelName)] },
+  config: {
+    device: 'gpu',
+    gpu_layers: '99',
+    batch_size: '1024',
+    ctx_size: '512'
+  },
   logger: console,
-  opts: { stats: true },
-  diskPath: dirPath,
-  modelName
+  opts: { stats: true }
 }
 ```
 
 The `args` obj contains the following properties:
 
-* `loader`: The Data Loader instance from which the model file will be streamed.
-* `logger`: This property is used to create a [`QvacLogger`](../logging) instance, which handles all logging functionality. 
+* `files.model`: An array of absolute paths to the model file(s) on disk. For sharded models, provide all shard paths.
+* `config`: A dictionary of hyper-parameters used to tweak the behaviour of the model (see [Create `config`](#3-create-config) below).
+* `logger`: This property is used to create a [`QvacLogger`](../logging) instance, which handles all logging functionality.
 * `opts.stats`: This flag determines whether to calculate inference stats.
-* `diskPath`: The local directory where the model file will be downloaded to.
-* `modelName`: The name of model file in the Data Loader.
 
-### 4. Create `config`
+### 3. Create `config`
 
-The `config` is a dictionary (object) consisting of hyper-parameters which can be used to tweak the behaviour of the model.  
+The `config` is a dictionary (object) consisting of hyper-parameters which can be used to tweak the behaviour of the model.
 All parameter values should be strings.
-
-```js
-const config = {
-  device: 'gpu',
-  gpu_layers: '99',
-  batch_size: '1024',
-  ctx_size: '512'
-}
-```
 
 | Parameter         | Range / Type                                | Default                      | Description                                           |
 |-------------------|---------------------------------------------|------------------------------|-------------------------------------------------------|
@@ -141,13 +120,13 @@ const config = {
 | System with both                | ✅ Uses dedicated GPU (preferred)     | ✅ Uses dedicated GPU               | ✅ Uses integrated GPU              |
 
 
-### 5. Instantiate the model
+### 4. Instantiate the model
 
 ```js
-const model = new GGMLBert(args, config)
+const model = new GGMLBert(args)
 ```
 
-### 6. Load the model
+### 5. Load the model
 
 ```js
 await model.load()
@@ -177,7 +156,7 @@ The progress callback receives an object with the following properties:
 | `currentFileProgress` | string | Percentage progress on current file     |
 | `overallProgress`   | string | Overall loading progress percentage     |
 
-### 7. Generate embeddings for input sequence
+### 6. Generate embeddings for input sequence
 
 The model outputs a vector for the input sequence.
 
@@ -189,14 +168,13 @@ const embeddings = await response.await()
 
 When `opts.stats` is enabled, `response.stats` includes runtime metrics such as `total_tokens`, `total_time_ms`, `tokens_per_second`, and `backendDevice` (`"cpu"` or `"gpu"`). `backendDevice` reflects the resolved device used at runtime after backend selection/fallback logic, not only the requested config.
 
-### 8. Release Resources
+### 7. Release Resources
 
 Unload the model when finished:
 
 ```javascript
 try {
   await model.unload()
-  await fsDL.close()
 } catch (error) {
   console.error('Failed to unload model:', error)
 }

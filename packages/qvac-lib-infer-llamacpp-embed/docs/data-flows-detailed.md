@@ -30,7 +30,7 @@ sequenceDiagram
     participant BM as BertModel
     participant LLAMA as llama.cpp
     
-    App->>GGMLBert: new GGMLBert(args, config)
+    App->>GGMLBert: new GGMLBert({ files, config, logger, opts })
     GGMLBert->>GGMLBert: Store config, modelName, diskPath
     GGMLBert->>WP: new WeightsProvider(loader)
     
