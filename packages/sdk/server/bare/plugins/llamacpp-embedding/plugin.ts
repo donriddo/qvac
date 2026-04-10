@@ -57,7 +57,7 @@ function transformEmbedConfig(embedConfig: EmbedConfig): GGMLConfig {
   }
 
   if (embedConfig.openclCacheDir) {
-    config["openclCacheDir"] = embedConfig.openclCacheDir;
+    config.openclCacheDir = embedConfig.openclCacheDir;
   }
 
   return config;
