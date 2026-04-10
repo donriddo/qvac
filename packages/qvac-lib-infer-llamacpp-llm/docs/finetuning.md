@@ -405,28 +405,24 @@ Minimal example: load model, run finetuning, wait for completion.
 'use strict'
 
 const LlmLlamacpp = require('@qvac/llm-llamacpp')
-const FilesystemDL = require('@qvac/dl-filesystem')
 const path = require('bare-path')
 
 async function main() {
   const modelDir = path.resolve('./models')
-  const loader = new FilesystemDL({ dirPath: modelDir })
 
-  const model = new LlmLlamacpp(
-    {
-      loader,
-      opts: { stats: true },
-      logger: console,
-      diskPath: modelDir,
-      modelName: 'Qwen3-0.6B-Q8_0.gguf'
+  const model = new LlmLlamacpp({
+    files: {
+      model: [path.join(modelDir, 'Qwen3-0.6B-Q8_0.gguf')]
     },
-    {
+    config: {
       gpu_layers: '999',
       ctx_size: '512',
       device: 'gpu',
       flash_attn: 'off'
-    }
-  )
+    },
+    opts: { stats: true },
+    logger: console
+  })
 
   await model.load()
 
@@ -491,7 +487,13 @@ const config = {
   lora: './finetuned-model-direct/trained-lora-adapter.gguf'
 }
 
-const model = new LlmLlamacpp(args, config)
+const model = new LlmLlamacpp({
+  files: {
+    model: [path.join(modelDir, 'Qwen3-0.6B-Q8_0.gguf')]
+  },
+  config,
+  logger: console
+})
 await model.load()
 
 const messages = [
