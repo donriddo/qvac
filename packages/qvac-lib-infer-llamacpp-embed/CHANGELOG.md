@@ -1,5 +1,92 @@
 # Changelog
 
+## [0.14.0] - 2026-04-10
+
+This release migrates the embed addon off `BaseInference` inheritance and the `WeightsProvider` download layer onto the composable `createJobHandler` + `exclusiveRunQueue` utilities from `@qvac/infer-base@^0.4.0`. The constructor signature is replaced with a single object whose `files.model` field is an ordered array of absolute paths, mirroring the parallel LLM and diffusion addon refactors. This is a breaking change — every caller must update.
+
+## Breaking Changes
+
+### Constructor signature: single object with `files`, no `Loader`
+
+`GGMLBert` now takes a single `{ files, config?, logger?, opts? }` object. The old `Loader` + `diskPath` + `modelName` + two-arg `(args, config)` shape is gone — callers pre-resolve absolute paths and supply them as `files.model`.
+
+```js
+// BEFORE (≤ 0.13.x)
+const FilesystemDL = require('@qvac/dl-filesystem')
+const loader = new FilesystemDL({ dirPath: '/models' })
+const model = new GGMLBert({
+  loader,
+  modelName: 'bge-small-en-v1.5-q4_0.gguf',
+  diskPath: '/models',
+  logger: console,
+  opts: { stats: true }
+}, { device: 'gpu', batch_size: '512' })
+
+// AFTER (0.14.0)
+const model = new GGMLBert({
+  files: {
+    model: ['/models/bge-small-en-v1.5-q4_0.gguf']
+  },
+  config: { device: 'gpu', batch_size: '512' },
+  logger: console,
+  opts: { stats: true }
+})
+```
+
+For sharded models the caller passes the full ordered list — the `<basename>.tensors.txt` companion first, followed by every `<basename>-NNNNN-of-MMMMM.gguf` shard in ascending order:
+
+```js
+const model = new GGMLBert({
+  files: {
+    model: [
+      '/models/big-embed-model.tensors.txt',
+      '/models/big-embed-model-00001-of-00003.gguf',
+      '/models/big-embed-model-00002-of-00003.gguf',
+      '/models/big-embed-model-00003-of-00003.gguf'
+    ]
+  },
+  config: { device: 'gpu' }
+})
+```
+
+### `BaseInference` inheritance and `WeightsProvider` removed
+
+`GGMLBert` no longer extends `BaseInference` and no longer touches the `WeightsProvider` download layer. The class composes `createJobHandler` and `exclusiveRunQueue` from `@qvac/infer-base@^0.4.0` directly. Public lifecycle methods (`load` / `run` / `cancel` / `unload` / `getState`) are unchanged in shape, but `downloadWeights` and the loader-based progress callbacks are gone — the caller is responsible for placing files on disk before constructing the model.
+
+### Dependency changes
+
+- `@qvac/infer-base` bumped from `^0.2.2` to `^0.4.0`.
+- `bare-fs` is now a runtime dependency (used to stream shards from disk).
+- `@qvac/dl-filesystem` and `@qvac/dl-hyperdrive` are no longer used by this package and have been removed from `devDependencies` / `peerDependencies`.
+
+## Features
+
+### Constructor input validation
+
+The constructor now throws `TypeError('files.model must be a non-empty array of absolute paths')` when `files` or `files.model` is missing or empty. This produces a clear error for callers porting old code instead of a confusing `Cannot read properties of undefined`.
+
+### `run()`-before-`load()` guard
+
+Calling `run()` before `load()` now throws `Error('Addon not initialized. Call load() first.')` instead of dereferencing `null` and crashing.
+
+### Crash-safe shard streaming
+
+If `_streamShards()` or `addon.activate()` throws mid-load (for example a corrupted shard file or a native init failure), the partially-initialized addon is now best-effort-unloaded and `this.addon` is reset to `null`. A subsequent `load()` call starts cleanly instead of leaking a zombie native instance.
+
+## Bug Fixes
+
+### `unload()` clears the addon reference
+
+`unload()` now sets `this.addon = null` after `await this.addon.unload()`, so post-unload `cancel()` / `run()` calls hit the explicit guards rather than dereferencing a disposed native handle. `cancel()` and the job-handler cancel closure both use optional chaining for the same reason.
+
+### Unknown addon events no longer pollute the output stream
+
+`_addonOutputCallback` previously fed any non-stats / non-error event payload into `response.output`, including unknown events. It now logs unknown events at debug level and only forwards `Embeddings` payloads to the active response.
+
+## Pull Requests
+
+- [#1493](https://github.com/tetherto/qvac/pull/1493) - chore[bc]: embed addon interface refactor — remove BaseInference and WeightsProvider
+
 ## [0.13.3] - 2026-04-07
 
 ### Added
