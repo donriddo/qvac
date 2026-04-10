@@ -98,8 +98,6 @@ The `_createFilteredLogger` infrastructure that wrapped the user-supplied logger
 
 - [#1494](https://github.com/tetherto/qvac/pull/1494) - chore[bc]: LLM addon interface refactor — remove BaseInference and WeightsProvider
 
-
-
 ## [0.14.4] - 2026-04-03
 
 ### Changed

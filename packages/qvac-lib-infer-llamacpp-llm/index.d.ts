@@ -7,6 +7,13 @@ export interface AddonMessage {
   type: 'text'
   input: string
   prefill?: boolean
+  /**
+   * Per-call sampling overrides forwarded by `LlmLlamacpp.run()` from
+   * `RunOptions.generationParams`. Carried on the `text` message and consumed
+   * by the native binding so each `runJob` can use a different temp / top_p /
+   * seed / etc. without re-loading the model.
+   */
+  generationParams?: GenerationParams
 }
 export interface AddonMediaMessage {
   type: 'media'
@@ -128,29 +135,67 @@ export type FinetuneValidation =
   | FinetuneValidationDataset
 
 export interface FinetuneOptions {
+  /** Path to the training dataset file (e.g. `.jsonl` for SFT, `.txt` for causal). */
   trainDatasetDir: string
+  /**
+   * How to run validation. Required — there is no default.
+   * `{ type: 'none' }` disables validation. `{ type: 'split', fraction? }` reserves
+   * a fraction of the training data (default 0.05). `{ type: 'dataset', path }`
+   * uses a separate eval dataset file.
+   */
   validation: FinetuneValidation
+  /** Directory (or file path) where the final LoRA adapter will be written. */
   outputParametersDir: string
+  /** Number of training epochs. Default 1. */
   numberOfEpochs?: number
+  /** Initial learning rate. Default 1e-4. */
   learningRate?: number
+  /** Training sequence length (tokens). Default 128. */
   contextLength?: number
+  /**
+   * Backend `n_batch` (number of tokens processed per batch). Must be `>= microBatchSize`
+   * and divisible by it when both are set. Default 128.
+   */
   batchSize?: number
+  /**
+   * Backend `n_ubatch` (micro-batch size). Adjusted to gcd(datasetSampleCount, requested)
+   * if needed. Must be `<= batchSize` when both are set. Default 128.
+   */
   microBatchSize?: number
+  /** Use SFT (chat) mode if `true`, causal mode otherwise. Default `false`. */
   assistantLossOnly?: boolean
+  /**
+   * Comma-separated target modules (e.g. `attn_q,attn_k,attn_v,attn_o,ffn_gate,ffn_up,ffn_down,output`,
+   * or `all`). Default attention Q, K, V, O only.
+   */
   loraModules?: string
+  /** LoRA rank. Default 8. */
   loraRank?: number
+  /** LoRA alpha (scaling). Default 16.0. */
   loraAlpha?: number
+  /** LoRA init standard deviation. Default 0.02. */
   loraInitStd?: number
+  /** Seed for LoRA weight initialization (0 = non-deterministic). Default 42. */
   loraSeed?: number
+  /** Directory where checkpoints (and pause checkpoints) are saved. Default `./checkpoints`. */
   checkpointSaveDir?: string
+  /** Save a checkpoint every N steps (0 = pause checkpoints only). Default 0. */
   checkpointSaveSteps?: number
+  /** Path to a chat template file (used in SFT mode). Default `""`. */
   chatTemplatePath?: string
+  /** Learning-rate schedule. Default `"cosine"`. */
   lrScheduler?: 'constant' | 'cosine' | 'linear'
+  /** Minimum learning rate (used by cosine/linear schedulers). Default 0. */
   lrMin?: number
+  /** Warmup ratio (0–1). Requires `warmupRatioSet: true` to take effect. Default 0.1. */
   warmupRatio?: number
+  /** When `true`, warmup steps = `warmupRatio × totalSteps`. Default `false`. */
   warmupRatioSet?: boolean
+  /** Explicit warmup steps (used when `warmupStepsSet: true`). Default 0. */
   warmupSteps?: number
+  /** When `true`, use `warmupSteps` directly instead of `warmupRatio`. Default `false`. */
   warmupStepsSet?: boolean
+  /** Optimizer weight decay. Default 0.01. */
   weightDecay?: number
 }
 
