@@ -68,7 +68,7 @@
 
 **Dependencies:**
 - qvac-lib-inference-addon-cpp (≥1.1.2): C++ addon framework (single-job runner, runJob/activate/loadWeights/cancel/destroyInstance)
-- qvac-fabric-llm.cpp (≥7248.2.1): Inference engine
+- qvac-fabric-llm.cpp (≥7248.2.3): Inference engine
 - @qvac/infer-base: `createJobHandler` and `exclusiveRunQueue` helpers (job/response lifecycle + single-job serialization)
 - @qvac/logging: `QvacLogger` wrapper
 - Bare Runtime (≥1.24.0): JavaScript runtime
