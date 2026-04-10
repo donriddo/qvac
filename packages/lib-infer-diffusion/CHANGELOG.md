@@ -1,5 +1,74 @@
 # Changelog
 
+## [0.2.0] - 2026-04-10
+
+This release migrates the diffusion addon off `BaseInference` inheritance and onto the composable `createJobHandler` + `exclusiveRunQueue` utilities from `@qvac/infer-base@^0.4.0`. The constructor signature is replaced with a single object whose `files` field carries absolute paths for every model component, mirroring the parallel embed and LLM addon refactors. This is a breaking change — every caller must update.
+
+## Breaking Changes
+
+### Constructor signature: single object with `files` instead of `(args, config)`
+
+`ImgStableDiffusion` now takes a single `{ files, config, logger?, opts? }` object. The old `diskPath` + `modelName` + per-component filename pattern is gone — callers pass absolute paths directly via `files`. Companion model fields are renamed (`clipLModel` → `clipL`, `clipGModel` → `clipG`, `t5XxlModel` → `t5Xxl`, `llmModel` → `llm`, `vaeModel` → `vae`).
+
+```js
+// BEFORE (≤ 0.1.x)
+const model = new ImgStableDiffusion({
+  diskPath: '/models',
+  modelName: 'flux-2-klein-4b-Q8_0.gguf',
+  llmModel: 'Qwen3-4B-Q4_K_M.gguf',
+  vaeModel: 'flux2-vae.safetensors',
+  logger: console
+}, { threads: 8 })
+
+// AFTER (0.2.0)
+const model = new ImgStableDiffusion({
+  files: {
+    model: '/models/flux-2-klein-4b-Q8_0.gguf',
+    llm:   '/models/Qwen3-4B-Q4_K_M.gguf',
+    vae:   '/models/flux2-vae.safetensors'
+  },
+  config: { threads: 8 },
+  logger: console,
+  opts: { stats: true }
+})
+```
+
+### `BaseInference` inheritance removed
+
+`ImgStableDiffusion` no longer extends `BaseInference`. The class composes `createJobHandler` and `exclusiveRunQueue` from `@qvac/infer-base@^0.4.0` directly. The public lifecycle (`load` / `run` / `cancel` / `unload` / `getState`) is unchanged in shape; only construction differs. Internal helpers like `_withExclusiveRun` and `_outputCallback` are removed.
+
+### Caller owns absolute paths — addon no longer joins `diskPath` + filename
+
+Callers that previously relied on the addon to resolve `path.join(diskPath, filename)` must now do that resolution themselves before constructing the model.
+
+## Features
+
+### Constructor input validation
+
+The constructor now throws `TypeError('files.model must be an absolute path to the main model weights')` when `files` or `files.model` is missing. This produces a clear error for callers porting old code instead of a confusing `Cannot read properties of undefined`.
+
+### `run()`-before-`load()` guard
+
+Calling `run()` before `load()` now throws `Error('Addon not initialized. Call load() first.')` instead of crashing in native code. Covered by a new regression test in `test/integration/api-behavior.test.js`.
+
+### Broader split-layout detection
+
+`isSplitLayout` now also triggers when only `clipL` or `clipG` is supplied. This closes a footgun where a FLUX.1 caller passing `{ model, clipL, clipG, vae }` (without `t5Xxl`) would silently mis-route the diffusion model into the all-in-one `path` parameter and fail to load.
+
+## Bug Fixes
+
+### `unload()` clears the addon reference
+
+`unload()` now sets `this.addon = null` after `await this.addon.unload()`, so post-unload `cancel()` / `run()` calls hit the explicit `if (!this.addon)` guard rather than dereferencing a disposed native handle.
+
+### Unknown addon events no longer pollute the output stream
+
+`_addonOutputCallback` previously had a fallthrough that pushed any non-error / non-image / non-stats event into `response.output` (including `null` and `undefined`). It now logs unknown events at debug level and does not feed them into the active response.
+
+## Pull Requests
+
+- [#1496](https://github.com/tetherto/qvac/pull/1496) - chore[bc]: diffusion addon interface refactor — remove BaseInference
+
 ## [0.1.2] - 2026-04-03
 
 ### Changed

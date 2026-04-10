@@ -195,10 +195,12 @@ const args = {
 | `logger` | — | Logger instance (e.g. `console`) |
 | `opts` | — | Additional options (e.g. `{ stats: true }`) |
 
-### 3. Create the `config` object
+### 3. Configure the native backend (`args.config`)
+
+`config` is a field on the `args` object built in step 2 — there is no separate constructor argument. The native backend reads it during `load()`.
 
 ```js
-const config = {
+args.config = {
   threads: 8  // CPU threads for tensor operations (Metal handles GPU automatically)
 }
 ```
@@ -220,7 +222,7 @@ All config values are coerced to strings internally before being passed to the n
 const model = new ImgStableDiffusion(args)
 ```
 
-The constructor stores configuration only — no memory is allocated yet.
+The constructor takes a single object containing `files`, `config`, `logger`, and `opts`. It stores configuration only — no memory is allocated yet.
 
 ### 5. Load the Model
 
