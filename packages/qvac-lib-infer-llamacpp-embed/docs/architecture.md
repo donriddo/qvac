@@ -708,8 +708,8 @@ Support batch processing natively by accepting both single strings and arrays of
 <details>
 <summary>⚡ TL;DR</summary>
 
-**Chose:** Promise-based exclusive run queue using `_withExclusiveRun()` wrapper  
-**Why:** Ensure atomic multi-step operations complete without interruption  
+**Chose:** Compose `exclusiveRunQueue()` from `@qvac/infer-base` to serialize public API entrypoints
+**Why:** Ensure atomic multi-step operations complete without interruption
 **Cost:** One inference request at a time per model instance
 
 </details>
@@ -720,9 +720,9 @@ With addon-cpp ≥1.1.2, a single inference request is one `runJob({ type, input
 
 ### Decision
 
-Implement JavaScript-level promise queue using `_withExclusiveRun()` helper so that only one `run()` (and thus one `runJob()`) is in progress at a time. This avoids races and ensures the addon’s single-job contract is respected.
+Use the `exclusiveRunQueue()` helper from `@qvac/infer-base@^0.4.0`. The constructor stores the queue as `this._run`, and `run()` and `unload()` wrap their bodies with `this._run(() => …)`. This replaces the previous `BaseInference._withExclusiveRun()` template-method approach with a small composable utility, in line with the loader-removal refactor that dropped `BaseInference` inheritance.
 
-**Note:** C++ level thread safety (mutex-protected job queue) and single-job semantics (runJob, cancel waits until stopped) are handled by the addon-cpp (≥1.1.1) framework.
+**Note:** C++ level thread safety (mutex-protected job queue) and single-job semantics (runJob, cancel waits until stopped) are handled by the addon-cpp (≥1.1.2) framework.
 
 ### Rationale
 
