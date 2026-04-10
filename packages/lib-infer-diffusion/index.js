@@ -1,8 +1,20 @@
 'use strict'
 
+const path = require('bare-path')
 const QvacLogger = require('@qvac/logging')
 const { createJobHandler, exclusiveRunQueue } = require('@qvac/infer-base')
 const { SdInterface, mapAddonEvent } = require('./addon')
+
+const COMPANION_FILE_KEYS = ['clipL', 'clipG', 't5Xxl', 'llm', 'vae']
+
+function assertAbsolute (key, value) {
+  if (typeof value !== 'string' || value.length === 0) {
+    throw new TypeError(`files.${key} must be an absolute path string`)
+  }
+  if (!path.isAbsolute(value)) {
+    throw new TypeError(`files.${key} must be an absolute path (got: ${value})`)
+  }
+}
 
 const LOG_METHODS = ['error', 'warn', 'info', 'debug']
 
@@ -16,22 +28,30 @@ class ImgStableDiffusion {
   /**
    * @param {object} args
    * @param {object} args.files - Absolute file paths for model components
-   * @param {string} args.files.model - Main model weights
-   * @param {string} [args.files.clipL] - CLIP-L text encoder (FLUX.1 / SD3)
-   * @param {string} [args.files.clipG] - CLIP-G text encoder (SDXL / SD3)
-   * @param {string} [args.files.t5Xxl] - T5-XXL text encoder (FLUX.1 / SD3)
-   * @param {string} [args.files.llm] - LLM text encoder (FLUX.2 klein)
-   * @param {string} [args.files.vae] - VAE file
-   * @param {object} args.config - SD context configuration (threads, device, type, etc.)
+   * @param {string} args.files.model - Main model weights (absolute path)
+   * @param {string} [args.files.clipL] - CLIP-L text encoder (FLUX.1 / SD3, absolute path)
+   * @param {string} [args.files.clipG] - CLIP-G text encoder (SDXL / SD3, absolute path)
+   * @param {string} [args.files.t5Xxl] - T5-XXL text encoder (FLUX.1 / SD3, absolute path)
+   * @param {string} [args.files.llm] - LLM text encoder (FLUX.2 klein, absolute path)
+   * @param {string} [args.files.vae] - VAE file (absolute path)
+   * @param {object} [args.config] - SD context configuration (threads, device, type, etc.).
+   *   Optional — when omitted, the addon forwards an empty config and the C++ layer falls
+   *   back to stable-diffusion.cpp defaults for every parameter.
    * @param {object} [args.logger] - Structured logger
    * @param {object} [args.opts] - Optional inference options
    */
   constructor ({ files, config, logger = null, opts = {} }) {
-    if (!files || typeof files !== 'object' || typeof files.model !== 'string' || files.model.length === 0) {
-      throw new TypeError('files.model must be an absolute path to the main model weights')
+    if (!files || typeof files !== 'object') {
+      throw new TypeError('files must be an object containing at least { model }')
+    }
+    assertAbsolute('model', files.model)
+    for (const key of COMPANION_FILE_KEYS) {
+      if (files[key] !== undefined) {
+        assertAbsolute(key, files[key])
+      }
     }
     this._files = files
-    this._config = config
+    this._config = config || {}
     this.logger = new QvacLogger(logger)
     this.opts = opts
     // The cancel closure dereferences `this.addon` lazily, so it is safe even though

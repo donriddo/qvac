@@ -1,6 +1,6 @@
 # Architecture Documentation
 
-**Package:** `@qvac/diffusion-cpp` v0.1.2
+**Package:** `@qvac/diffusion-cpp` v0.2.0
 **Stack:** JavaScript, C++20, stable-diffusion.cpp, Bare Runtime, CMake, vcpkg
 **License:** Apache-2.0
 
@@ -197,7 +197,7 @@ classDiagram
 | From | To | Type | Purpose |
 |------|-----|------|---------|
 | ImgStableDiffusion | JobHandler | Composition | Lifecycle of the active job (replaces inheriting from `BaseInference`) |
-| ImgStableDiffusion | ExclusiveRunQueue | Composition | Serializes `run()` / `cancel()` / `unload()` |
+| ImgStableDiffusion | ExclusiveRunQueue | Composition | Serializes `run()` and `unload()` (cancel is intentionally outside the queue so it can interrupt an in-flight run) |
 | JobHandler | QvacResponse | Creates | Progress/result per generation |
 
 > **Note:** `ImgStableDiffusion` no longer extends `BaseInference`. It composes the helpers exposed by `@qvac/infer-base` (`createJobHandler`, `exclusiveRunQueue`) directly.
@@ -575,7 +575,7 @@ Require all model files to be present on disk before `load()` is called. The con
 **Split-model support:**
 - Diffusion models may have multiple components (diffusion GGUF, CLIP-L, CLIP-G, T5-XXL, LLM encoder, VAE)
 - The caller supplies each component as an absolute path on `files`
-- Split vs all-in-one layout is detected via heuristic in `_load()` (`isSplitLayout = !!this._files.llm || !!this._files.t5Xxl`)
+- Split vs all-in-one layout is detected via heuristic in `_load()` (`isSplitLayout = !!this._files.llm || !!this._files.t5Xxl || !!this._files.clipL || !!this._files.clipG`). Any caller-supplied separate encoder implies the primary file is the standalone diffusion model rather than an all-in-one checkpoint, so FLUX.1 (`{ model, clipL, clipG, vae }` without `t5Xxl`) is also routed correctly.
 
 ### Trade-offs
 - ✅ Simple, no abstraction overhead
@@ -702,7 +702,7 @@ Diffusion generation takes significant time (seconds to minutes). Without coordi
 
 ### Decision
 
-Use the `exclusiveRunQueue()` helper from `@qvac/infer-base`. The constructor stores the queue as `this._run`, and `run()`, `cancel()`, and `unload()` all wrap their bodies with `this._run(() => …)`. This replaces the previous `BaseInference._withExclusiveRun()` template-method approach with a small composable utility.
+Use the `exclusiveRunQueue()` helper from `@qvac/infer-base`. The constructor stores the queue as `this._run`, and `run()` and `unload()` wrap their bodies with `this._run(() => …)`. `cancel()` is intentionally **not** queued — it must be able to interrupt an in-flight `run()` to terminate it, so it bypasses the queue and delegates straight to `addon.cancel()` (which is itself a no-op when there is no active job). This replaces the previous `BaseInference._withExclusiveRun()` template-method approach with a small composable utility.
 
 ### Rationale
 

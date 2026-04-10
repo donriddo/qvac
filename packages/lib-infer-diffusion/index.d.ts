@@ -133,7 +133,12 @@ export interface DiffusionFiles {
 
 export interface ImgStableDiffusionArgs {
   files: DiffusionFiles
-  config: SdConfig
+  /**
+   * Native backend configuration. Optional — when omitted, the addon
+   * forwards an empty config object and the C++ layer falls back to
+   * stable-diffusion.cpp defaults for every parameter.
+   */
+  config?: SdConfig
   logger?: QvacLogger | Console | null
   opts?: { stats?: boolean }
 }
