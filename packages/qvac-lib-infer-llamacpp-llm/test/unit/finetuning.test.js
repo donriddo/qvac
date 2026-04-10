@@ -60,17 +60,12 @@ async function assertInferenceSucceeds (t, model, token) {
 }
 
 const createModelWithMockAddon = (opts = {}) => {
-  const loader = { close: () => Promise.resolve() }
-  const model = new LlmLlamacpp(
-    {
-      loader,
-      opts,
-      logger: { info: () => {}, warn: () => {}, error: () => {}, debug: () => {} },
-      diskPath: '.',
-      modelName: 'test.gguf'
-    },
-    { device: 'cpu', ctx_size: '256' }
-  )
+  const model = new LlmLlamacpp({
+    files: { model: ['/tmp/test.gguf'] },
+    config: { device: 'cpu', ctx_size: '256' },
+    opts,
+    logger: { info: () => {}, warn: () => {}, error: () => {}, debug: () => {} }
+  })
   model.addon = createMockAddon()
   return model
 }
@@ -183,13 +178,14 @@ test('finetune() runs inside exclusive queue wrapper', async (t) => {
   model.addon.finetune.callsFake(completeFinetuneWith(model))
 
   let wrapperCalled = false
-  model._withExclusiveRun = async (fn) => {
+  const originalRun = model._run
+  model._run = async (fn) => {
     wrapperCalled = true
-    return await fn()
+    return await originalRun(fn)
   }
 
   const handle = await model.finetune(opts)
-  t.ok(wrapperCalled, 'finetune should execute inside _withExclusiveRun')
+  t.ok(wrapperCalled, 'finetune should execute inside exclusiveRunQueue')
   const result = await handle.await()
   t.alike(result, { op: 'finetune', status: 'COMPLETED' })
 })
