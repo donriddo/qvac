@@ -38,19 +38,15 @@ function normalizeEmbeddings (rawEmbeddings) {
   return rawEmbeddings[0].map((vector) => Array.from(vector))
 }
 
-function buildConfigString (runtimeConfig, options = {}) {
+function buildAddonConfig (runtimeConfig, options = {}) {
   const debugEnabled = !!options.debugEnabled
-  const parts = ['verbosity\t0']
-  if (runtimeConfig.device != null) parts.push(`-dev\t${runtimeConfig.device}`)
-  if (runtimeConfig.batchSize != null) parts.push(`--batch-size\t${runtimeConfig.batchSize}`)
-  if (runtimeConfig.flashAttn != null) parts.push(`-fa\t${runtimeConfig.flashAttn}`)
-  if (runtimeConfig.ngl != null) parts.push(`-ngl\t${runtimeConfig.ngl}`)
-  if (runtimeConfig.noMmap) parts.push('--no-mmap')
-  if (!debugEnabled) {
-    // Suppress native llama.cpp startup logs in benchmark mode.
-    parts.push('--log-disable')
-  }
-  return parts.join('\n')
+  const config = { verbosity: debugEnabled ? '2' : '0' }
+  if (runtimeConfig.device != null) config.device = runtimeConfig.device
+  if (runtimeConfig.batchSize != null) config.batch_size = String(runtimeConfig.batchSize)
+  if (runtimeConfig.flashAttn != null) config.flash_attn = runtimeConfig.flashAttn
+  if (runtimeConfig.ngl != null) config.gpu_layers = String(runtimeConfig.ngl)
+  if (runtimeConfig.noMmap) config.no_mmap = true
+  return config
 }
 
 function resolveModelName (modelDef, quantization) {
@@ -143,8 +139,9 @@ function aggregateRunMetrics (runMetrics) {
   }
 }
 
-async function runCaseWithRepeats ({ AddonCtor, modelDir, modelName, runtimeConfig, inputs, repeats, onRepeatComplete, debugEnabled }) {
-  const configString = buildConfigString(runtimeConfig, { debugEnabled })
+async function runCaseWithRepeats ({ addonCtor, modelDir, modelName, runtimeConfig, inputs, repeats, onRepeatComplete, debugEnabled }) {
+  const AddonCtor = addonCtor
+  const addonConfig = buildAddonConfig(runtimeConfig, { debugEnabled })
   const addonRuntimeLogger = createAddonRuntimeLogger(debugEnabled)
 
   let model = null
@@ -159,7 +156,7 @@ async function runCaseWithRepeats ({ AddonCtor, modelDir, modelName, runtimeConf
   try {
     model = new AddonCtor({
       files: { model: [path.join(modelDir, modelName)] },
-      config: configString,
+      config: addonConfig,
       logger: addonRuntimeLogger,
       opts: { stats: true }
     })
