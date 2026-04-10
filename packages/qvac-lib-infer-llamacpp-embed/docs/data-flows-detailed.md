@@ -34,7 +34,8 @@ sequenceDiagram
     GGMLBert->>GGMLBert: createJobHandler + exclusiveRunQueue
 
     App->>GGMLBert: load()
-    GGMLBert->>BI: new BertInterface(binding, { path: lastFile, config }, outputCb)
+    GGMLBert->>GGMLBert: pick primaryGgufPath = first entry matching /-\d+-of-\d+\.gguf$/<br/>(falls back to files.model[0] for non-sharded models)
+    GGMLBert->>BI: new BertInterface(binding, { path: primaryGgufPath, config }, outputCb)
     BI->>Addon: createInstance(params)
     Addon->>BM: BertModel(path, config, backendsDir)
     BM->>BM: Delayed init (InitLoader)
@@ -76,7 +77,7 @@ sequenceDiagram
 ### Caller Contract for `files.model`
 
 - **Absolute paths only.** `GGMLBert` does not resolve relative paths or discover companion files.
-- **Order matters.** The addon picks `files.model[last]` as the primary path handed to llama.cpp. For sharded GGUFs, callers pass the `.tensors.txt` companion first, then shards `00001-of-N`, `00002-of-N`, …, `N-of-N` in order.
+- **Order matters.** For sharded GGUFs, callers pass the `.tensors.txt` companion first, then shards `00001-of-N`, `00002-of-N`, …, `N-of-N` in numeric order. The addon scans the array for the first entry matching the shard regex `^(.+)-(\d+)-of-(\d+)\.gguf$` and uses that as the primary path handed to llama.cpp's `params.model.path`. For non-sharded single-file models, the only entry is used. The `.tensors.txt` file is consumed by the streaming layer (along with the shards) but is never the primary path.
 - **All files required.** Every shard and the `.tensors.txt` file must be present in the array; missing any file will fail at load time.
 - **No download step.** The addon reads bytes from disk via `bare-fs`. Distribution, caching, and integrity are the caller's responsibility.
 

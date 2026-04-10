@@ -127,20 +127,19 @@ Rules for the `files.model` array:
 
 ### 3. Create `config`
 
-The `config` is a dictionary (object) consisting of hyper-parameters which can be used to tweak the behaviour of the model.
-All parameter values should be strings.
+The `config` is a plain JS object whose keys are forwarded directly to the native backend. All values must be strings (the native layer parses them with `getSubmap`).
 
-| Parameter         | Range / Type                                | Default                      | Description                                           |
-|-------------------|---------------------------------------------|------------------------------|-------------------------------------------------------|
-| -dev    | `"gpu"` or `"cpu"`                          | `"gpu"`                      | Device to run inference on                            |
-| -ngl | integer                                    | 0            | Number of model layers to offload to GPU              |
-|--batch-size  | integer                                     | 2048                         | Tokens for processing multiple prompts together             |
-| --pooling         | `{none,mean,cls,last,rank}`                 | model default                | Pooling type for embeddings                           |
-| --attention       | `{causal,non-causal}`                       | model default                | Attention type for embeddings                         |
-| --embd-normalize  | integer                                     | 2                            | Embedding normalization (-1=none, 0=max abs int16, 1=taxicab, 2=euclidean, >2=p-norm) |
-| -fa               | `"on"`, `"off"`, or `"auto"`                | `"auto"`                     | Enable/disable flash attention                        |
-| --main-gpu        | integer, `"integrated"`, or `"dedicated"`   | —                            | GPU selection for multi-GPU systems                   |
-| verbosity         | 0 – 3 (0=ERROR, 1=WARNING, 2=INFO, 3=DEBUG) | 0                            | Logging verbosity level                               |
+| Key              | Range / Type                                  | Default       | Description                                                                              |
+|------------------|-----------------------------------------------|---------------|------------------------------------------------------------------------------------------|
+| `device`         | `"gpu"` \| `"cpu"`                            | `"gpu"`       | Device to run inference on                                                               |
+| `gpu_layers`     | string of integer                             | `"0"`         | Number of model layers to offload to GPU                                                 |
+| `batch_size`     | string of integer                             | `"2048"`      | Tokens processed per batch (input throughput)                                            |
+| `pooling`        | `"none"` \| `"mean"` \| `"cls"` \| `"last"` \| `"rank"` | model default | Pooling strategy used to collapse token embeddings into a single sequence vector        |
+| `attention`      | `"causal"` \| `"non-causal"`                  | model default | Attention type                                                                            |
+| `embd_normalize` | string of integer                             | `"2"`         | Embedding normalization (`-1` = none, `0` = max abs int16, `1` = taxicab, `2` = euclidean, `>2` = p-norm) |
+| `flash_attn`     | `"on"` \| `"off"` \| `"auto"`                 | `"auto"`      | Enable / disable flash attention                                                         |
+| `main-gpu`       | string of integer \| `"integrated"` \| `"dedicated"` | —      | GPU selection for multi-GPU systems                                                      |
+| `verbosity`      | string of `"0"`–`"3"` (0=ERROR, 1=WARN, 2=INFO, 3=DEBUG) | `"0"` | Logging verbosity level                                                                   |
 
 #### IGPU/GPU  selection logic:
 
@@ -198,11 +197,10 @@ The following table describes the expected behavior of `run` and `cancel` depend
 |---------------|----------------|----------------------------------------------------------------|
 | idle          | run            | **Allowed** — starts inference, returns `QvacResponse`        |
 | idle          | cancel         | **Allowed** — no-op (no job to cancel); Promise resolves       |
-| run           | run            | **Throw** — second `run()` throws "a job is already set or being processed" (can wait very briefly for previous job completion) |
+| run           | run            | **Throw** — second `run()` throws `"Cannot set new job: a job is already set or being processed"`. The exclusive run queue rejects synchronously; there is no waiting period. |
 | run           | cancel         | **Allowed** — cancels current job; Promise resolves when job has stopped      |
 
-When `run()` is called while another job is active, the implementation first waits briefly for the previous job to settle. This preserves single-job behavior while still failing fast when the instance is busy. If the second run cannot be accepted (timeout or addon busy rejection), it throws:
-- `"Cannot set new job: a job is already set or being processed"`
+A second `run()` while a job is active fails fast with `"Cannot set new job: a job is already set or being processed"` — `exclusiveRunQueue` does not buffer or delay; the busy guard is synchronous. Wait for the previous `response.await()` to settle (or call `model.cancel()`) before issuing the next request.
 
 **Cancellation API:** Prefer cancelling from the model: `await model.cancel()`. This cancels the current job and the Promise resolves when the job has actually stopped (future-based in C++). You can also call `await response.cancel()` on the value returned by `run()`; it is equivalent and targets the same job. Both are no-op when idle.
 
@@ -249,11 +247,11 @@ Results are continuously updated with new releases to ensure up-to-date performa
 
 ## Tests
 
-Integration tests are located in [`test/integration/`](./test/integration/) and cover core functionality including model loading, inference, tool calling, multimodal capabilities, and configuration parameters.  
-These tests help prevent regressions and ensure the library remains stable as contributions are made to the project.
+Integration tests are located in [`test/integration/`](./test/integration/) and cover core embed functionality: single-file model load → embed → unload, multi-instance concurrency (two embed instances running simultaneously, repeated load/unload cycles, unloading one instance while another processes), and the public `run()` / `cancel()` lifecycle. These tests help prevent regressions and ensure the library remains stable as contributions are made to the project.
 
-Unit tests are located in [`test/unit/`](./test/unit/) and test the C++ addon components at a lower level, including backend selection, cache management, chat templates, context handling, and UTF8 token processing.  
-These tests validate the native implementation and help catch issues early in development.
+C++ unit tests live under [`addon/test/`](./addon/test/) and exercise the native components at a lower level, including backend selection, single-step inference, end-to-end embedding generation, and pooling. These tests validate the native implementation and help catch issues early in development.
+
+> **Note:** This package is *embeddings only*. There is no tool-calling, multimodal, KV-cache, or chat-template support — those features belong to the LLM addon ([`@qvac/llm-llamacpp`](../qvac-lib-infer-llamacpp-llm/)).
 
 ## Glossary
 

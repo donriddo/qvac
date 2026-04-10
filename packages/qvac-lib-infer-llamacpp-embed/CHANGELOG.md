@@ -87,7 +87,6 @@ If `_streamShards()` or `addon.activate()` throws mid-load (for example a corrup
 
 - [#1493](https://github.com/tetherto/qvac/pull/1493) - chore[bc]: embed addon interface refactor — remove BaseInference and WeightsProvider
 
-
 ## [0.13.4] - 2026-04-03
 
 ### Changed

@@ -1,5 +1,67 @@
 const path = require('bare-path')
 
+/**
+ * Map a raw native event from the C++ embed addon to a logical event.
+ *
+ * The native binding emits events with C++-mangled names and varied
+ * payload shapes. This wrapper normalizes them into one of:
+ *   - `'Output'`     — embeddings payload (`Embeddings` family event)
+ *   - `'Error'`      — failure
+ *   - `'JobEnded'`   — terminal RuntimeStats payload (with `backendDevice`
+ *                       mapped from `0/1` to `'cpu'/'gpu'`)
+ *
+ * Returns `{ type, data, error }` or `null` if the event should be
+ * dropped (currently never — embed has no skip-flag state, but the
+ * shape mirrors the LLM addon for consistency).
+ *
+ * The C++ event vocabulary is owned by this module so the JS class only
+ * sees logical events. See team-2 task doc:
+ * "Move event name normalization from `index.js` `_addonOutputCallback`
+ *  into `addon.js` `BertInterface` — the native binding wrapper should
+ *  own the mapping from raw C++ events to Output / Error / JobEnded".
+ *
+ * @param {string} rawEvent
+ * @param {*} rawData
+ * @param {*} rawError
+ * @returns {{ type: string, data: *, error: * } | null}
+ */
+function mapAddonEvent (rawEvent, rawData, rawError) {
+  // RuntimeStats: structurally detected so we don't couple to C++ key
+  // ordering. The embed addon emits these as the terminal event for a
+  // job (`tokens_per_second` is the marker; `total_tokens` /
+  // `total_time_ms` / `batch_size` / `context_size` are the other
+  // canonical fields).
+  const isStatsData =
+    rawData &&
+    typeof rawData === 'object' &&
+    (
+      'tokens_per_second' in rawData ||
+      'total_tokens' in rawData ||
+      'total_time_ms' in rawData ||
+      'batch_size' in rawData ||
+      'context_size' in rawData
+    )
+  if (isStatsData) {
+    const stats = { ...rawData }
+    if (stats.backendDevice === 0) {
+      stats.backendDevice = 'cpu'
+    } else if (stats.backendDevice === 1) {
+      stats.backendDevice = 'gpu'
+    }
+    return { type: 'JobEnded', data: stats, error: null }
+  }
+
+  if (typeof rawEvent === 'string' && rawEvent.includes('Error')) {
+    return { type: 'Error', data: rawData, error: rawError }
+  }
+
+  if (typeof rawEvent === 'string' && rawEvent.includes('Embeddings')) {
+    return { type: 'Output', data: rawData, error: null }
+  }
+
+  return null
+}
+
 /// An interface between Bare addon in C++ and JS runtime.
 class BertInterface {
   /**
@@ -37,11 +99,17 @@ class BertInterface {
   }
 
   /**
-   * Loads model weights
+   * Loads model weights. The native side reads the JS property names
+   * `chunk` and `completed` directly, so this object's field names are
+   * load-bearing — see `JsBlobsStream.hpp::appendBlob` in
+   * `qvac-lib-inference-addon-cpp` for the parser.
    * @param {Object} data
-   * @param {String} data.filename
-   * @param {Buffer} data.contents
-   * @param {Promise<Boolean>} data.completed
+   * @param {String} data.filename - Logical filename used to group chunks
+   *   into one shard. The native side keys `shards_in_progress` on this.
+   * @param {Uint8Array|null} data.chunk - Next chunk of bytes for the
+   *   current shard, or `null` on the final call when `completed` is true.
+   * @param {Boolean} data.completed - `false` while more chunks remain;
+   *   `true` on the last call to finalize the shard.
    */
   async loadWeights (data) {
     return this._binding.loadWeights(this._handle, data)
@@ -65,5 +133,6 @@ class BertInterface {
 }
 
 module.exports = {
-  BertInterface
+  BertInterface,
+  mapAddonEvent
 }
