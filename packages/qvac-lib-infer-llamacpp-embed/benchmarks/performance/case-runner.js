@@ -41,11 +41,11 @@ function normalizeEmbeddings (rawEmbeddings) {
 function buildAddonConfig (runtimeConfig, options = {}) {
   const debugEnabled = !!options.debugEnabled
   const config = { verbosity: debugEnabled ? '2' : '0' }
-  if (runtimeConfig.device != null) config.device = runtimeConfig.device
+  if (runtimeConfig.device != null) config.device = String(runtimeConfig.device)
   if (runtimeConfig.batchSize != null) config.batch_size = String(runtimeConfig.batchSize)
-  if (runtimeConfig.flashAttn != null) config.flash_attn = runtimeConfig.flashAttn
+  if (runtimeConfig.flashAttn != null) config.flash_attn = String(runtimeConfig.flashAttn)
   if (runtimeConfig.ngl != null) config.gpu_layers = String(runtimeConfig.ngl)
-  if (runtimeConfig.noMmap) config.no_mmap = true
+  if (runtimeConfig.noMmap) config['no-mmap'] = ''
   return config
 }
 
