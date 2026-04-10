@@ -2,7 +2,7 @@
 
 const QvacLogger = require('@qvac/logging')
 const { createJobHandler, exclusiveRunQueue } = require('@qvac/infer-base')
-const { SdInterface } = require('./addon')
+const { SdInterface, mapAddonEvent } = require('./addon')
 
 const LOG_METHODS = ['error', 'warn', 'info', 'debug']
 
@@ -121,26 +121,33 @@ class ImgStableDiffusion {
   }
 
   _addonOutputCallback (addon, event, data, error) {
-    if (event.includes('Error')) {
-      this.logger.error('Job failed with error:', error)
-      this._job.fail(error)
+    // Event-name normalization lives in `addon.js` (`mapAddonEvent`) so the
+    // native binding wrapper owns the C++ event vocabulary. This shim only
+    // dispatches the resulting logical event onto the active job.
+    const mapped = mapAddonEvent(event, data, error)
+    if (mapped === null) {
+      // Unknown event/data combination — log it instead of feeding null/undefined
+      // into the active response output stream. The native layer is expected to
+      // emit only the shapes handled above; reaching this branch indicates a
+      // native-layer bug worth surfacing.
+      this.logger.debug(`Unhandled addon event: ${event} (data type: ${typeof data})`)
       return
     }
 
-    if (data instanceof Uint8Array || typeof data === 'string') {
-      this._job.output(data)
+    if (mapped.type === 'Error') {
+      this.logger.error('Job failed with error:', mapped.error)
+      this._job.fail(mapped.error)
       return
     }
 
-    if (typeof data === 'object' && data !== null) {
-      this._job.end(this.opts.stats ? data : null)
+    if (mapped.type === 'JobEnded') {
+      this._job.end(this.opts.stats ? mapped.data : null)
       return
     }
 
-    // Unknown event/data combination — log it instead of feeding null/undefined into the
-    // active response output stream. The native layer is expected to emit only the shapes
-    // handled above; reaching this branch indicates a native-layer bug worth surfacing.
-    this.logger.debug(`Unhandled addon event: ${event} (data type: ${typeof data})`)
+    if (mapped.type === 'Output') {
+      this._job.output(mapped.data)
+    }
   }
 
   async run (params) {
