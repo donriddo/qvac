@@ -87,6 +87,17 @@ If `_streamShards()` or `addon.activate()` throws mid-load (for example a corrup
 
 - [#1493](https://github.com/tetherto/qvac/pull/1493) - chore[bc]: embed addon interface refactor — remove BaseInference and WeightsProvider
 
+## [0.13.4] - 2026-04-03
+
+### Changed
+
+- Updated qvac-fabric dependency from 7248.2.1 to 7248.2.3, which fixes OpenCL kernel cache support on Android.
+- Removed qvac-fabric overlay port; now resolved from the vcpkg registry.
+
+### Added
+
+- `openclCacheDir` option in `GGMLConfig` (`index.d.ts`): writable directory for OpenCL kernel binary cache, required on Android for fast GPU startup.
+
 ## [0.13.3] - 2026-04-07
 
 ### Added
@@ -109,6 +120,7 @@ Updated qvac-fabric from 7248.2.1#1 to 7248.2.2, aligning all llamacpp-based add
 ### Pull Requests
 
 - [#1358](https://github.com/tetherto/qvac/pull/1358) - Qvac 16779 qvac fabric lockstep
+
 
 ## [0.13.1] - 2026-04-02
 

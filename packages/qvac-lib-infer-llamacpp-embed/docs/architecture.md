@@ -72,7 +72,7 @@ Tier 1: Platform targets for which prebuilds are provided as defined by the .git
 **Dependencies:**
 - qvac-lib-inference-addon-cpp (≥1.1.2): C++ addon framework
 - @qvac/infer-base: Provides `createJobHandler` and `exclusiveRunQueue` helpers (composition, no base class)
-- qvac-fabric-llm.cpp (≥7248.2.1): Inference engine
+- qvac-fabric-llm.cpp (≥7248.2.3): Inference engine
 - Bare Runtime (≥1.24.0): JavaScript runtime (provides `bare-fs` for direct file streaming)
 
 ---

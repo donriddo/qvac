@@ -194,6 +194,8 @@ async function createEmbeddingsTestInstance (t, modelName, device = 'gpu', gpuLa
     console.log('Platform detected: Android, setting flash_attn to off')
   }
 
+  config.openclCacheDir = modelDir
+
   const inference = new GGMLBert({
     files: { model: [modelPath] },
     config,
@@ -201,7 +203,9 @@ async function createEmbeddingsTestInstance (t, modelName, device = 'gpu', gpuLa
     opts: { stats: true }
   })
 
+  const t0 = Date.now()
   await inference.load()
+  console.log(`  model.load() took ${Date.now() - t0} ms`)
 
   return { inference }
 }
