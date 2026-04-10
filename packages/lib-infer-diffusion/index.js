@@ -1,8 +1,7 @@
 'use strict'
 
-const path = require('bare-path')
-
-const BaseInference = require('@qvac/infer-base/WeightsProvider/BaseInference')
+const QvacLogger = require('@qvac/logging')
+const { createJobHandler, exclusiveRunQueue } = require('@qvac/infer-base')
 const { SdInterface } = require('./addon')
 
 const LOG_METHODS = ['error', 'warn', 'info', 'debug']
@@ -13,94 +12,71 @@ const RUN_BUSY_ERROR_MESSAGE = 'Cannot set new job: a job is already set or bein
  * Text-to-image and image-to-image generation using stable-diffusion.cpp.
  * Supports SD1.x, SD2.x, SDXL, SD3, and FLUX.2 [klein].
  */
-class ImgStableDiffusion extends BaseInference {
+class ImgStableDiffusion {
   /**
    * @param {object} args
+   * @param {object} args.files - Absolute file paths for model components
+   * @param {string} args.files.model - Main model weights
+   * @param {string} [args.files.clipL] - CLIP-L text encoder (FLUX.1 / SD3)
+   * @param {string} [args.files.clipG] - CLIP-G text encoder (SDXL / SD3)
+   * @param {string} [args.files.t5Xxl] - T5-XXL text encoder (FLUX.1 / SD3)
+   * @param {string} [args.files.llm] - LLM text encoder (FLUX.2 klein)
+   * @param {string} [args.files.vae] - VAE file
+   * @param {object} args.config - SD context configuration (threads, device, type, etc.)
    * @param {object} [args.logger] - Structured logger
    * @param {object} [args.opts] - Optional inference options
-   * @param {string} [args.diskPath='.'] - Local directory containing model weight files
-   * @param {string} args.modelName - Model file name (e.g. 'flux1-dev-q4_0.gguf')
-   * @param {string} [args.clipLModel] - Optional CLIP-L model file name (FLUX.1 / SD3)
-   * @param {string} [args.clipGModel] - Optional CLIP-G model file name (SDXL / SD3)
-   * @param {string} [args.t5XxlModel] - Optional T5-XXL text encoder file name (FLUX.1 / SD3)
-   * @param {string} [args.llmModel] - Optional LLM text encoder file name (FLUX.2 klein → Qwen3 4B)
-   * @param {string} [args.vaeModel] - Optional VAE file name
-   * @param {object} config - SD context configuration (threads, device, type, etc.)
    */
-  constructor (
-    {
-      opts = {},
-      logger = null,
-      diskPath = '.',
-      modelName,
-      clipLModel,
-      clipGModel,
-      t5XxlModel,
-      llmModel,
-      vaeModel
-    },
-    config
-  ) {
-    super({ logger, opts })
+  constructor ({ files, config, logger = null, opts = {} }) {
+    this._files = files
     this._config = config
-    this._diskPath = diskPath
-    this._modelName = modelName
-    this._clipLModel = clipLModel || null
-    this._clipGModel = clipGModel || null
-    this._t5XxlModel = t5XxlModel || null
-    this._llmModel = llmModel || null
-    this._vaeModel = vaeModel || null
+    this.logger = new QvacLogger(logger)
+    this.opts = opts
+    this._job = createJobHandler({ cancel: () => this.addon.cancel() })
+    this._run = exclusiveRunQueue()
+    this.addon = null
     this._hasActiveResponse = false
+    this._binding = null
+    this._nativeLoggerActive = false
+    this.state = { configLoaded: false }
+  }
+
+  async load () {
+    if (this.state.configLoaded) {
+      this.logger.info('Reload requested - unloading existing model first')
+      await this.unload()
+    }
+    await this._load()
+    this.state.configLoaded = true
   }
 
   async _load () {
     this.logger.info('Starting stable-diffusion model load')
 
-    try {
-      // Route the primary model file to the correct stable-diffusion.cpp param:
-      //
-      //   model_path           — all-in-one checkpoints that embed their own text
-      //                          encoders and version metadata (SD1.x, SD2.x, SDXL,
-      //                          SD3 all-in-one GGUF).
-      //
-      //   diffusion_model_path — standalone diffusion-only weights that have no
-      //                          embedded SD metadata and require separate encoders:
-      //                            FLUX.2 [klein] → llmModel (Qwen3)
-      //                            SD3 pure GGUF  → t5XxlModel (T5-XXL) + clipLModel + clipGModel
-      //
-      // Heuristic: if any separate encoder is provided (LLM for FLUX.2, T5-XXL
-      // for SD3 split) the caller is using a pure diffusion GGUF that must be
-      // loaded via diffusion_model_path.
-      const isSplitLayout = !!this._llmModel || !!this._t5XxlModel
-      const resolve = (name) => name ? (path.isAbsolute(name) ? name : path.join(this._diskPath, name)) : ''
-      const configurationParams = {
-        path: isSplitLayout ? '' : resolve(this._modelName),
-        diffusionModelPath: isSplitLayout ? resolve(this._modelName) : '',
-        clipLPath: resolve(this._clipLModel),
-        clipGPath: resolve(this._clipGModel),
-        t5XxlPath: resolve(this._t5XxlModel),
-        llmPath: resolve(this._llmModel),
-        vaePath: resolve(this._vaeModel),
-        config: this._config
-      }
-
-      this.logger.info('Creating stable-diffusion addon with configuration:', configurationParams)
-      this.addon = this._createAddon(configurationParams)
-
-      this.logger.info('Activating stable-diffusion addon')
-      await this.addon.activate()
-
-      this.logger.info('Stable-diffusion model load completed successfully')
-    } catch (error) {
-      this.logger.error('Error during stable-diffusion model load:', error)
-      throw error
+    // Route the primary model file to the correct stable-diffusion.cpp param:
+    //   path              — all-in-one checkpoints (SD1.x, SD2.x, SDXL, SD3 all-in-one GGUF)
+    //   diffusionModelPath — standalone diffusion weights requiring separate encoders
+    //                        (FLUX.2 klein → llm, SD3 pure GGUF → t5Xxl + clipL + clipG)
+    const isSplitLayout = !!this._files.llm || !!this._files.t5Xxl
+    const configurationParams = {
+      path: isSplitLayout ? '' : (this._files.model || ''),
+      diffusionModelPath: isSplitLayout ? (this._files.model || '') : '',
+      clipLPath: this._files.clipL || '',
+      clipGPath: this._files.clipG || '',
+      t5XxlPath: this._files.t5Xxl || '',
+      llmPath: this._files.llm || '',
+      vaePath: this._files.vae || '',
+      config: this._config
     }
+
+    this.logger.info('Creating stable-diffusion addon with configuration:', configurationParams)
+    this.addon = this._createAddon(configurationParams)
+
+    this.logger.info('Activating stable-diffusion addon')
+    await this.addon.activate()
+
+    this.logger.info('Stable-diffusion model load completed successfully')
   }
 
-  /**
-   * @param {object} configurationParams
-   * @returns {SdInterface}
-   */
   _createAddon (configurationParams) {
     this._binding = require('./binding')
     this._connectNativeLogger()
@@ -136,79 +112,32 @@ class ImgStableDiffusion extends BaseInference {
 
   _addonOutputCallback (addon, event, data, error) {
     if (event.includes('Error')) {
-      return this._outputCallback(addon, 'Error', 'OnlyOneJob', data, error)
+      this.logger.error(`Job failed with error: ${error}`)
+      this._job.fail(error)
+      return
     }
 
     if (data instanceof Uint8Array || typeof data === 'string') {
-      return this._outputCallback(addon, 'Output', 'OnlyOneJob', data, error)
+      this._job.output(data)
+      return
     }
 
-    // RuntimeStats is the only plain-object payload the C++ addon emits.
-    // Matching structurally avoids coupling to specific stats key names.
     if (typeof data === 'object' && data !== null) {
-      return this._outputCallback(addon, 'JobEnded', 'OnlyOneJob', data, null)
+      this._job.end(this.opts.stats ? data : null)
+      return
     }
 
-    return this._outputCallback(addon, event, 'OnlyOneJob', data, error)
+    this._job.output(data)
   }
 
-  /**
-   * Cancel the current generation job.
-   */
-  async cancel () {
-    if (this.addon?.cancel) {
-      await this.addon.cancel()
-    }
+  async run (params) {
+    return this._run(() => this._runInternal(params))
   }
 
-  /**
-   * Unload the model and release all resources.
-   */
-  async unload () {
-    return await this._withExclusiveRun(async () => {
-      await this.cancel()
-      const currentJobResponse = this._jobToResponse.get('OnlyOneJob')
-      if (currentJobResponse) {
-        currentJobResponse.failed(new Error('Model was unloaded'))
-        this._deleteJobMapping('OnlyOneJob')
-      }
-      this._hasActiveResponse = false
-      if (this.addon) {
-        await super.unload()
-      }
-      this._releaseNativeLogger()
-    })
-  }
-
-  /**
-   * Generate an image from a text prompt, or from an input image + text prompt.
-   *
-   * Currently supports txt2img only. img2img is not yet wired in the JS
-   * layer — passing `init_image` will throw.
-   *
-   * Returns a QvacResponse that streams two types of updates:
-   *   - Uint8Array  — PNG-encoded output image (one per batch_count)
-   *   - string      — JSON step-progress tick: {"step":N,"total":M,"elapsed_ms":T}
-   *
-   * @param {object} params
-   * @param {string} params.prompt                  - Text prompt
-   * @param {string} [params.negative_prompt]       - Negative prompt
-   * @param {number} [params.steps=20]              - Denoising step count
-   * @param {number} [params.width=512]             - Output width (multiple of 8)
-   * @param {number} [params.height=512]            - Output height (multiple of 8)
-   * @param {number} [params.guidance=3.5]          - Distilled guidance (FLUX.2)
-   * @param {number} [params.cfg_scale=7.0]         - CFG scale (SD1/SD2)
-   * @param {string} [params.sampling_method]       - Sampler name
-   * @param {string} [params.scheduler]             - Scheduler name
-   * @param {number} [params.seed=-1]               - RNG seed; -1 = random
-   * @param {number} [params.batch_count=1]         - Images per call
-   * @param {boolean} [params.vae_tiling=false]     - Enable VAE tiling (for large images)
-   * @param {string}  [params.cache_preset]         - Cache preset: slow/medium/fast/ultra
-   * @param {Uint8Array} [params.init_image]        - Source image bytes for img2img (PNG/JPEG) — not yet supported
-   * @param {number}    [params.strength=0.75]      - img2img: 0 = keep source, 1 = ignore source — not yet supported
-   * @returns {Promise<QvacResponse>}
-   */
   async _runInternal (params) {
+    if (!this.addon) {
+      throw new Error('Addon not initialized. Call load() first.')
+    }
     if (params.init_image) {
       throw new Error('img2img is not yet supported — omit init_image to run txt2img')
     }
@@ -216,39 +145,56 @@ class ImgStableDiffusion extends BaseInference {
     const mode = 'txt2img'
     this.logger.info('Starting generation with mode:', mode)
 
-    return await this._withExclusiveRun(async () => {
-      if (this._hasActiveResponse) {
-        throw new Error(RUN_BUSY_ERROR_MESSAGE)
+    if (this._hasActiveResponse) {
+      throw new Error(RUN_BUSY_ERROR_MESSAGE)
+    }
+
+    const response = this._job.start()
+
+    let accepted
+    try {
+      accepted = await this.addon.runJob({ ...params, mode })
+    } catch (error) {
+      this._job.fail(error)
+      throw error
+    }
+
+    if (!accepted) {
+      this._job.fail(new Error(RUN_BUSY_ERROR_MESSAGE))
+      throw new Error(RUN_BUSY_ERROR_MESSAGE)
+    }
+
+    this._hasActiveResponse = true
+    const finalized = response.await().finally(() => { this._hasActiveResponse = false })
+    finalized.catch(() => {})
+    response.await = () => finalized
+
+    this.logger.info('Generation job started successfully')
+    return response
+  }
+
+  async cancel () {
+    if (this.addon) {
+      await this.addon.cancel()
+    }
+  }
+
+  async unload () {
+    return this._run(async () => {
+      await this.cancel()
+      if (this._job.active) {
+        this._job.fail(new Error('Model was unloaded'))
       }
-
-      const response = this._createResponse('OnlyOneJob')
-
-      let accepted
-      try {
-        accepted = await this.addon.runJob({ ...params, mode })
-      } catch (error) {
-        this._deleteJobMapping('OnlyOneJob')
-        response.failed(error)
-        throw error
+      this._hasActiveResponse = false
+      if (this.addon) {
+        await this.addon.unload()
       }
-
-      if (!accepted) {
-        this._deleteJobMapping('OnlyOneJob')
-        const msg = RUN_BUSY_ERROR_MESSAGE
-        response.failed(new Error(msg))
-        throw new Error(msg)
-      }
-
-      this._hasActiveResponse = true
-      const finalized = response.await().finally(() => { this._hasActiveResponse = false })
-      finalized.catch(() => {})
-      response.await = () => finalized
-
-      this.logger.info('Generation job started successfully')
-
-      return response
+      this._releaseNativeLogger()
+      this.state.configLoaded = false
     })
   }
+
+  getState () { return this.state }
 }
 
 module.exports = ImgStableDiffusion
