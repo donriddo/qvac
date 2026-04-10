@@ -45,6 +45,7 @@ async function createInstance (modelName, dirPath, overrides = {}) {
     ctx_size: '1024',
     n_predict: '64',
     verbosity: '2',
+    openclCacheDir: dirPath,
     ...overrides
   }
 
@@ -54,6 +55,13 @@ async function createInstance (modelName, dirPath, overrides = {}) {
     logger: createLogger(),
     opts: { stats: true }
   })
+
+  const origLoad = addon.load.bind(addon)
+  addon.load = async function () {
+    const t0 = Date.now()
+    await origLoad()
+    console.log(`  model.load() took ${Date.now() - t0} ms`)
+  }
 
   return { addon }
 }

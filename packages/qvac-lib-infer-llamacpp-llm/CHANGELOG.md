@@ -1,5 +1,116 @@
 # Changelog
 
+## [0.15.0] - 2026-04-10
+
+This release migrates the LLM addon off `BaseInference` inheritance and the `WeightsProvider` download layer onto the composable `createJobHandler` + `exclusiveRunQueue` utilities from `@qvac/infer-base@^0.4.0`. The constructor signature is replaced with a single object whose `files.model` field is an ordered array of absolute paths and `files.projectionModel` is an optional absolute path for multimodal models. This is a breaking change — every caller must update.
+
+## Breaking Changes
+
+### Constructor signature: single object with `files`, no `Loader`
+
+`LlmLlamacpp` now takes a single `{ files, config, logger?, opts? }` object. The old `Loader` + `diskPath` + `modelName` + two-arg `(args, config)` shape is gone — callers pre-resolve absolute paths and supply them as `files.model`.
+
+```js
+// BEFORE (≤ 0.14.x)
+const FilesystemDL = require('@qvac/dl-filesystem')
+const loader = new FilesystemDL({ dirPath: '/models' })
+const model = new LlmLlamacpp({
+  loader,
+  modelName: 'Qwen3-1.7B-Q4_0.gguf',
+  diskPath: '/models',
+  logger: console,
+  opts: { stats: true }
+}, { ctx_size: '4096', gpu_layers: '99' })
+
+// AFTER (0.15.0)
+const model = new LlmLlamacpp({
+  files: {
+    model: ['/models/Qwen3-1.7B-Q4_0.gguf']
+  },
+  config: { ctx_size: '4096', gpu_layers: '99' },
+  logger: console,
+  opts: { stats: true }
+})
+```
+
+For sharded models the caller passes the full ordered list — the `<basename>.tensors.txt` companion first, followed by every `<basename>-NNNNN-of-MMMMM.gguf` shard in ascending order. For multimodal models, `files.projectionModel` carries the absolute path to the mmproj file:
+
+```js
+const model = new LlmLlamacpp({
+  files: {
+    model: [
+      '/models/medgemma-4b-it-Q4_1.tensors.txt',
+      '/models/medgemma-4b-it-Q4_1-00001-of-00005.gguf',
+      '/models/medgemma-4b-it-Q4_1-00002-of-00005.gguf',
+      '/models/medgemma-4b-it-Q4_1-00003-of-00005.gguf',
+      '/models/medgemma-4b-it-Q4_1-00004-of-00005.gguf',
+      '/models/medgemma-4b-it-Q4_1-00005-of-00005.gguf'
+    ],
+    projectionModel: '/models/mmproj-model-f16.gguf'
+  },
+  config: { gpu_layers: '99' }
+})
+```
+
+### `BaseInference` inheritance and `WeightsProvider` removed
+
+`LlmLlamacpp` no longer extends `BaseInference` and no longer touches the `WeightsProvider` download layer. The class composes `createJobHandler` and `exclusiveRunQueue` from `@qvac/infer-base@^0.4.0` directly. Public lifecycle methods (`load` / `run` / `finetune` / `pause` / `cancel` / `unload` / `getState`) are unchanged in shape, but `downloadWeights` and the loader-based progress callbacks are gone — the caller is responsible for placing files on disk before constructing the model.
+
+### `destroy()` removed
+
+The inherited `destroy()` from `BaseInference` is no longer part of the public surface. Callers should use `unload()` instead, which now also nulls the addon reference.
+
+### Dependency changes
+
+- `@qvac/infer-base` bumped from `^0.3.0` to `^0.4.0`.
+- `bare-fs` is now a runtime dependency (used to stream shards from disk).
+- `@qvac/dl-base` and `@qvac/dl-filesystem` are no longer used by this package and have been removed from `devDependencies`.
+
+## Features
+
+### Constructor input validation
+
+The constructor now throws `TypeError('files.model must be a non-empty array of absolute paths')` when `files` or `files.model` is missing or empty. This produces a clear error for callers porting old code instead of a confusing `Cannot read properties of undefined`.
+
+### `run()`-before-`load()` guard
+
+Calling `run()` before `load()` now throws `Error('Addon not initialized. Call load() first.')` instead of dereferencing `null` and crashing. `finetune()` already had this guard since the previous release.
+
+### Crash-safe shard streaming
+
+If `_streamShards()` or `addon.activate()` throws mid-load (for example a corrupted shard file or a native init failure), the partially-initialized addon is now best-effort-unloaded and `this.addon` is reset to `null`. A subsequent `load()` call starts cleanly instead of leaking a zombie native instance.
+
+### Restored JSDoc on `FinetuneOptions`
+
+Every `FinetuneOptions` field carries a `/** … */` doc comment again, including the default values (`numberOfEpochs = 1`, `learningRate = 1e-4`, `batchSize = 128`, …) so IDE tooltips show them without needing to read `docs/finetuning.md`.
+
+## Bug Fixes
+
+### `unload()` clears the addon reference
+
+`unload()` now sets `this.addon = null` after `await this.addon.unload()`, so post-unload `cancel()` / `pause()` / `run()` calls hit the explicit guards rather than dereferencing a disposed native handle. `pause()`, `cancel()`, and the job-handler cancel closure all use optional chaining for the same reason.
+
+### Removed dead `_isSuppressedNoResponseLog` filter
+
+The `_createFilteredLogger` infrastructure that wrapped the user-supplied logger to swallow `'No response found for job'` warnings was tied to the old `BaseInference` `_jobToResponse` Map. The new architecture cannot emit that message at all, so the filter, the wrapped logger, and the `_originalLogger` indirection are all removed. The user-supplied logger is now used directly.
+
+## Pull Requests
+
+- [#1494](https://github.com/tetherto/qvac/pull/1494) - chore[bc]: LLM addon interface refactor — remove BaseInference and WeightsProvider
+
+
+
+## [0.14.4] - 2026-04-03
+
+### Changed
+
+- Updated qvac-fabric dependency from 7248.2.1 to 7248.2.3, which fixes OpenCL kernel cache support on Android.
+
+### Added
+
+- `openclCacheDir` option in `LlamaConfig` (`index.d.ts`): writable directory for OpenCL kernel binary cache, required on Android for fast GPU startup.
+- `cache-type-k` and `cache-type-v` options in `LlamaConfig` (`index.d.ts`): configure KV cache quantization types.
+
 ## [0.14.3] - 2026-04-07
 
 ### Added
