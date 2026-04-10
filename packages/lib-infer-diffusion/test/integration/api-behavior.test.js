@@ -68,7 +68,6 @@ async function setupModel (t) {
 
   t.teardown(async () => {
     await model.unload().catch(() => {})
-    try { binding.releaseLogger() } catch (_) {}
   })
 
   return { model }
