@@ -4,7 +4,7 @@ const fs = require('bare-fs')
 const path = require('bare-path')
 const QvacLogger = require('@qvac/logging')
 const { createJobHandler, exclusiveRunQueue } = require('@qvac/infer-base')
-const { BertInterface } = require('./addon')
+const { BertInterface, mapAddonEvent } = require('./addon')
 
 const RUN_BUSY_ERROR_MESSAGE = 'Cannot set new job: a job is already set or being processed'
 
@@ -119,37 +119,34 @@ class GGMLBert {
   }
 
   _addonOutputCallback (addon, event, data, error) {
-    const isStatsData = typeof data === 'object' && data !== null && (
-      'tokens_per_second' in data ||
-      ('total_tokens' in data || 'total_time_ms' in data || 'batch_size' in data || 'context_size' in data)
-    )
-    if (isStatsData) {
-      const runtimeStats = { ...data }
-      if (runtimeStats.backendDevice === 0) {
-        runtimeStats.backendDevice = 'cpu'
-      } else if (runtimeStats.backendDevice === 1) {
-        runtimeStats.backendDevice = 'gpu'
-      }
-      this._job.end(this.opts.stats ? runtimeStats : null)
+    // Event-name normalization lives in `addon.js` (`mapAddonEvent`) so the
+    // native binding wrapper owns the C++ event vocabulary. This shim only
+    // dispatches the resulting logical event onto the active job.
+    const mapped = mapAddonEvent(event, data, error)
+    if (mapped === null) {
+      // Unknown event type — log it instead of feeding the payload into the
+      // active response output stream as if it were embedding data. The
+      // native layer is expected to emit only `Embeddings`, `Error`, or
+      // stats; reaching this branch indicates a native-layer change worth
+      // surfacing.
+      this.logger.debug(`Unhandled addon event: ${event} (data type: ${typeof data})`)
       return
     }
 
-    if (event.includes('Error')) {
-      this.logger.error('Job failed with error:', error)
-      this._job.fail(error)
+    if (mapped.type === 'Error') {
+      this.logger.error('Job failed with error:', mapped.error)
+      this._job.fail(mapped.error)
       return
     }
 
-    if (event.includes('Embeddings')) {
-      this._job.output(data)
+    if (mapped.type === 'JobEnded') {
+      this._job.end(this.opts.stats ? mapped.data : null)
       return
     }
 
-    // Unknown event type — log it instead of feeding the payload into the active
-    // response output stream as if it were embedding data. The native layer is
-    // expected to emit only `Embeddings`, `Error`, or stats; reaching this branch
-    // indicates a native-layer change worth surfacing.
-    this.logger.debug(`Unhandled addon event: ${event} (data type: ${typeof data})`)
+    if (mapped.type === 'Output') {
+      this._job.output(mapped.data)
+    }
   }
 
   _createAddon (configurationParams) {
