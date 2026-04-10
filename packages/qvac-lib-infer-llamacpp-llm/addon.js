@@ -1,6 +1,83 @@
 const path = require('bare-path')
 
 /**
+ * Map a raw native event from the C++ addon to a logical inference event.
+ *
+ * The native binding emits events with C++-mangled names and varied payload
+ * shapes. This wrapper normalizes them into one of:
+ *   - `'Output'`            — token / partial output
+ *   - `'Error'`             — failure
+ *   - `'JobEnded'`          — terminal payload (TPS-shaped runtime stats OR
+ *                              a finetune `{op:'finetune', status, stats?}` payload)
+ *   - `'FinetuneProgress'`  — incremental finetune metrics
+ *
+ * Returns `{ type, data, error }` or `null` if the event should be dropped
+ * (currently only used to swallow the TPS payload that the C++ addon emits
+ * immediately after a finetune terminal — see `state.skipNextRuntimeStats`).
+ *
+ * Stateful because the C++ event ordering is stateful: the same TPS shape
+ * means "inference finished" most of the time but means "stale finetune
+ * trailer, ignore me" when it follows a finetune terminal.  The caller owns
+ * the state object so the addon wrapper does not need to be a singleton.
+ *
+ * @param {string} rawEvent - native event name
+ * @param {*} rawData       - native event payload
+ * @param {*} rawError      - native error payload (only set for Error events)
+ * @param {{ skipNextRuntimeStats: boolean }} state - mutable state shared
+ *   across consecutive callbacks for one model instance
+ * @returns {{ type: string, data: *, error: * } | null}
+ */
+function mapAddonEvent (rawEvent, rawData, rawError, state) {
+  // TPS-shaped runtime stats — either a real inference terminal or the stale
+  // trailer that follows a finetune terminal.
+  if (rawData && typeof rawData === 'object' && 'TPS' in rawData) {
+    if (state.skipNextRuntimeStats) {
+      state.skipNextRuntimeStats = false
+      return null
+    }
+    const stats = { ...rawData }
+    if (stats.backendDevice === 0) {
+      stats.backendDevice = 'cpu'
+    } else if (stats.backendDevice === 1) {
+      stats.backendDevice = 'gpu'
+    }
+    return { type: 'JobEnded', data: stats, error: null }
+  }
+
+  // Finetune terminal: dispatch JobEnded carrying the finetune payload and arm
+  // the skip flag so the TPS the C++ addon emits right after is not mistaken
+  // for an inference result that would clobber `_hasActiveResponse`.
+  if (
+    rawData &&
+    typeof rawData === 'object' &&
+    rawData.op === 'finetune' &&
+    typeof rawData.status === 'string'
+  ) {
+    state.skipNextRuntimeStats = true
+    return { type: 'JobEnded', data: rawData, error: null }
+  }
+
+  // Per-iteration finetune metrics.
+  if (
+    rawData &&
+    typeof rawData === 'object' &&
+    rawData.type === 'finetune_progress'
+  ) {
+    return { type: 'FinetuneProgress', data: rawData, error: null }
+  }
+
+  // Default: name-based mapping. C++ event names mangle to things like
+  // `Error.something` and string payloads carry tokens.
+  let type = rawEvent
+  if (typeof rawEvent === 'string' && rawEvent.includes('Error')) {
+    type = 'Error'
+  } else if (typeof rawData === 'string') {
+    type = 'Output'
+  }
+  return { type, data: rawData, error: rawError }
+}
+
+/**
  * An interface between Bare addon in C++ and JS runtime.
  */
 class LlamaInterface {
@@ -29,11 +106,19 @@ class LlamaInterface {
   }
 
   /**
+   * Loads model weights. The native side reads the JS property names
+   * `chunk` and `completed` directly, so this object's field names are
+   * load-bearing — see `JsBlobsStream.hpp::appendBlob` in
+   * `qvac-lib-inference-addon-cpp` for the parser.
    *
    * @param {Object} weightsData
-   * @param {String} weightsData.filename
-   * @param {Uint8Array} weightsData.contents
-   * @param {Boolean} weightsData.completed
+   * @param {String} weightsData.filename - Logical filename used to group
+   *   chunks into one shard. The native side keys `shards_in_progress` on
+   *   this.
+   * @param {Uint8Array|null} weightsData.chunk - Next chunk of bytes for the
+   *   current shard, or `null` on the final call when `completed` is true.
+   * @param {Boolean} weightsData.completed - `false` while more chunks
+   *   remain; `true` on the last call to finalize the shard.
    */
   async loadWeights (weightsData) {
     this._binding.loadWeights(this._handle, weightsData)
@@ -86,5 +171,6 @@ class LlamaInterface {
 }
 
 module.exports = {
-  LlamaInterface
+  LlamaInterface,
+  mapAddonEvent
 }

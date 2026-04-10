@@ -4,7 +4,7 @@ const fs = require('bare-fs')
 const path = require('bare-path')
 const QvacLogger = require('@qvac/logging')
 const { createJobHandler, exclusiveRunQueue } = require('@qvac/infer-base')
-const { LlamaInterface } = require('./addon')
+const { LlamaInterface, mapAddonEvent } = require('./addon')
 
 const RUN_BUSY_ERROR_MESSAGE = 'Cannot set new job: a job is already set or being processed'
 
@@ -106,7 +106,10 @@ class LlmLlamacpp {
     this.addon = null
     this._checkpointSaveDir = null
     this._hasActiveResponse = false
-    this._skipNextRuntimeStats = false
+    // Stateful flag carried across `mapAddonEvent` calls so the post-finetune
+    // TPS trailer the C++ addon emits is not mistaken for a fresh inference
+    // result. Lives on the model so unit tests can poke at it.
+    this._addonEventState = { skipNextRuntimeStats: false }
     this.state = { configLoaded: false }
   }
 
@@ -303,44 +306,12 @@ class LlmLlamacpp {
   }
 
   _addonOutputCallback (addon, event, data, error) {
-    if (typeof data === 'object' && data !== null && 'TPS' in data) {
-      if (this._skipNextRuntimeStats) {
-        this._skipNextRuntimeStats = false
-        return
-      }
-      const runtimeStats = { ...data }
-      if (runtimeStats.backendDevice === 0) {
-        runtimeStats.backendDevice = 'cpu'
-      } else if (runtimeStats.backendDevice === 1) {
-        runtimeStats.backendDevice = 'gpu'
-      }
-      return this._handleAddonOutputEvent('JobEnded', runtimeStats, null)
-    }
-    if (
-      typeof data === 'object' &&
-      data !== null &&
-      data.op === 'finetune' &&
-      typeof data.status === 'string'
-    ) {
-      this._skipNextRuntimeStats = true
-      return this._handleAddonOutputEvent('JobEnded', data, null)
-    }
-    if (
-      typeof data === 'object' &&
-      data !== null &&
-      data.type === 'finetune_progress'
-    ) {
-      return this._handleAddonOutputEvent('FinetuneProgress', data, null)
-    }
-
-    let mappedEvent = event
-    if (event.includes('Error')) {
-      mappedEvent = 'Error'
-    } else if (typeof data === 'string') {
-      mappedEvent = 'Output'
-    }
-
-    return this._handleAddonOutputEvent(mappedEvent, data, error)
+    // Event-name normalization lives in `addon.js` (`mapAddonEvent`) so the
+    // native binding wrapper owns the C++ event vocabulary. This shim only
+    // forwards the resulting logical event into `_handleAddonOutputEvent`.
+    const mapped = mapAddonEvent(event, data, error, this._addonEventState)
+    if (mapped === null) return
+    this._handleAddonOutputEvent(mapped.type, mapped.data, mapped.error)
   }
 
   _createAddon (configurationParams) {
