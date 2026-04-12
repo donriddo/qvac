@@ -15,11 +15,6 @@ const path = require('bare-path')
  * Returns `{ type, data, error }` or `null` for unknown event/data shapes
  * (caller logs at debug level).
  *
- * The C++ event vocabulary is owned by this module so the JS class only
- * sees logical events. See team-2 task doc:
- * "Move event normalization into `addon.js` `SdInterface` — the native
- *  binding wrapper should own the mapping from raw C++ events to
- *  Output / Error / JobEnded".
  *
  * @param {string} rawEvent
  * @param {*} rawData
