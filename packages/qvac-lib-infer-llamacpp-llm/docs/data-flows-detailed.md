@@ -193,7 +193,7 @@ flowchart TD
 
 ### Streaming Weight Loading
 
-The caller is responsible for providing the **complete** list of files in `files.model`: the primary model path (last entry), plus every shard and the `.tensors.txt` companion file (for sharded models), in order. The addon does no discovery, no expansion, and no download.
+The caller is responsible for providing the **complete** list of files in `files.model`: the `.tensors.txt` companion first, followed by every shard in ascending order (for sharded models). The addon picks the first entry matching the shard regex `/-\d+-of-\d+\.gguf$/` as the primary path (falling back to `files.model[0]` for non-sharded models). The addon does no discovery, no expansion, and no download.
 
 ```mermaid
 sequenceDiagram
@@ -209,7 +209,7 @@ sequenceDiagram
     User->>LLM: new LlmLlamacpp({ files, config, logger, opts })
     User->>LLM: load()
 
-    Note over LLM: _load(): build configurationParams with<br/>path = files.model[last], projectionPath, config
+    Note over LLM: _load(): build configurationParams with<br/>path = pickPrimaryGgufPath(files.model), projectionPath, config
     LLM->>IF: new LlamaInterface(binding, configurationParams, outputCb)
 
     alt files.model.length > 1 (sharded)
@@ -282,7 +282,7 @@ For a 4-shard model, the caller must pass **five** absolute paths in `files.mode
 4. `model-00003-of-00004.gguf`
 5. `model-00004-of-00004.gguf`
 
-`_load()` uses `files.model[files.model.length - 1]` (the last shard) as the primary path passed to the native addon constructor, and `_streamShards()` iterates **all** entries (including the last one) streaming each via `bare-fs`. C++ concatenates them into a single logical stream per filename.
+`_load()` uses `pickPrimaryGgufPath(files.model)` — the first entry matching the shard regex `/-\d+-of-\d+\.gguf$/`, falling back to `files.model[0]` for non-sharded models — as the primary path passed to the native addon constructor. `_streamShards()` iterates **all** entries streaming each via `bare-fs`. C++ concatenates them into a single logical stream per filename.
 
 **Performance:**
 

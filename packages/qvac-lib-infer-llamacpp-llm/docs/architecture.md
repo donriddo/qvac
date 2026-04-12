@@ -237,7 +237,7 @@ new LlmLlamacpp({
 ```
 
 - `files.model` is an array of absolute file paths. For single-file GGUFs, pass a one-element array. For sharded GGUFs the caller passes the `.tensors.txt` companion first, followed by every shard in numerical order.
-- `load()` takes no arguments. It constructs the native addon with the **last** entry of `files.model` as the primary model path, streams any additional shards via `bare-fs` + `loadWeights`, and finally calls `activate()`.
+- `load()` takes no arguments. It constructs the native addon with the first shard-matching entry of `files.model` (via `pickPrimaryGgufPath`) as the primary model path, streams all entries via `bare-fs` + `loadWeights`, and finally calls `activate()`.
 
 </details>
 
@@ -403,7 +403,7 @@ graph TB
 
 **Responsibility:** Stream caller-supplied shard files from disk into the native addon.
 
-- Iterates `files.model` (all entries except the last, which was passed to the constructor as the primary path)
+- Iterates all entries of `files.model` (the primary path selected by `pickPrimaryGgufPath` was already passed to the constructor)
 - For each file, opens a `bare-fs.createReadStream`, forwards every chunk via `addon.loadWeights({ filename, chunk, completed: false })`
 - Calls `addon.loadWeights({ filename, chunk: null, completed: true })` after each file to finalize that shard
 - The caller is responsible for the **complete set of files and their order** (including the `.tensors.txt` companion first for sharded models). No discovery, no expansion, no download logic inside the addon.
@@ -650,8 +650,8 @@ Earlier iterations of this package shipped a `WeightsProvider` + pluggable data-
 
 `LlmLlamacpp` accepts **only** absolute file paths via `files.model`. Downloading, caching, P2P, HTTP, and shard discovery all live outside the addon. The addon:
 
-1. Constructs the native instance with the **last** path in `files.model` as the primary model path.
-2. If `files.model.length > 1`, streams the remaining files (in the provided order) via `bare-fs.createReadStream` into `addon.loadWeights({ filename, chunk, completed })`.
+1. Constructs the native instance with the primary path selected by `pickPrimaryGgufPath(files.model)` — the first entry matching the shard regex, or `files.model[0]` for non-sharded models.
+2. If `files.model.length > 1`, streams all files (in the provided order) via `bare-fs.createReadStream` into `addon.loadWeights({ filename, chunk, completed })`.
 3. Calls `addon.activate()` to finalize load.
 
 For sharded GGUFs, the caller must pass **every** shard **and** the `.tensors.txt` companion file, in order: `.tensors.txt` first, then each shard in numerical order. See the [README sharded models section](../README.md#sharded-models) for the concrete example.

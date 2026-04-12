@@ -131,21 +131,12 @@ test('sharded model can run inference end-to-end', { timeout: 4 * 60 * 1000, ski
   const modelDir = path.resolve(__dirname, '../model')
   fs.mkdirSync(modelDir, { recursive: true })
 
-  const shardPattern = /^(.+)-(\d+)-of-(\d+)\.gguf$/
-  const match = shardPattern.exec(SHARDED_MODEL.name)
-  if (!match) {
-    t.fail('Test model name does not match shard pattern')
-    return
-  }
-
-  const [, basename, , totalShards] = match
-  const totalShardsNum = parseInt(totalShards, 10)
-  const shardFiles = []
-  shardFiles.push(`${basename}.tensors.txt`)
-  for (let i = 1; i <= totalShardsNum; i++) {
-    const num = i.toString().padStart(5, '0')
-    shardFiles.push(`${basename}-${num}-of-${totalShards}.gguf`)
-  }
+  const shardFiles = [
+    'Qwen3-0.6B-UD-IQ1_S.tensors.txt',
+    'Qwen3-0.6B-UD-IQ1_S-00001-of-00003.gguf',
+    'Qwen3-0.6B-UD-IQ1_S-00002-of-00003.gguf',
+    'Qwen3-0.6B-UD-IQ1_S-00003-of-00003.gguf'
+  ]
 
   const loader = new HttpDL({ baseUrl: SHARDED_MODEL.baseUrl })
   for (const filename of shardFiles) {

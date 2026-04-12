@@ -121,11 +121,13 @@ export interface FinetuneValidationNone {
 
 export interface FinetuneValidationSplit {
   type: 'split'
+  /** Fraction of training data to hold out for validation (0–1). Default 0.05. */
   fraction?: number
 }
 
 export interface FinetuneValidationDataset {
   type: 'dataset'
+  /** Path to a separate eval dataset file. Must differ from trainDatasetDir. */
   path: string
 }
 
