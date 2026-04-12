@@ -141,9 +141,6 @@ class ImgStableDiffusion {
   }
 
   _addonOutputCallback (addon, event, data, error) {
-    // Event-name normalization lives in `addon.js` (`mapAddonEvent`) so the
-    // native binding wrapper owns the C++ event vocabulary. This shim only
-    // dispatches the resulting logical event onto the active job.
     const mapped = mapAddonEvent(event, data, error)
     if (mapped === null) {
       // Unknown event/data combination — log it instead of feeding null/undefined
