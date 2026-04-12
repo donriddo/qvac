@@ -21,7 +21,7 @@ export type { EmbedStats };
 export async function embed(
   params: { modelId: string; text: string },
   options?: RPCOptions,
-): Promise<number[]>;
+): Promise<{ embedding: number[]; stats?: EmbedStats }>;
 
 /**
  * Generates embeddings for multiple texts using a specified model.
@@ -35,45 +35,9 @@ export async function embed(
 export async function embed(
   params: { modelId: string; text: string[] },
   options?: RPCOptions,
-): Promise<number[][]>;
+): Promise<{ embedding: number[][]; stats?: EmbedStats }>;
 
 export async function embed(
-  params: EmbedParams,
-  options?: RPCOptions,
-): Promise<number[] | number[][]> {
-  const request: EmbedRequest = {
-    type: "embed",
-    ...params,
-  };
-
-  const response = await send(request, options);
-  if (response.type !== "embed") {
-    throw new InvalidResponseError("embed");
-  }
-
-  return response.embedding;
-}
-
-/**
- * Generates embeddings together with the addon runtime stats (TPS, total time,
- * resolved backend device, etc.). Use this when you need the stats in addition
- * to the embedding vectors.
- *
- * @param params - The parameters for the embedding
- * @param params.modelId - The identifier of the embedding model to use
- * @param params.text - The input text or texts to embed
- * @param options - Optional RPC options including per-call profiling
- * @throws {QvacErrorBase} When the response type is invalid or when the embedding fails
- */
-export async function embedWithStats(
-  params: { modelId: string; text: string },
-  options?: RPCOptions,
-): Promise<{ embedding: number[]; stats?: EmbedStats }>;
-export async function embedWithStats(
-  params: { modelId: string; text: string[] },
-  options?: RPCOptions,
-): Promise<{ embedding: number[][]; stats?: EmbedStats }>;
-export async function embedWithStats(
   params: EmbedParams,
   options?: RPCOptions,
 ): Promise<{ embedding: number[] | number[][]; stats?: EmbedStats }> {
@@ -87,7 +51,8 @@ export async function embedWithStats(
     throw new InvalidResponseError("embed");
   }
 
-  return response.stats !== undefined
-    ? { embedding: response.embedding, stats: response.stats }
-    : { embedding: response.embedding };
+  return {
+    embedding: response.embedding,
+    ...(response.stats !== undefined && { stats: response.stats }),
+  };
 }

@@ -6,7 +6,7 @@ export { unloadModel } from "./unload-model";
 export { loggingStream } from "./logging-stream";
 export { heartbeat } from "./heartbeat";
 export { transcribe, transcribeStream } from "./transcribe";
-export { embed, embedWithStats, type EmbedStats } from "./embed";
+export { embed, type EmbedStats } from "./embed";
 export { translate } from "./translate";
 export { cancel } from "./cancel";
 export { startQVACProvider } from "./provide";
