@@ -25,15 +25,6 @@ import { translate } from "@/server/bare/ops/translate";
 import { attachModelExecutionMs } from "@/profiling/model-execution";
 
 function transformLlmConfig(llmConfig: LlmConfig) {
-  // The native addon's LlamaConfig uses snake_case for the long-standing
-  // params (`ctx_size`, `gpu_layers`, …), kebab-case for `cache-type-k` /
-  // `cache-type-v`, and camelCase for `openclCacheDir`. The SDK schema
-  // mirrors those exact key names, so this transform only needs to:
-  //   - drop `modelType` (an SDK-side discriminator the addon never sees)
-  //   - flatten `stop_sequences: string[]` into the `reverse_prompt: string`
-  //     the addon actually consumes
-  //   - coerce numbers and booleans to strings, since the addon's filemap
-  //     parser expects every value as a string
   const transformed = JSON.parse(
     JSON.stringify(llmConfig, (key: string, v: unknown) =>
       key === "modelType"
@@ -45,6 +36,10 @@ function transformLlmConfig(llmConfig: LlmConfig) {
           : typeof v === "number" || typeof v === "boolean"
             ? String(v)
             : v,
+    ).replace(
+      /"([a-z][A-Za-z]*)":/g,
+      (_, key: string) =>
+        `"${key.replace(/[A-Z]/g, (l: string) => `_${l.toLowerCase()}`)}":`,
     ),
   ) as Record<string, string>;
 
