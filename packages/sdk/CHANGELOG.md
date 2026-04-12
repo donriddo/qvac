@@ -1,5 +1,38 @@
 # Changelog
 
+## [0.9.0]
+
+### Breaking Changes
+
+#### `embed()` now returns `{ embedding, stats }` instead of raw vectors
+
+The `embed()` client function now returns `{ embedding, stats? }` instead of `number[] | number[][]`, matching the pattern used by `completionStream()`, `diffusion()`, `translate()`, and `ocr()`.
+
+**Before:**
+
+```typescript
+const vectors = await embed({ modelId, text: "hello" });
+```
+
+**After:**
+
+```typescript
+const { embedding, stats } = await embed({ modelId, text: "hello" });
+```
+
+### Features
+
+- **`backendDevice` stat** — `completionStatsSchema` and `embedStatsSchema` now include an optional `backendDevice: "cpu" | "gpu"` field, reporting which compute backend the addon used for inference.
+- **New config fields** — `openclCacheDir` (string), `cache-type-k` (string), and `cache-type-v` (string) added to `llmConfigBaseSchema`. `openclCacheDir` also added to `embedConfigBaseSchema`. These mirror the inputs introduced by `@qvac/llm-llamacpp@0.14.4` and `@qvac/embed-llamacpp@0.13.4`.
+- **`EmbedStats` type** exported from SDK root for typed consumption of embed runtime stats.
+
+### Dependency Changes
+
+- `@qvac/embed-llamacpp`: `^0.12.0` → `^0.13.4`
+- `@qvac/llm-llamacpp`: `^0.12.1` → `^0.14.4`
+
+---
+
 ## [0.8.1]
 
 📦 **NPM:** https://www.npmjs.com/package/@qvac/sdk/v/0.8.1
