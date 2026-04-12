@@ -13,6 +13,7 @@ export {
   transcribe,
   transcribeStream,
   embed,
+  type EmbedStats,
   translate,
   cancel,
   ragChunk,
