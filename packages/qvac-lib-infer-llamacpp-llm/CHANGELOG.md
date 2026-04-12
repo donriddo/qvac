@@ -56,6 +56,8 @@ const model = new LlmLlamacpp({
 
 `LlmLlamacpp` no longer extends `BaseInference` and no longer touches the `WeightsProvider` download layer. The class composes `createJobHandler` and `exclusiveRunQueue` from `@qvac/infer-base@^0.4.0` directly. Public lifecycle methods (`load` / `run` / `finetune` / `pause` / `cancel` / `unload` / `getState`) are unchanged in shape, but `downloadWeights` and the loader-based progress callbacks are gone — the caller is responsible for placing files on disk before constructing the model.
 
+In-memory streaming from network sources (URLs, Hyperdrive) is no longer supported in the current API. The SDK does not currently use it (models are stored to disk first); this can be re-added when/if the SDK plans to support that feature. Before, it was possible through the `Loader` abstraction.
+
 ### `destroy()` removed
 
 The inherited `destroy()` from `BaseInference` is no longer part of the public surface. Callers should use `unload()` instead, which now also nulls the addon reference.

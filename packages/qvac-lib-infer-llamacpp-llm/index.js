@@ -85,7 +85,22 @@ function normalizeFinetuneParams (opts) {
   return out
 }
 
-const SHARD_REGEX = /-\d+-of-\d+\.gguf$/
+/**
+ * Picks the primary GGUF path from an ordered file list.
+ *
+ * For sharded models the caller passes
+ * `[tensors.txt, shard-00001-of-N.gguf, ..., shard-N-of-N.gguf]`.
+ * The first entry matching the shard regex is returned so the value matches
+ * the C++ `GGUFShards::expandGGUFIntoShards` regex contract.
+ * For non-sharded single-file models the only entry is returned.
+ *
+ * @param {string[]} files - ordered array of absolute paths
+ * @returns {string} the primary GGUF path
+ */
+function pickPrimaryGgufPath (files) {
+  const SHARD_REGEX = /-\d+-of-\d+\.gguf$/
+  return files.find((p) => SHARD_REGEX.test(p)) || files[0]
+}
 
 class LlmLlamacpp {
   constructor ({ files, config, logger = null, opts = {} }) {
@@ -124,12 +139,7 @@ class LlmLlamacpp {
 
   async _load () {
     this.logger.info('Starting model load')
-    // Pick the primary GGUF path that goes into `configurationParams.path`. For
-    // sharded models the caller passes [tensors.txt, shard-00001-of-NNNNN.gguf, ..., shard-NNNNN-of-NNNNN.gguf];
-    // we pass the FIRST entry that matches the shard regex (skipping `tensors.txt` at index 0)
-    // so the value matches the C++ `GGUFShards::expandGGUFIntoShards` regex contract.
-    // For non-sharded single-file models there is only one entry and the find returns it.
-    const primaryGgufPath = this._files.find((p) => SHARD_REGEX.test(p)) || this._files[0]
+    const primaryGgufPath = pickPrimaryGgufPath(this._files)
     const configurationParams = {
       path: primaryGgufPath,
       projectionPath: this._projectionModelPath,
@@ -374,3 +384,4 @@ class LlmLlamacpp {
 }
 
 module.exports = LlmLlamacpp
+module.exports.pickPrimaryGgufPath = pickPrimaryGgufPath
