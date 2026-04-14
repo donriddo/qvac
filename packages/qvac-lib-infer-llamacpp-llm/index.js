@@ -130,8 +130,7 @@ class LlmLlamacpp {
 
   async load () {
     if (this.state.configLoaded) {
-      this.logger.info('Reload requested - unloading existing model first')
-      await this.unload()
+      throw new Error('Model is already loaded. Call unload() before calling load() again.')
     }
     await this._load()
     this.state.configLoaded = true
@@ -236,7 +235,9 @@ class LlmLlamacpp {
 
     this._hasActiveResponse = true
     const finalized = response.await().finally(() => { this._hasActiveResponse = false })
-    finalized.catch(() => {})
+    finalized.catch((err) => {
+      this.logger?.warn?.('Inference response rejected:', err?.message || err)
+    })
     response.await = () => finalized
 
     this.logger.info('Inference job started successfully')
@@ -278,17 +279,15 @@ class LlmLlamacpp {
 
       this._hasActiveResponse = true
       const finalized = response.await().finally(() => { this._hasActiveResponse = false })
-      finalized.catch(() => {})
+      finalized.catch((err) => {
+        this.logger?.warn?.('Finetune response rejected:', err?.message || err)
+      })
       response.await = () => finalized
       return response
     })
   }
 
   _handleAddonOutputEvent (eventType, data, error) {
-    if (eventType === 'JobEnded' || eventType === 'Error') {
-      this._hasActiveResponse = false
-    }
-
     if (eventType === 'LogMsg') {
       const logMsg = typeof data === 'string' ? data : (data?.message || JSON.stringify(data))
       this.logger?.info?.(logMsg)
