@@ -139,8 +139,7 @@ function aggregateRunMetrics (runMetrics) {
   }
 }
 
-async function runCaseWithRepeats ({ addonCtor, modelDir, modelName, runtimeConfig, inputs, repeats, onRepeatComplete, debugEnabled }) {
-  const AddonCtor = addonCtor
+async function runCaseWithRepeats ({ AddonCtor, modelDir, modelName, runtimeConfig, inputs, repeats, onRepeatComplete, debugEnabled }) {
   const addonConfig = buildAddonConfig(runtimeConfig, { debugEnabled })
   const addonRuntimeLogger = createAddonRuntimeLogger(debugEnabled)
 
@@ -295,7 +294,7 @@ function buildCaseResult ({
 }
 
 async function runModelCases ({
-  addonCtor,
+  AddonCtor,
   repeats,
   debugEnabled,
   debugLogger,
@@ -339,7 +338,7 @@ async function runModelCases ({
       }
       const inputs = testCase.inputMode === 'single' ? inputsRaw[0] : inputsRaw
       executionResult = await runCaseWithRepeats({
-        addonCtor,
+        AddonCtor,
         modelDir: modelDef.modelDir,
         modelName: testCase.modelName,
         runtimeConfig: testCase.runtimeConfig,
