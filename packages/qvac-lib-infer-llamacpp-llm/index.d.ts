@@ -14,6 +14,8 @@ export interface AddonMessage {
    * seed / etc. without re-loading the model.
    */
   generationParams?: GenerationParams
+  cacheKey?: string
+  saveCacheToDisk?: boolean
 }
 export interface AddonMediaMessage {
   type: 'media'
@@ -103,6 +105,8 @@ export interface GenerationParams {
 export interface RunOptions {
   prefill?: boolean
   generationParams?: GenerationParams
+  cacheKey?: string
+  saveCacheToDisk?: boolean
 }
 
 export interface RuntimeStats {

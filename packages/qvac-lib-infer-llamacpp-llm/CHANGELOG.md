@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.15.0] - 2026-04-10
+## [0.16.0] - 2026-04-14
 
 This release migrates the LLM addon off `BaseInference` inheritance and the `WeightsProvider` download layer onto the composable `createJobHandler` + `exclusiveRunQueue` utilities from `@qvac/infer-base@^0.4.0`. The constructor signature is replaced with a single object whose `files.model` field is an ordered array of absolute paths and `files.projectionModel` is an optional absolute path for multimodal models. This is a breaking change — every caller must update.
 
@@ -103,6 +103,23 @@ The `_createFilteredLogger` infrastructure that wrapped the user-supplied logger
 ## Pull Requests
 
 - [#1494](https://github.com/tetherto/qvac/pull/1494) - chore[bc]: LLM addon interface refactor — remove BaseInference and WeightsProvider
+
+## [0.15.0] - 2026-04-09
+
+### Breaking Changes
+
+#### KV cache API simplified — `{ role: "session" }` replaced with `runOptions`
+
+Cache control moved from `{ role: "session" }` chat messages to explicit `runOptions` fields: `cacheKey` and `saveCacheToDisk`. The `getTokens`, `save`, and `reset` session commands are removed — use `response.stats.CacheTokens`, `saveCacheToDisk: true`, and a different `cacheKey` (or omit it) instead.
+
+### Added
+
+- `cacheKey`, `saveCacheToDisk` options on `runOptions` and `RunOptions` TypeScript interface.
+- `docs/cache-api.md` — KV cache API usage guide.
+
+### Removed
+
+- `{ role: "session" }` message protocol, `getTokens` command, `save` command.
 
 ## [0.14.4] - 2026-04-03
 
