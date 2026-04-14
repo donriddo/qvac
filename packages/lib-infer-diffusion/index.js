@@ -87,8 +87,8 @@ class ImgStableDiffusion {
     const isSplitLayout = !!this._files.llm || !!this._files.t5Xxl ||
       !!this._files.clipL || !!this._files.clipG
     const configurationParams = {
-      path: isSplitLayout ? '' : (this._files.model || ''),
-      diffusionModelPath: isSplitLayout ? (this._files.model || '') : '',
+      path: isSplitLayout ? '' : this._files.model,
+      diffusionModelPath: isSplitLayout ? this._files.model : '',
       clipLPath: this._files.clipL || '',
       clipGPath: this._files.clipG || '',
       t5XxlPath: this._files.t5Xxl || '',
