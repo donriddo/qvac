@@ -285,10 +285,6 @@ class LlmLlamacpp {
   }
 
   _handleAddonOutputEvent (eventType, data, error) {
-    if (eventType === 'JobEnded' || eventType === 'Error') {
-      this._hasActiveResponse = false
-    }
-
     if (eventType === 'LogMsg') {
       const logMsg = typeof data === 'string' ? data : (data?.message || JSON.stringify(data))
       this.logger?.info?.(logMsg)
