@@ -53,6 +53,8 @@ const model = new GGMLBert({
 
 `GGMLBert` no longer extends `BaseInference` and no longer touches the `WeightsProvider` download layer. The class composes `createJobHandler` and `exclusiveRunQueue` from `@qvac/infer-base@^0.4.0` directly. Public lifecycle methods (`load` / `run` / `cancel` / `unload` / `getState`) are unchanged in shape, but `downloadWeights` and the loader-based progress callbacks are gone — the caller is responsible for placing files on disk before constructing the model.
 
+In-memory streaming from network sources (URLs, Hyperdrive) is no longer supported in the current API. The SDK does not currently use it (models are stored to disk first); this can be re-added when/if the SDK plans to support that feature. Before, it was possible through the `Loader` abstraction.
+
 ### Dependency changes
 
 - `@qvac/infer-base` bumped from `^0.2.2` to `^0.4.0`.
@@ -85,7 +87,7 @@ If `_streamShards()` or `addon.activate()` throws mid-load (for example a corrup
 
 ### Unknown addon events no longer pollute the output stream
 
-`_addonOutputCallback` previously fed any non-stats / non-error event payload into `response.output`, including unknown events. It now logs unknown events at debug level and only forwards `Embeddings` payloads to the active response.
+`_addonOutputCallback` previously fed any non-stats / non-error event payload into `response.output`, including unknown events. It now logs unknown events at warn level (these indicate a native-layer change worth surfacing) and only forwards `Embeddings` payloads to the active response.
 
 ## Pull Requests
 
