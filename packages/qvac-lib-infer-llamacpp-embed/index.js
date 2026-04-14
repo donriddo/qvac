@@ -113,7 +113,9 @@ class GGMLBert {
 
     this._hasActiveResponse = true
     const finalized = response.await().finally(() => { this._hasActiveResponse = false })
-    finalized.catch(() => {})
+    finalized.catch((err) => {
+      this.logger?.warn?.('Inference response rejected:', err?.message || err)
+    })
     response.await = () => finalized
     return response
   }

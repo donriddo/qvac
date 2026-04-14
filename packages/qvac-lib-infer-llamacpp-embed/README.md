@@ -197,10 +197,10 @@ The following table describes the expected behavior of `run` and `cancel` depend
 |---------------|----------------|----------------------------------------------------------------|
 | idle          | run            | **Allowed** — starts inference, returns `QvacResponse`        |
 | idle          | cancel         | **Allowed** — no-op (no job to cancel); Promise resolves       |
-| run           | run            | **Throw** — second `run()` throws `"Cannot set new job: a job is already set or being processed"`. The exclusive run queue rejects synchronously; there is no waiting period. |
+| run           | run            | **Throw** — second `run()` throws `"Cannot set new job: a job is already set or being processed"` once it reaches the head of the queue; previous response must settle first. |
 | run           | cancel         | **Allowed** — cancels current job; Promise resolves when job has stopped      |
 
-A second `run()` while a job is active fails fast with `"Cannot set new job: a job is already set or being processed"` — `exclusiveRunQueue` does not buffer or delay; the busy guard is synchronous. Wait for the previous `response.await()` to settle (or call `model.cancel()`) before issuing the next request.
+A second `run()` while a job is active is serialized by `exclusiveRunQueue` — it waits in the queue until the previous `_runInternal` returns, then enters the busy guard. Because the busy flag (`_hasActiveResponse`) is only cleared when the previous `response.await()` settles, the second call rejects with `"Cannot set new job: a job is already set or being processed"`. The queue eliminates race conditions but does not retry or buffer results; callers must wait for the previous `response.await()` to settle (or call `model.cancel()`) before issuing the next request.
 
 **Cancellation API:** Prefer cancelling from the model: `await model.cancel()`. This cancels the current job and the Promise resolves when the job has actually stopped (future-based in C++). You can also call `await response.cancel()` on the value returned by `run()`; it is equivalent and targets the same job. Both are no-op when idle.
 
