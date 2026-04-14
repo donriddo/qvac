@@ -7,8 +7,6 @@ import {
 } from "@/schemas";
 import { InvalidResponseError } from "@/utils/errors-client";
 
-export type { EmbedStats };
-
 /**
  * Generates embeddings for a single text using a specified model.
  *
