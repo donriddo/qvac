@@ -51,6 +51,10 @@ The constructor now throws `TypeError('files.model must be an absolute path to t
 
 Calling `run()` before `load()` now throws `Error('Addon not initialized. Call load() first.')` instead of crashing in native code. Covered by a new regression test in `test/integration/api-behavior.test.js`.
 
+### `load()` after already loaded now throws
+
+A second `load()` call on an already-loaded instance now throws `Error('Model is already loaded. Call unload() before calling load() again.')` instead of silently unloading and reloading. `unload()` clears `configLoaded`, so callers that intentionally want to swap weights must call `unload()` first. This makes the lifecycle explicit and prevents accidental reloads from masking caller bugs.
+
 ### Broader split-layout detection
 
 `isSplitLayout` now also triggers when only `clipL` or `clipG` is supplied. This closes a footgun where a FLUX.1 caller passing `{ model, clipL, clipG, vae }` (without `t5Xxl`) would silently mis-route the diffusion model into the all-in-one `path` parameter and fail to load.

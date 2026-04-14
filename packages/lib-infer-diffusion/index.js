@@ -68,8 +68,7 @@ class ImgStableDiffusion {
 
   async load () {
     if (this.state.configLoaded) {
-      this.logger.info('Reload requested - unloading existing model first')
-      await this.unload()
+      throw new Error('Model is already loaded. Call unload() before calling load() again.')
     }
     await this._load()
     this.state.configLoaded = true
@@ -203,7 +202,9 @@ class ImgStableDiffusion {
 
     this._hasActiveResponse = true
     const finalized = response.await().finally(() => { this._hasActiveResponse = false })
-    finalized.catch(() => {})
+    finalized.catch((err) => {
+      this.logger?.warn?.('Generation response rejected:', err?.message || err)
+    })
     response.await = () => finalized
 
     this.logger.info('Generation job started successfully')
