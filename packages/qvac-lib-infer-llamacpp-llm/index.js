@@ -183,6 +183,12 @@ class LlmLlamacpp {
     }
   }
 
+  /**
+   * Public API entrypoint for inference.
+   * @param {Message[]} prompt - Input prompt array of messages
+   * @param {RunOptions} [runOptions] - Optional run settings (prefill, generationParams, cacheKey, saveCacheToDisk)
+   * @returns {Promise<QvacResponse>}
+   */
   async run (prompt, runOptions = {}) {
     return this._run(() => this._runInternal(prompt, runOptions))
   }
