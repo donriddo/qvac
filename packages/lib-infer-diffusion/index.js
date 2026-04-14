@@ -166,6 +166,34 @@ class ImgStableDiffusion {
     }
   }
 
+  /**
+   * Generate an image from a text prompt, or from an input image + text prompt.
+   *
+   * Currently supports txt2img only. img2img is not yet wired in the JS
+   * layer — passing `init_image` will throw.
+   *
+   * Returns a QvacResponse that streams two types of updates:
+   *   - Uint8Array  — PNG-encoded output image (one per batch_count)
+   *   - string      — JSON step-progress tick: {"step":N,"total":M,"elapsed_ms":T}
+   *
+   * @param {object} params
+   * @param {string} params.prompt                  - Text prompt
+   * @param {string} [params.negative_prompt]       - Negative prompt
+   * @param {number} [params.steps=20]              - Denoising step count
+   * @param {number} [params.width=512]             - Output width (multiple of 8)
+   * @param {number} [params.height=512]            - Output height (multiple of 8)
+   * @param {number} [params.guidance=3.5]          - Distilled guidance (FLUX.2)
+   * @param {number} [params.cfg_scale=7.0]         - CFG scale (SD1/SD2)
+   * @param {string} [params.sampling_method]       - Sampler name
+   * @param {string} [params.scheduler]             - Scheduler name
+   * @param {number} [params.seed=-1]               - RNG seed; -1 = random
+   * @param {number} [params.batch_count=1]         - Images per call
+   * @param {boolean} [params.vae_tiling=false]     - Enable VAE tiling (for large images)
+   * @param {string}  [params.cache_preset]         - Cache preset: slow/medium/fast/ultra
+   * @param {Uint8Array} [params.init_image]        - Source image bytes for img2img (PNG/JPEG) — not yet supported
+   * @param {number}    [params.strength=0.75]      - img2img: 0 = keep source, 1 = ignore source — not yet supported
+   * @returns {Promise<QvacResponse>}
+   */
   async run (params) {
     return this._run(() => this._runInternal(params))
   }
