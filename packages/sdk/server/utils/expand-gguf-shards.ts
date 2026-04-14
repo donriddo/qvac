@@ -11,8 +11,10 @@ const SHARD_PATTERN = /^(.+)-(\d{5})-of-(\d{5})\.gguf$/;
  *
  * Order matters: the tensors.txt file is yielded first, followed by each
  * shard from `00001-of-NNNNN` through `NNNNN-of-NNNNN`. The addon streams
- * weights in this order and uses the last entry as the resolved model path
- * for native loading.
+ * weights in this order and picks the first shard-matching entry (the
+ * `-00001-of-NNNNN.gguf` file) as the resolved model path for native
+ * loading; the `.tensors.txt` companion is consumed by the weight-streaming
+ * layer but is not used as the primary path.
  *
  * Non-sharded models (or paths whose filename does not match the pattern)
  * are returned as a single-element array containing the input path
