@@ -45,7 +45,7 @@ Callers that previously relied on the addon to resolve `path.join(diskPath, file
 
 ### Constructor input validation
 
-The constructor now throws `TypeError('files.model must be an absolute path to the main model weights')` when `files` or `files.model` is missing. This produces a clear error for callers porting old code instead of a confusing `Cannot read properties of undefined`.
+The constructor now throws `TypeError('files.model must be an absolute path string')` when `files.model` is missing or not a string, or `TypeError('files.model must be an absolute path (got: <value>)')` when supplied as a relative path. This produces a clear error for callers porting old code instead of a confusing `Cannot read properties of undefined`. The same validation applies to optional companion fields (`clipL`, `clipG`, `t5Xxl`, `llm`, `vae`) when supplied.
 
 ### `run()`-before-`load()` guard
 
