@@ -32,8 +32,7 @@ class GGMLBert {
 
   async load () {
     if (this.state.configLoaded) {
-      this.logger.info('Reload requested - unloading existing model first')
-      await this.unload()
+      throw new Error('Model is already loaded. Call unload() before calling load() again.')
     }
     await this._load()
     this.state.configLoaded = true
