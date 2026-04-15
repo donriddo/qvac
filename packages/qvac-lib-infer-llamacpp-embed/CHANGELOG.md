@@ -61,6 +61,45 @@ In-memory streaming from network sources (URLs, Hyperdrive) is no longer support
 - `bare-fs` is now a runtime dependency (used to stream shards from disk).
 - `@qvac/dl-filesystem` and `@qvac/dl-hyperdrive` are no longer used by this package and have been removed from `devDependencies` / `peerDependencies`.
 
+### `getState()` returns a narrower shape
+
+`getState()` previously returned `{ configLoaded, weightsLoaded, destroyed }` (the three-field shape inherited from `BaseInference`). It now returns `{ configLoaded }` only. The `weightsLoaded` and `destroyed` fields are gone — `weightsLoaded` collapsed into `configLoaded` because the refactored `load()` does both in one step, and `destroyed` is no longer tracked since `unload()` resets `configLoaded` and nulls the addon handle instead. Callers reading `state.weightsLoaded` or `state.destroyed` must switch to `state.configLoaded`.
+
+### Public methods removed from `GGMLBert`
+
+`GGMLBert` previously exposed these methods via `BaseInference` inheritance, all of which are now gone:
+
+- `downloadWeights(onDownloadProgress, opts)` — the download layer is removed; the caller places files on disk and passes absolute paths in `files.model`.
+- `pause()` / `unpause()` / `stop()` — BaseInference job-lifecycle helpers. The refactor uses `createJobHandler` directly; use `cancel()` to terminate an in-flight run.
+- `status()` — replaced by `getState()` for the static readiness flag; per-job state is observed via the `QvacResponse` returned by `run()`.
+- `destroy()` — folded into `unload()`, which now both releases native resources and nulls `this.addon`.
+- `getApiDefinition()` — no longer exposed; consumers should import types from `index.d.ts`.
+
+### `load()` takes no arguments
+
+`load()` previously forwarded `...args` through `BaseInference.load` into embed's `_load(closeLoader, reportProgressCallback)`. Both arguments are gone — `closeLoader` is meaningless without a `Loader`, and `reportProgressCallback` is superseded by the caller owning download-and-placement before construction. Call `await model.load()` with no arguments.
+
+### Type exports removed from `index.d.ts`
+
+The following exports are no longer part of the package's public type surface because the loader/download layer they described is gone: `ReportProgressCallback`, `Loader`, `GGMLArgs`, `DownloadWeightsOptions`, `DownloadResult`. TypeScript consumers importing any of these must update to the new `GGMLBertArgs` / `files` shape.
+
+### `BertInterface` `outputCb` signature: `jobId` dropped
+
+The exported `BertInterface` class's constructor still takes `(binding, configurationParams, outputCb)`, but the `outputCb` signature changed:
+
+```ts
+// BEFORE
+(addon: unknown, event: string, jobId: number, data: unknown, error?: Error) => void
+// AFTER
+(addon: unknown, event: string, data: unknown, error?: Error) => void
+```
+
+The `jobId: number` argument is gone because `createJobHandler` owns the single active job directly; the wrapper no longer needs a per-job identifier in the callback chain. External callers constructing `BertInterface` with a custom `outputCb` must drop the third argument.
+
+### `BertInterface.runJob` return type
+
+`BertInterface.runJob(input)` previously returned `Promise<void>`. It now returns `Promise<boolean>` — `true` if the job was accepted, `false` if the addon was already busy. `GGMLBert` uses this return to surface a busy error to the caller instead of silently dropping the job.
+
 ## Features
 
 ### Constructor input validation
