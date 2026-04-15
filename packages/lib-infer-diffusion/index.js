@@ -29,9 +29,9 @@ class ImgStableDiffusion {
    * @param {object} args
    * @param {object} args.files - Absolute file paths for model components
    * @param {string} args.files.model - Main model weights (absolute path)
-   * @param {string} [args.files.clipL] - CLIP-L text encoder (FLUX.1 / SD3, absolute path)
+   * @param {string} [args.files.clipL] - CLIP-L text encoder (SD3, absolute path)
    * @param {string} [args.files.clipG] - CLIP-G text encoder (SDXL / SD3, absolute path)
-   * @param {string} [args.files.t5Xxl] - T5-XXL text encoder (FLUX.1 / SD3, absolute path)
+   * @param {string} [args.files.t5Xxl] - T5-XXL text encoder (SD3, absolute path)
    * @param {string} [args.files.llm] - LLM text encoder (FLUX.2 klein, absolute path)
    * @param {string} [args.files.vae] - VAE file (absolute path)
    * @param {object} [args.config] - SD context configuration (threads, device, type, etc.).
