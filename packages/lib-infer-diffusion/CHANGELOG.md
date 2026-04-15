@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.2.0] - 2026-04-10
+## [0.3.0] - 2026-04-15
 
 This release migrates the diffusion addon off `BaseInference` inheritance and onto the composable `createJobHandler` + `exclusiveRunQueue` utilities from `@qvac/infer-base@^0.4.0`. The constructor signature is replaced with a single object whose `files` field carries absolute paths for every model component, mirroring the parallel embed and LLM addon refactors. This is a breaking change — every caller must update.
 
@@ -20,7 +20,7 @@ const model = new ImgStableDiffusion({
   logger: console
 }, { threads: 8 })
 
-// AFTER (0.2.0)
+// AFTER (0.3.0)
 const model = new ImgStableDiffusion({
   files: {
     model: '/models/flux-2-klein-4b-Q8_0.gguf',
@@ -40,6 +40,10 @@ const model = new ImgStableDiffusion({
 ### Caller owns absolute paths — addon no longer joins `diskPath` + filename
 
 Callers that previously relied on the addon to resolve `path.join(diskPath, filename)` must now do that resolution themselves before constructing the model.
+
+### `getState()` returns a narrower shape
+
+`getState()` previously returned `{ configLoaded, weightsLoaded, destroyed }` (the three-field shape from `BaseInference`). It now returns `{ configLoaded }` only. The `weightsLoaded` and `destroyed` fields are gone — `weightsLoaded` collapsed into `configLoaded` because the refactored `load()` does both in one step, and `destroyed` is no longer tracked since `unload()` resets `configLoaded` and nulls the addon handle instead. Callers reading `state.weightsLoaded` or `state.destroyed` must switch to `state.configLoaded`.
 
 ## Features
 
@@ -72,6 +76,24 @@ A second `load()` call on an already-loaded instance is now a silent no-op inste
 ## Pull Requests
 
 - [#1496](https://github.com/tetherto/qvac/pull/1496) - chore[bc]: diffusion addon interface refactor — remove BaseInference
+
+## [0.2.0] - 2026-04-15
+
+### Added
+
+- FLUX.2 img2img support with in-context conditioning (`ref_images`) via `init_image` parameter
+- JS-side input validation for `readImageDimensions()` with buffer-length guards for truncated PNG/JPEG
+- Regression tests for FLUX img2img prediction guard and truncated image handling
+
+### Changed
+
+- FLUX img2img now requires explicit `prediction: 'flux2_flow'` in config to prevent silent fallback to SDEdit
+- Updated `prediction` docstring to clarify auto-detection is insufficient for FLUX img2img
+- Exported `readImageDimensions()` for testing and external use
+
+### Fixed
+
+- `readImageDimensions()` now safely handles truncated/corrupt PNG and JPEG buffers
 
 ## [0.1.3] - 2026-04-15
 
