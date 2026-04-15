@@ -50,6 +50,7 @@ export {
   type ToolCallError,
   type ToolCallEvent,
   type CompletionStats,
+  type EmbedStats,
   VERBOSITY,
   type Attachment,
   type TranscribeStreamSession,
