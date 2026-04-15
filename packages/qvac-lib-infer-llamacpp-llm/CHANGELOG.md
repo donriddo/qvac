@@ -78,9 +78,9 @@ The constructor now throws `TypeError('files.model must be a non-empty array of 
 
 Calling `run()` before `load()` now throws `Error('Addon not initialized. Call load() first.')` instead of dereferencing `null` and crashing. `finetune()` already had this guard since the previous release.
 
-### `load()` after already loaded now throws
+### `load()` is now idempotent when already loaded
 
-A second `load()` call on an already-loaded instance now throws `Error('Model is already loaded. Call unload() before calling load() again.')` instead of silently unloading and reloading. `unload()` clears `configLoaded`, so callers that intentionally want to swap weights must call `unload()` first. This makes the lifecycle explicit and prevents accidental reloads from masking caller bugs.
+A second `load()` call on an already-loaded instance is now a silent no-op instead of unloading and reloading. This aligns with the ReadyResource pattern used elsewhere in QVAC and prevents accidental double-loads from triggering expensive work. Callers that intentionally want to swap weights must call `unload()` first (which clears `configLoaded`) and then `load()` again.
 
 ### Crash-safe shard streaming
 

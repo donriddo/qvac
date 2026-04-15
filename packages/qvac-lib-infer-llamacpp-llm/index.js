@@ -139,9 +139,7 @@ class LlmLlamacpp {
   }
 
   async load () {
-    if (this.state.configLoaded) {
-      throw new Error('Model is already loaded. Call unload() before calling load() again.')
-    }
+    if (this.state.configLoaded) return
     await this._load()
     this.state.configLoaded = true
   }
