@@ -45,6 +45,20 @@ Callers that previously relied on the addon to resolve `path.join(diskPath, file
 
 `getState()` previously returned `{ configLoaded, weightsLoaded, destroyed }` (the three-field shape from `BaseInference`). It now returns `{ configLoaded }` only. The `weightsLoaded` and `destroyed` fields are gone — `weightsLoaded` collapsed into `configLoaded` because the refactored `load()` does both in one step, and `destroyed` is no longer tracked since `unload()` resets `configLoaded` and nulls the addon handle instead. Callers reading `state.weightsLoaded` or `state.destroyed` must switch to `state.configLoaded`.
 
+### Public methods removed from `ImgStableDiffusion`
+
+`ImgStableDiffusion` previously exposed these methods via `BaseInference` inheritance, all of which are now gone:
+
+- `downloadWeights(onDownloadProgress, opts)` — the diffusion addon never used the loader in practice, but the inherited method was still present on the public surface. It is removed along with the base class.
+- `pause()` / `unpause()` / `stop()` — BaseInference job-lifecycle helpers. The refactor uses `createJobHandler` directly; use `cancel()` to terminate an in-flight generation.
+- `status()` — replaced by `getState()` for the static readiness flag; per-job state is observed via the `QvacResponse` returned by `run()`.
+- `destroy()` — folded into `unload()`, which now both releases native resources and nulls `this.addon`.
+- `getApiDefinition()` — no longer exposed; consumers should import types from `index.d.ts`.
+
+### `cancel()` no longer accepts a `jobId`
+
+`BaseInference.cancel(jobId)` took an optional `jobId` argument. The refactor's `cancel()` is parameterless — there is always at most one active generation per instance, owned by `createJobHandler`. Any caller passing a `jobId` will have it ignored; update call sites to `await model.cancel()`.
+
 ## Features
 
 ### Constructor input validation
