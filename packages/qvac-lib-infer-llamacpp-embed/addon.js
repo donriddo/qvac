@@ -10,9 +10,8 @@ const path = require('bare-path')
  *   - `'JobEnded'`   — terminal RuntimeStats payload (with `backendDevice`
  *                       mapped from `0/1` to `'cpu'/'gpu'`)
  *
- * Returns `{ type, data, error }` or `null` if the event should be
- * dropped (currently never — embed has no skip-flag state, but the
- * shape mirrors the LLM addon for consistency).
+ * Returns `{ type, data, error }` or `null` for unknown event names
+ * (the caller logs at warn level and skips dispatch).
  *
  *
  * @param {string} rawEvent
