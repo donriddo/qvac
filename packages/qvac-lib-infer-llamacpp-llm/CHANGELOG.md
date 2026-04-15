@@ -22,7 +22,7 @@ const model = new LlmLlamacpp({
   opts: { stats: true }
 }, { ctx_size: '4096', gpu_layers: '99' })
 
-// AFTER (0.15.0)
+// AFTER (0.16.0)
 const model = new LlmLlamacpp({
   files: {
     model: ['/models/Qwen3-1.7B-Q4_0.gguf']
@@ -58,15 +58,33 @@ const model = new LlmLlamacpp({
 
 In-memory streaming from network sources (URLs, Hyperdrive) is no longer supported in the current API. The SDK does not currently use it (models are stored to disk first); this can be re-added when/if the SDK plans to support that feature. Before, it was possible through the `Loader` abstraction.
 
-### `destroy()` removed
-
-The inherited `destroy()` from `BaseInference` is no longer part of the public surface. Callers should use `unload()` instead, which now also nulls the addon reference.
-
 ### Dependency changes
 
 - `@qvac/infer-base` bumped from `^0.3.0` to `^0.4.0`.
 - `bare-fs` is now a runtime dependency (used to stream shards from disk).
 - `@qvac/dl-base` and `@qvac/dl-filesystem` are no longer used by this package and have been removed from `devDependencies`.
+
+### `getState()` returns a narrower shape
+
+`getState()` previously returned `{ configLoaded, weightsLoaded, destroyed }` (the three-field shape inherited from `BaseInference`). It now returns `{ configLoaded }` only. The `weightsLoaded` and `destroyed` fields are gone — `weightsLoaded` collapsed into `configLoaded` because the refactored `load()` does both in one step, and `destroyed` is no longer tracked since `unload()` resets `configLoaded` and nulls the addon handle instead. Callers reading `state.weightsLoaded` or `state.destroyed` must switch to `state.configLoaded`.
+
+### Public methods removed from `LlmLlamacpp`
+
+`LlmLlamacpp` previously exposed these methods via `BaseInference` inheritance, all of which are now gone:
+
+- `downloadWeights(onDownloadProgress, opts)` — the download layer is removed; the caller places files on disk and passes absolute paths in `files.model` / `files.projectionModel`.
+- `unpause()` / `stop()` — BaseInference job-lifecycle helpers. The refactor still exposes `pause()` and `cancel()`; `unpause` is superseded by issuing a new `run()` after `cancel()`.
+- `status()` — replaced by `getState()` for the static readiness flag; per-job state is observed via the `QvacResponse` returned by `run()`.
+- `destroy()` — folded into `unload()`, which now both releases native resources and nulls `this.addon`.
+- `getApiDefinition()` — no longer exposed; consumers should import types from `index.d.ts`.
+
+### `load()` takes no arguments
+
+`load()` previously forwarded `...args` through `BaseInference.load` into LLM's `_load(closeLoader, onDownloadProgress)`. Both arguments are gone — `closeLoader` is meaningless without a `Loader`, and `onDownloadProgress` is superseded by the caller owning download-and-placement before construction. Call `await model.load()` with no arguments.
+
+### Type exports removed from `index.d.ts`
+
+The following exports are no longer part of the package's public type surface because the loader/download layer they described is gone: `ReportProgressCallback`, `Loader`, `DownloadWeightsOptions`, `DownloadResult`. TypeScript consumers importing any of these must update to the new `LlmLlamacppArgs` / `files` shape.
 
 ## Features
 
