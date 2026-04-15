@@ -119,11 +119,11 @@ export interface SdConfig {
 export interface DiffusionFiles {
   /** Absolute path to main model weights */
   model: string
-  /** FLUX.1 / SD3: absolute path to CLIP-L text encoder */
+  /** SD3: absolute path to CLIP-L text encoder */
   clipL?: string
   /** SDXL / SD3: absolute path to CLIP-G text encoder */
   clipG?: string
-  /** FLUX.1 / SD3: absolute path to T5-XXL text encoder */
+  /** SD3: absolute path to T5-XXL text encoder */
   t5Xxl?: string
   /** FLUX.2 [klein]: absolute path to Qwen3 4B text encoder (llm_path) */
   llm?: string

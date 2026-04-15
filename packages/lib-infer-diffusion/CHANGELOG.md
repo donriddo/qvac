@@ -73,6 +73,12 @@ A second `load()` call on an already-loaded instance is now a silent no-op inste
 
 - [#1496](https://github.com/tetherto/qvac/pull/1496) - chore[bc]: diffusion addon interface refactor — remove BaseInference
 
+## [0.1.3] - 2026-04-15
+
+### Changed
+
+- README, `index.d.ts`, and `index.js` JSDoc no longer claim FLUX.1 support for `clipLModel` and `t5XxlModel`. The addon exposes SDXL, SD3, and FLUX.2-klein only — FLUX.1 was never wired through the JS layer. The example model name in the constructor JSDoc is also corrected to `flux-2-klein-4b-Q8_0.gguf`.
+
 ## [0.1.2] - 2026-04-03
 
 ### Changed

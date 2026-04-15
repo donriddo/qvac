@@ -186,9 +186,9 @@ const args = {
 |----------|----------|-------------|
 | `files` | ✅ | Object of absolute paths to model files (see below) |
 | `files.model` | ✅ | Absolute path to diffusion model file (all-in-one for SD1.x/2.x; diffusion-only GGUF for FLUX.2) |
-| `files.clipL` | — | Absolute path to separate CLIP-L text encoder (FLUX.1 / SD3) |
+| `files.clipL` | — | Absolute path to separate CLIP-L text encoder (SD3) |
 | `files.clipG` | — | Absolute path to separate CLIP-G text encoder (SDXL / SD3) |
-| `files.t5Xxl` | — | Absolute path to separate T5-XXL text encoder (FLUX.1 / SD3) |
+| `files.t5Xxl` | — | Absolute path to separate T5-XXL text encoder (SD3) |
 | `files.llm` | — | Absolute path to Qwen3 LLM text encoder (FLUX.2 [klein]) |
 | `files.vae` | — | Absolute path to separate VAE file |
 | `config` | — | Native backend configuration object (see next section) |
