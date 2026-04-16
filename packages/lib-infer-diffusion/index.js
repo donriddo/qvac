@@ -67,9 +67,11 @@ class ImgStableDiffusion {
   }
 
   async load () {
-    if (this.state.configLoaded) return
-    await this._load()
-    this.state.configLoaded = true
+    return this._run(async () => {
+      if (this.state.configLoaded) return
+      await this._load()
+      this.state.configLoaded = true
+    })
   }
 
   async _load () {
@@ -98,8 +100,17 @@ class ImgStableDiffusion {
     this.logger.info('Creating stable-diffusion addon with configuration:', configurationParams)
     this.addon = this._createAddon(configurationParams)
 
-    this.logger.info('Activating stable-diffusion addon')
-    await this.addon.activate()
+    try {
+      this.logger.info('Activating stable-diffusion addon')
+      await this.addon.activate()
+    } catch (loadError) {
+      // Best-effort cleanup of the partially-initialized addon so a subsequent
+      // load() does not leak a zombie native instance.
+      try { await this.addon?.unload?.() } catch (_) {}
+      this.addon = null
+      this._releaseNativeLogger()
+      throw loadError
+    }
 
     this.logger.info('Stable-diffusion model load completed successfully')
   }

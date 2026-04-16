@@ -87,6 +87,14 @@ A second `load()` call on an already-loaded instance is now a silent no-op inste
 
 `_addonOutputCallback` previously had a fallthrough that pushed any non-error / non-image / non-stats event into `response.output` (including `null` and `undefined`). It now logs unknown events at debug level and does not feed them into the active response.
 
+### Crash-safe activation
+
+If `addon.activate()` throws during `_load()` (for example a native init failure or a missing model file discovered late), the partially-initialized addon is now best-effort-unloaded, the native logger is released, and `this.addon` is reset to `null`. A subsequent `load()` call starts cleanly instead of leaking a zombie native instance.
+
+### `load()` is serialized through the exclusive run queue
+
+`load()` is now routed through the same `exclusiveRunQueue` used by `run()` and `unload()`. Previously two overlapping `load()` calls on the same instance could both pass the `configLoaded` guard before it flipped to `true`, both allocate a native addon, and clobber `this.addon` — leaking one native handle. Concurrent `load()` on a single instance is now safe.
+
 ## Pull Requests
 
 - [#1496](https://github.com/tetherto/qvac/pull/1496) - chore[bc]: diffusion addon interface refactor — remove BaseInference
