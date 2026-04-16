@@ -1,6 +1,5 @@
-name: QVAC Android Tests (Device Farm)
-# Reusable workflow for running Android tests via AWS Device Farm
-# Originally from qvac-test-suite
+name: QVAC iOS Tests (Device Farm)
+# Reusable workflow for running iOS tests via AWS Device Farm
 
 on:
   workflow_call:
@@ -32,8 +31,8 @@ on:
         description: "AWS Device Farm project ARN"
         required: true
         type: string
-      device-pools:
-        description: 'JSON array of device pools [{name, arn}]'
+      ios-device-pools:
+        description: 'JSON array of iOS device pools [{name, arn}]'
         required: true
         type: string
       test-version:
@@ -57,10 +56,21 @@ on:
         required: true
       MQTT_CA_CERT:
         required: false
-      AWS_ACCESS_KEY_ID:
+      AWS_OIDC_ROLE_ARN:
         required: true
-      AWS_SECRET_ACCESS_KEY:
+      TEST_APP_APPLE_DISTRIBUTION_CERTIFICATE:
         required: true
+      APPLE_P12_PASSWORD:
+        required: true
+      TEST_APP_APPLE_PROVISIONING_PROFILE:
+        required: true
+      APPLE_KEYCHAIN_PASSWORD:
+        required: true
+      APPLE_TEAM_ID:
+        required: true
+
+env:
+  APP_BUNDLE_ID: "io.tether.test.qvac"
 
 permissions:
   id-token: write
@@ -68,9 +78,9 @@ permissions:
 
 jobs:
   build:
-    runs-on: ai-run-linux
+    runs-on: macos-14
     environment: release
-    timeout-minutes: 30
+    timeout-minutes: 60
     outputs:
       runId: ${{ steps.runid.outputs.runId }}
     env:
@@ -96,12 +106,106 @@ jobs:
         with:
           bun-version: latest
 
-      - uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # 5.2.0
-        with:
-          java-version: "17"
-          distribution: "temurin"
+      - name: Select Xcode
+        run: |
+          echo "Available Xcode versions:"
+          ls -d /Applications/Xcode*.app 2>/dev/null || echo "No Xcode found"
 
-      - uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # 3.2.2
+          if [ -d "/Applications/Xcode_16.1.app" ]; then
+            sudo xcode-select -s /Applications/Xcode_16.1.app
+          elif [ -d "/Applications/Xcode_16.1.0.app" ]; then
+            sudo xcode-select -s /Applications/Xcode_16.1.0.app
+          elif [ -d "/Applications/Xcode_16.2.app" ]; then
+            sudo xcode-select -s /Applications/Xcode_16.2.app
+          else
+            echo "No suitable Xcode version found (need >= 16.1)"
+            exit 1
+          fi
+
+          xcodebuild -version
+          xcodebuild -showsdks | grep -i ios
+
+      - name: Install CocoaPods
+        run: |
+          sudo gem install cocoapods
+          pod --version
+
+      - name: Create Keychain and Import Certificate
+        env:
+          BUILD_CERTIFICATE_BASE64: ${{ secrets.TEST_APP_APPLE_DISTRIBUTION_CERTIFICATE }}
+          P12_PASSWORD: ${{ secrets.APPLE_P12_PASSWORD }}
+          BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.TEST_APP_APPLE_PROVISIONING_PROFILE }}
+          KEYCHAIN_PASSWORD: ${{ secrets.APPLE_KEYCHAIN_PASSWORD }}
+        run: |
+          CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
+          PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+
+          echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
+          echo -n "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode -o $PP_PATH
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+
+          security import $CERTIFICATE_PATH -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security list-keychain -d user -s $KEYCHAIN_PATH
+
+          PP_UUID=$(/usr/libexec/PlistBuddy -c 'Print :UUID' /dev/stdin <<< $(security cms -D -i $PP_PATH))
+          echo "PP_UUID=$PP_UUID" >> $GITHUB_ENV
+          echo "Provisioning Profile UUID: $PP_UUID"
+
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles/$PP_UUID.mobileprovision
+
+          security find-identity -p codesigning -v
+
+      - name: Verify provisioning profile
+        run: |
+          echo "Verifying provisioning profile..."
+          PP_FILE=~/Library/MobileDevice/Provisioning\ Profiles/$PP_UUID.mobileprovision
+          if [ ! -f "$PP_FILE" ]; then
+            echo "Provisioning profile not found at: $PP_FILE"
+            ls -la ~/Library/MobileDevice/Provisioning\ Profiles/
+            exit 1
+          fi
+
+          security cms -D -i "$PP_FILE" > /tmp/profile.plist
+
+          PROFILE_NAME=$(/usr/libexec/PlistBuddy -c "Print :Name" /tmp/profile.plist 2>/dev/null || echo "Unknown")
+          PROFILE_BUNDLE_ID=$(/usr/libexec/PlistBuddy -c "Print :Entitlements:application-identifier" /tmp/profile.plist 2>/dev/null || echo "Unknown")
+          PROFILE_TEAM_ID=$(/usr/libexec/PlistBuddy -c "Print :Entitlements:com.apple.developer.team-identifier" /tmp/profile.plist 2>/dev/null || echo "Unknown")
+
+          HAS_DEVICES=$(/usr/libexec/PlistBuddy -c "Print :ProvisionedDevices" /tmp/profile.plist 2>/dev/null && echo "yes" || echo "no")
+          PROVISIONS_ALL=$(/usr/libexec/PlistBuddy -c "Print :ProvisionsAllDevices" /tmp/profile.plist 2>/dev/null || echo "false")
+          HAS_GET_TASK_ALLOW=$(/usr/libexec/PlistBuddy -c "Print :Entitlements:get-task-allow" /tmp/profile.plist 2>/dev/null || echo "false")
+
+          if [[ "$PROVISIONS_ALL" == "true" ]]; then
+            EXPORT_METHOD="enterprise"
+          elif [[ "$HAS_DEVICES" == "yes" && "$HAS_GET_TASK_ALLOW" == "true" ]]; then
+            EXPORT_METHOD="development"
+          elif [[ "$HAS_DEVICES" == "yes" && "$HAS_GET_TASK_ALLOW" == "false" ]]; then
+            EXPORT_METHOD="ad-hoc"
+          else
+            EXPORT_METHOD="app-store"
+          fi
+
+          echo "  Name: $PROFILE_NAME"
+          echo "  Export Method: $EXPORT_METHOD"
+          echo "  Application ID: $PROFILE_BUNDLE_ID"
+          echo "  Team ID: $PROFILE_TEAM_ID"
+          echo "  Expected Bundle ID: $APP_BUNDLE_ID"
+
+          echo "EXPORT_METHOD=$EXPORT_METHOD" >> $GITHUB_ENV
+
+          BUNDLE_ID_ONLY=$(echo "$PROFILE_BUNDLE_ID" | sed 's/^[^.]*\.//')
+          if [[ "$BUNDLE_ID_ONLY" != "$APP_BUNDLE_ID" ]]; then
+            echo "Provisioning profile bundle ID mismatch: $BUNDLE_ID_ONLY vs $APP_BUNDLE_ID"
+            exit 1
+          fi
+
+          echo "Provisioning profile matches expected bundle ID"
 
       - name: Generate runId
         id: runid
@@ -112,7 +216,7 @@ jobs:
           const refName = process.env.GITHUB_REF_NAME.replace(/\//g, '-');
           const sha = process.env.GITHUB_SHA.substring(0, 7);
           const timestamp = Math.floor(Date.now() / 1000);
-          const runId = `mobile-${repoName}-${refName}-${sha}-${timestamp}`;
+          const runId = `ios-${repoName}-${refName}-${sha}-${timestamp}`;
 
           fs.appendFileSync(process.env.GITHUB_OUTPUT, `runId=${runId}\n`, 'utf8');
           console.log(`Generated runId: ${runId}`);
@@ -200,34 +304,39 @@ jobs:
         working-directory: ${{ inputs.working-directory }}
         run: bun run build
 
-      - name: Build mobile consumer APK
+      - name: Build iOS consumer IPA
         working-directory: ${{ inputs.working-directory }}
         env:
           NPM_CONFIG_USERCONFIG: ${{ github.workspace }}/${{ inputs.working-directory }}/.npmrc
+          QVAC_IOS_BUNDLE_ID: ${{ env.APP_BUNDLE_ID }}
+          QVAC_IOS_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          QVAC_IOS_CODE_SIGN_IDENTITY: "Apple Distribution"
+          QVAC_IOS_PROVISIONING_PROFILE: ${{ env.PP_UUID }}
+          QVAC_IOS_EXPORT_METHOD: ${{ env.EXPORT_METHOD }}
         run: |
-          echo "Building Android consumer APK..."
+          echo "Building iOS consumer IPA..."
           echo "   Run ID: ${{ steps.runid.outputs.runId }}"
+          echo "   Bundle ID: $QVAC_IOS_BUNDLE_ID"
           echo "   MQTT Host: $MQTT_HOST"
 
-          npx qvac-test build:consumer:android \
+          npx qvac-test build:consumer:ios \
             --runId "${{ steps.runid.outputs.runId }}" \
             --config .
 
-          APK_PATH="build/consumers/android/consumer.apk"
-          if [ -f "$APK_PATH" ]; then
-            echo "APK built successfully"
-            ls -lh "$APK_PATH"
+          IPA_PATH="build/consumers/ios/consumer.ipa"
+          if [ -f "$IPA_PATH" ]; then
+            echo "IPA built successfully"
+            ls -lh "$IPA_PATH"
           else
-            echo "APK not found at $APK_PATH"
-            find build -name "*.apk" 2>/dev/null || echo "No APK files found"
+            echo "IPA not found at $IPA_PATH"
             exit 1
           fi
 
-      - name: Upload APK artifact
+      - name: Upload IPA artifact
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # 7.0.0
         with:
-          name: mobile-consumer-apk
-          path: ${{ inputs.working-directory }}/build/consumers/android/consumer.apk
+          name: mobile-consumer-ipa
+          path: ${{ inputs.working-directory }}/build/consumers/ios/consumer.ipa
           retention-days: 7
 
   device-farm:
@@ -238,18 +347,18 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        device: ${{ fromJson(inputs.device-pools) }}
+        device: ${{ fromJson(inputs.ios-device-pools) }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
         with:
           ref: ${{ inputs.test-version || github.event.pull_request.head.sha || github.sha }}
           sparse-checkout: ${{ inputs.working-directory }}/device-farm
 
-      - name: Download APK artifact
+      - name: Download IPA artifact
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # 8.0.1
         with:
-          name: mobile-consumer-apk
-          path: ./apk
+          name: mobile-consumer-ipa
+          path: ./ipa
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@8df5847569e6427dd6c4fb1cf565c83acfa8afa7 # 6.0.0
@@ -257,15 +366,22 @@ jobs:
           role-to-assume: ${{ secrets.AWS_OIDC_ROLE_ARN }}
           aws-region: us-west-2
 
-      - name: Upload APK to Device Farm
+      - name: Upload IPA to Device Farm
         id: upload-app
         run: |
-          echo "Uploading APK to Device Farm for ${{ matrix.device.name }}..."
+          echo "Uploading IPA to Device Farm for ${{ matrix.device.name }}..."
+
+          IPA_FILE=$(find ./ipa -name "*.ipa" | head -1)
+          if [ -z "$IPA_FILE" ]; then
+            echo "No IPA file found in ./ipa"
+            ls -la ./ipa/
+            exit 1
+          fi
 
           UPLOAD_RESPONSE=$(aws devicefarm create-upload \
             --project-arn "${{ inputs.device-farm-project-arn }}" \
-            --name "consumer-${{ needs.build.outputs.runId }}-${{ matrix.device.name }}.apk" \
-            --type "ANDROID_APP" \
+            --name "consumer-${{ needs.build.outputs.runId }}-${{ matrix.device.name }}.ipa" \
+            --type "IOS_APP" \
             --output json)
 
           APP_UPLOAD_URL=$(echo $UPLOAD_RESPONSE | jq -r '.upload.url')
@@ -273,20 +389,20 @@ jobs:
 
           echo "app-arn=$APP_UPLOAD_ARN" >> $GITHUB_OUTPUT
 
-          curl -T "./apk/consumer.apk" "$APP_UPLOAD_URL"
+          curl -T "$IPA_FILE" "$APP_UPLOAD_URL"
 
-          echo "Waiting for APK to be processed..."
+          echo "Waiting for IPA to be processed..."
           for i in {1..30}; do
             STATUS=$(aws devicefarm get-upload --arn "$APP_UPLOAD_ARN" --query "upload.status" --output text)
             echo "Status (attempt $i/30): $STATUS"
 
             if [ "$STATUS" = "SUCCEEDED" ]; then
-              echo "APK upload successful"
+              echo "IPA upload successful"
               break
             fi
 
             if [ "$STATUS" = "FAILED" ]; then
-              echo "APK upload failed"
+              echo "IPA upload failed"
               aws devicefarm get-upload --arn "$APP_UPLOAD_ARN"
               exit 1
             fi
@@ -334,7 +450,7 @@ jobs:
         run: |
           SPEC_RESPONSE=$(aws devicefarm create-upload \
             --project-arn "${{ inputs.device-farm-project-arn }}" \
-            --name "qvac-test-spec-${{ needs.build.outputs.runId }}.yml" \
+            --name "qvac-ios-test-spec-${{ needs.build.outputs.runId }}.yml" \
             --type "APPIUM_NODE_TEST_SPEC" \
             --output json)
 
@@ -344,8 +460,8 @@ jobs:
           echo "spec-arn=$SPEC_ARN" >> $GITHUB_OUTPUT
 
           TIMEOUT_SECONDS=$(( ${{ inputs.device-farm-timeout || 90 }} * 60 ))
-          sed -i "s/DEVICEFARM_TIMEOUT:-5400/DEVICEFARM_TIMEOUT:-${TIMEOUT_SECONDS}/" "${{ inputs.working-directory }}/device-farm/test-spec-android.yml"
-          curl -T "${{ inputs.working-directory }}/device-farm/test-spec-android.yml" "$SPEC_URL"
+          sed -i "s/DEVICEFARM_TIMEOUT:-5400/DEVICEFARM_TIMEOUT:-${TIMEOUT_SECONDS}/" "${{ inputs.working-directory }}/device-farm/test-spec-ios.yml"
+          curl -T "${{ inputs.working-directory }}/device-farm/test-spec-ios.yml" "$SPEC_URL"
 
           echo "Waiting for test spec to be processed..."
           for i in {1..15}; do
@@ -371,7 +487,7 @@ jobs:
         run: |
           echo "Scheduling Device Farm run on ${{ matrix.device.name }}..."
 
-          RUN_NAME="mobile-${{ matrix.device.name }}-${{ github.run_number }}-${{ github.run_attempt }}"
+          RUN_NAME="ios-${{ matrix.device.name }}-${{ github.run_number }}-${{ github.run_attempt }}"
 
           RUN_ARN=$(aws devicefarm schedule-run \
             --project-arn "${{ inputs.device-farm-project-arn }}" \
@@ -403,7 +519,7 @@ jobs:
       - name: Upload run ARN
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # 7.0.0
         with:
-          name: device-farm-arn-${{ needs.build.outputs.runId }}-${{ steps.save-arn.outputs.safe-name }}
+          name: device-farm-arn-ios-${{ needs.build.outputs.runId }}-${{ steps.save-arn.outputs.safe-name }}
           path: ${{ steps.save-arn.outputs.safe-name }}.txt
           retention-days: 1
 
@@ -533,7 +649,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # 7.0.0
         with:
-          name: mobile-results-${{ github.run_number }}
+          name: ios-results-${{ github.run_number }}
           path: ${{ inputs.working-directory }}/reports/
           retention-days: 30
 
@@ -541,7 +657,7 @@ jobs:
         if: always() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # 7.0.0
         with:
-          name: mobile-baseline
+          name: ios-baseline
           path: ${{ inputs.working-directory }}/reports/results-*.json
           retention-days: 90
           overwrite: true
@@ -551,7 +667,7 @@ jobs:
     if: always()
     runs-on: ubuntu-latest
     environment: release
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@8df5847569e6427dd6c4fb1cf565c83acfa8afa7 # 6.0.0
@@ -562,7 +678,7 @@ jobs:
       - name: Download run ARNs
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # 8.0.1
         with:
-          pattern: device-farm-arn-${{ needs.build.outputs.runId }}-*
+          pattern: device-farm-arn-ios-${{ needs.build.outputs.runId }}-*
           path: ./run-arns
           merge-multiple: true
 
@@ -587,179 +703,56 @@ jobs:
             fi
           done
 
-  compare-results:
-    needs: [build, run-producer]
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    environment: release
-    env:
-      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-      PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
-    permissions:
-      pull-requests: write
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
-        with:
-          ref: ${{ inputs.test-version || github.event.pull_request.head.sha || github.sha }}
-          token: ${{ secrets.PAT_TOKEN }}
-          sparse-checkout: ${{ inputs.project-directory }}
-
-      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # 6.3.0
-        with:
-          node-version: 22
-
-      - name: Configure npm registries
-        shell: node {0}
+      - name: Download Device Farm artifacts
         run: |
-          const fs = require('fs');
-          const path = require('path');
+          mkdir -p ./device-farm-logs
 
-          const lines = [
-            'registry=https://registry.npmjs.org/',
-            '@qvac:registry=https://registry.npmjs.org/',
-            '@tetherto:registry=https://npm.pkg.github.com/',
-            `//registry.npmjs.org/:_authToken=${process.env.NPM_TOKEN}`,
-            `//npm.pkg.github.com/:_authToken=${process.env.PAT_TOKEN}`
-          ];
-          const npmrc = lines.join('\n');
-          const target = path.join('${{ inputs.project-directory }}', '.npmrc');
-          fs.writeFileSync(target, npmrc, 'utf8');
+          for arn_file in run-arns/*.txt; do
+            if [ -f "$arn_file" ]; then
+              RUN_ARN=$(cat "$arn_file")
+              DEVICE_NAME=$(basename "$arn_file" .txt)
 
-      - name: Copy .npmrc to consumer directory
-        shell: node {0}
-        run: |
-          const fs = require('fs');
-          const path = require('path');
-          const projectDir = '${{ inputs.project-directory }}';
-          const consumerDir = '${{ inputs.working-directory }}';
-          if (consumerDir !== projectDir) {
-            const source = path.join(projectDir, '.npmrc');
-            const npmrcContent = fs.readFileSync(source, 'utf8');
-            fs.writeFileSync(path.join(consumerDir, '.npmrc'), npmrcContent, 'utf8');
-          }
+              echo "Waiting for run to finish: $DEVICE_NAME"
+              for attempt in $(seq 1 30); do
+                STATUS=$(aws devicefarm get-run --arn "$RUN_ARN" --query 'run.status' --output text 2>/dev/null || echo "UNKNOWN")
+                if [ "$STATUS" = "COMPLETED" ] || [ "$STATUS" = "STOPPED" ] || [ "$STATUS" = "ERRORED" ]; then
+                  echo "Run $DEVICE_NAME finished with status: $STATUS"
+                  break
+                fi
+                echo "Run $DEVICE_NAME still $STATUS (attempt $attempt/30)..."
+                sleep 10
+              done
 
-      - name: Install dependencies
-        working-directory: ${{ inputs.working-directory }}
-        run: npm install --install-links --ignore-scripts
+              DEVICE_DIR="./device-farm-logs/$DEVICE_NAME"
+              mkdir -p "$DEVICE_DIR"
 
-      - name: Download current results
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # 8.0.1
+              echo "Downloading Customer Artifacts for $DEVICE_NAME..."
+              JOBS=$(aws devicefarm list-jobs --arn "$RUN_ARN" --query 'jobs[*].arn' --output text 2>/dev/null || echo "")
+              for JOB_ARN in $JOBS; do
+                aws devicefarm list-artifacts \
+                  --arn "$JOB_ARN" \
+                  --type FILE \
+                  --query "artifacts[?contains(name,'Customer')].[name,extension,url]" \
+                  --output text 2>/dev/null \
+                | while IFS=$'\t' read -r NAME EXT URL; do
+                    if [ -z "$URL" ] || [ "$URL" = "None" ]; then
+                      continue
+                    fi
+                    SAFE_NAME=$(echo "$NAME" | tr ' /' '__')
+                    echo "  Downloading ${SAFE_NAME}.${EXT}"
+                    curl -sS -o "$DEVICE_DIR/${SAFE_NAME}.${EXT}" "$URL" || echo "  Failed: ${SAFE_NAME}.${EXT}"
+                  done
+              done
+
+              echo "Artifacts for $DEVICE_NAME:"
+              ls -lh "$DEVICE_DIR" 2>/dev/null || echo "  (empty)"
+            fi
+          done
+
+      - name: Upload Device Farm logs
+        if: always()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # 7.0.0
         with:
-          pattern: mobile-results-*
-          path: ${{ inputs.working-directory }}/current-results/
-          merge-multiple: true
-
-      - name: Download baseline results
-        id: download-baseline
-        uses: dawidd6/action-download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # 8.0.1
-        continue-on-error: true
-        with:
-          workflow: test-android-sdk.yml
-          branch: ${{ github.event.pull_request.base.ref }}
-          name: mobile-baseline
-          path: ${{ inputs.working-directory }}/baseline-results/
-          if_no_artifact_found: warn
-
-      - name: Check baseline availability
-        id: check-baseline
-        shell: node {0}
-        run: |
-          const fs = require('fs');
-          const path = require('path');
-          const baselineDir = path.join('${{ inputs.working-directory }}', 'baseline-results');
-          let hasBaseline = false;
-          if (fs.existsSync(baselineDir)) {
-            const files = fs.readdirSync(baselineDir).filter(f => f.endsWith('.json'));
-            hasBaseline = files.length > 0;
-          }
-          fs.appendFileSync(process.env.GITHUB_OUTPUT, `has_baseline=${hasBaseline}\n`, 'utf8');
-          console.log(`Baseline available: ${hasBaseline}`);
-
-      - name: Compare results
-        if: steps.check-baseline.outputs.has_baseline == 'true'
-        working-directory: ${{ inputs.working-directory }}
-        shell: node {0}
-        run: |
-          const { execSync } = require('child_process');
-          const fs = require('fs');
-          const path = require('path');
-
-          const currentFiles = fs.existsSync('current-results')
-            ? fs.readdirSync('current-results').filter(f => f.endsWith('.json'))
-            : [];
-          const baselineFiles = fs.existsSync('baseline-results')
-            ? fs.readdirSync('baseline-results').filter(f => f.endsWith('.json'))
-            : [];
-
-          if (currentFiles.length > 0 && baselineFiles.length > 0) {
-            const current = path.join('current-results', currentFiles[0]);
-            const baseline = path.join('baseline-results', baselineFiles[0]);
-            console.log(`Comparing mobile: ${baseline} vs ${current}`);
-            execSync(`npx qvac-test report:compare --baseline "${baseline}" --current "${current}" --output "comparison-mobile.json"`, { stdio: 'inherit' });
-          } else {
-            console.log('No files to compare');
-          }
-
-      - name: Format comparison
-        working-directory: ${{ inputs.working-directory }}
-        shell: node {0}
-        run: |
-          const { execSync } = require('child_process');
-          const fs = require('fs');
-          const path = require('path');
-
-          let comment = '# QVAC Mobile Test Results\n\n';
-          const sha = '${{ github.event.pull_request.head.sha }}'.substring(0, 7);
-          comment += `**Branch**: \`${{ github.head_ref }}\` | **Commit**: \`${sha}\` | **Base**: \`${{ github.event.pull_request.base.ref }}\`\n\n`;
-          comment += `**Run ID**: \`${{ needs.build.outputs.runId }}\`\n\n`;
-
-          if ("${{ steps.check-baseline.outputs.has_baseline }}" === "false") {
-            comment += '**No baseline found** - showing current results only\n\n';
-            comment += '| Platform | Passed | Failed | Total | Rate | Duration |\n';
-            comment += '|----------|--------|--------|-------|------|----------|\n';
-
-            if (fs.existsSync('current-results')) {
-              const results = fs.readdirSync('current-results').filter(f => f.endsWith('.json'));
-              for (const result of results) {
-                try {
-                  const json = JSON.parse(fs.readFileSync(path.join('current-results', result), 'utf8'));
-                  const platform = json.system?.platform || 'mobile';
-                  comment += `| ${platform} | ${json.summary.passed} | ${json.summary.failed} | ${json.summary.total} | ${json.summary.successRate}% | ${json.summary.duration}s |\n`;
-                } catch (e) {
-                  console.log(`Failed to parse ${result}: ${e.message}`);
-                }
-              }
-            }
-          } else {
-            if (fs.existsSync('comparison-mobile.json')) {
-              execSync('npx qvac-test report:format --input "comparison-mobile.json" --format markdown --output "comparison-mobile.md"', { stdio: 'inherit' });
-              comment += '## Mobile (Android)\n';
-              comment += fs.readFileSync('comparison-mobile.md', 'utf8') + '\n';
-            }
-          }
-
-          comment += '\n### Artifacts\n\n';
-          comment += `[View workflow run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})\n`;
-
-          fs.writeFileSync('comment.md', comment, 'utf8');
-
-      - name: Comment on PR
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # 8.0.0
-        with:
-          script: |
-            const fs = require('fs');
-            const commentPath = '${{ inputs.working-directory }}/comment.md';
-
-            if (!fs.existsSync(commentPath)) {
-              console.log('No comment file generated');
-              return;
-            }
-
-            const body = fs.readFileSync(commentPath, 'utf8');
-
-            await github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: body
-            });
+          name: device-farm-logs-ios-${{ needs.build.outputs.runId }}
+          path: ./device-farm-logs/
+          retention-days: 30
