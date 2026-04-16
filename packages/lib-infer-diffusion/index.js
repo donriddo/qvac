@@ -286,12 +286,18 @@ class ImgStableDiffusion {
     return response
   }
 
+  /**
+   * Cancel the current generation job.
+   */
   async cancel () {
     if (this.addon?.cancel) {
       await this.addon.cancel()
     }
   }
 
+  /**
+   * Unload the model and release all resources.
+   */
   async unload () {
     return this._run(async () => {
       await this.cancel()
