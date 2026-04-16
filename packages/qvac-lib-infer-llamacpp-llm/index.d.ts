@@ -146,67 +146,53 @@ export type FinetuneValidation =
   | FinetuneValidationDataset
 
 export interface FinetuneOptions {
-  /** Path to the training dataset file (e.g. `.jsonl` for SFT, `.txt` for causal). */
+  /** Path to training dataset file (.jsonl for SFT, .txt for causal). */
   trainDatasetDir: string
-  /**
-   * How to run validation. Required — there is no default.
-   * `{ type: 'none' }` disables validation. `{ type: 'split', fraction? }` reserves
-   * a fraction of the training data (default 0.05). `{ type: 'dataset', path }`
-   * uses a separate eval dataset file.
-   */
+  /** How to run validation. */
   validation: FinetuneValidation
-  /** Directory (or file path) where the final LoRA adapter will be written. */
+  /** Directory (or file path ending in .gguf) for the final LoRA adapter. */
   outputParametersDir: string
   /** Number of training epochs. Default 1. */
   numberOfEpochs?: number
   /** Initial learning rate. Default 1e-4. */
   learningRate?: number
-  /** Training sequence length (tokens). Default 128. */
+  /** Training sequence length. Default 128. */
   contextLength?: number
-  /**
-   * Backend `n_batch` (number of tokens processed per batch). Must be `>= microBatchSize`
-   * and divisible by it when both are set. Default 128.
-   */
+  /** Backend n_batch (tokens per batch). Must be >= microBatchSize and divisible by it. Default 128. */
   batchSize?: number
-  /**
-   * Backend `n_ubatch` (micro-batch size). Adjusted to gcd(datasetSampleCount, requested)
-   * if needed. Must be `<= batchSize` when both are set. Default 128.
-   */
+  /** Backend n_ubatch (micro-batch size). Must be <= batchSize. Default 128. */
   microBatchSize?: number
-  /** Use SFT (chat) mode if `true`, causal mode otherwise. Default `false`. */
+  /** Use SFT (chat) mode when true; causal (next-token) when false. Default false. */
   assistantLossOnly?: boolean
-  /**
-   * Comma-separated target modules (e.g. `attn_q,attn_k,attn_v,attn_o,ffn_gate,ffn_up,ffn_down,output`,
-   * or `all`). Default attention Q, K, V, O only.
-   */
+  /** Comma-separated LoRA target modules (e.g. 'attn_q,attn_k,attn_v,attn_o'). Default: attention Q/K/V/O. */
   loraModules?: string
   /** LoRA rank. Default 8. */
   loraRank?: number
-  /** LoRA alpha (scaling). Default 16.0. */
+  /** LoRA alpha (scaling factor). Default 16.0. */
   loraAlpha?: number
   /** LoRA init standard deviation. Default 0.02. */
   loraInitStd?: number
   /** Seed for LoRA weight initialization (0 = non-deterministic). Default 42. */
   loraSeed?: number
-  /** Directory where checkpoints (and pause checkpoints) are saved. Default `./checkpoints`. */
+  /** Directory for checkpoints. Default './checkpoints'. */
   checkpointSaveDir?: string
-  /** Save a checkpoint every N steps (0 = pause checkpoints only). Default 0. */
+  /** Save a checkpoint every N optimizer steps (0 = only on pause). Default 0. */
   checkpointSaveSteps?: number
-  /** Path to a chat template file (used in SFT mode). Default `""`. */
+  /** Path to a custom chat template file (for SFT). */
   chatTemplatePath?: string
-  /** Learning-rate schedule. Default `"cosine"`. */
+  /** Learning rate scheduler: 'constant', 'cosine', or 'linear'. Default 'cosine'. */
   lrScheduler?: 'constant' | 'cosine' | 'linear'
-  /** Minimum learning rate (used by cosine/linear schedulers). Default 0. */
+  /** Minimum learning rate (for cosine/linear schedulers). Default 0. */
   lrMin?: number
-  /** Warmup ratio (0–1). Requires `warmupRatioSet: true` to take effect. Default 0.1. */
+  /** Warmup ratio (0–1). Requires warmupRatioSet: true. Default 0.1. */
   warmupRatio?: number
-  /** When `true`, warmup steps = `warmupRatio × totalSteps`. Default `false`. */
+  /** When true, compute warmup steps from warmupRatio. */
   warmupRatioSet?: boolean
-  /** Explicit warmup steps (used when `warmupStepsSet: true`). Default 0. */
+  /** Explicit warmup steps (used when warmupStepsSet is true). Default 0. */
   warmupSteps?: number
-  /** When `true`, use `warmupSteps` directly instead of `warmupRatio`. Default `false`. */
+  /** When true, use warmupSteps directly instead of ratio. */
   warmupStepsSet?: boolean
-  /** Optimizer weight decay. Default 0.01. */
+  /** Weight decay. Default 0.01. */
   weightDecay?: number
 }
 
