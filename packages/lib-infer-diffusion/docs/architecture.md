@@ -147,12 +147,12 @@ graph TB
 ```mermaid
 classDiagram
     class ImgStableDiffusion {
-        +constructor(args: {files, config, logger?, opts?})
+        +constructor(args: ImgStableDiffusionArgs)
         +load() Promise~void~
         +run(params: GenerationParams) Promise~QvacResponse~
         +cancel() Promise~void~
         +unload() Promise~void~
-        +getState() {configLoaded}
+        +getState() State
     }
 
     class JobHandler {
