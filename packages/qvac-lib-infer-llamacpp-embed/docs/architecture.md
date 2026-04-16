@@ -204,7 +204,7 @@ classDiagram
 |----------------|----------------|-----------|--------------|
 | GGMLBert | Standalone class. Orchestrate model lifecycle, stream files from disk, dispatch inference | Created by user, persistent | `createJobHandler`, `exclusiveRunQueue`, `BertInterface`, `bare-fs` |
 | createJobHandler | Factory producing a job handler with `start/output/end/fail` semantics; returns a `QvacResponse` | Created once per GGMLBert | None |
-| exclusiveRunQueue | Factory producing a promise queue that serialises `run()` / `unload()` calls | Created once per GGMLBert | None |
+| exclusiveRunQueue | Factory producing a promise queue that serialises `load()` / `run()` / `unload()` calls | Created once per GGMLBert | None |
 | QvacResponse | Return embedding results and expose `await()`/`cancel()`/`stats` | Created per `run()` call, short-lived | None |
 | BertInterface | JS wrapper around the native addon (`require.addon`) | Created in `_load()`, lives for model lifetime | Native addon |
 
@@ -383,7 +383,7 @@ graph TB
 **Responsibility:** Provide composition primitives used by `GGMLBert`.
 
 - `createJobHandler({ cancel })` — returns a job handler exposing `start()` (creates a `QvacResponse`), `output(data)`, `end(stats)`, and `fail(error)`. `GGMLBert` wires the addon's output callback into it.
-- `exclusiveRunQueue()` — returns a function that serialises async callers so at most one `run()` / `unload()` body is in flight at a time.
+- `exclusiveRunQueue()` — returns a function that serialises async callers so at most one `load()` / `run()` / `unload()` body is in flight at a time.
 - `QvacResponse` — the response object returned by `start()`; exposes `await()`, `cancel()`, and `stats`.
 
 There is no `BaseInference` class, no `WeightsProvider`, and no `downloadWeights` method. `GGMLBert` composes these helpers directly; it does not inherit from anything.

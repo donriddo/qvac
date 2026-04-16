@@ -166,7 +166,7 @@ class GGMLBert {
    * Instantiate the native addon with the given parameters.
    * @param {Object} configurationParams - Configuration parameters for the addon
    * @param {string} configurationParams.path - Local file or directory path
-   * @param {Object} configurationParams.settings - Bert-specific settings
+   * @param {Object} configurationParams.config - Bert-specific settings
    * @returns {Addon} The instantiated addon interface
    */
   _createAddon (configurationParams) {
