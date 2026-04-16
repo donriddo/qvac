@@ -102,6 +102,7 @@ class ImgStableDiffusion {
       this.logger.info('Activating stable-diffusion addon')
       await this.addon.activate()
     } catch (loadError) {
+      this.logger.error('Error during stable-diffusion model load:', loadError)
       // Best-effort cleanup of the partially-initialized addon so a subsequent
       // load() does not leak a zombie native instance.
       try { await this.addon?.unload?.() } catch (_) {}
@@ -113,6 +114,10 @@ class ImgStableDiffusion {
     this.logger.info('Stable-diffusion model load completed successfully')
   }
 
+  /**
+   * @param {object} configurationParams
+   * @returns {SdInterface}
+   */
   _createAddon (configurationParams) {
     this._binding = require('./binding')
     this._connectNativeLogger()
