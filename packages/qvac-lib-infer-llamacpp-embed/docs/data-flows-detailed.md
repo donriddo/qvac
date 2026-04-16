@@ -337,8 +337,8 @@ sequenceDiagram
 ```mermaid
 flowchart TD
     Start([run input]) --> CheckType{Is Array?}
-    CheckType -->|Yes| ArrayPath[type: 'sequences'<br/>input: string[]]
-    CheckType -->|No| StringPath[type: 'text'<br/>input: string]
+    CheckType -->|Yes| ArrayPath["type: 'sequences'<br/>input: string[]"]
+    CheckType -->|No| StringPath["type: 'text'<br/>input: string"]
     ArrayPath --> RunJob[runJob to addon]
     StringPath --> RunJob
     RunJob --> Return[Return QvacResponse with fixed job id]
@@ -351,7 +351,7 @@ flowchart TD
     Start([process Input]) --> Visit[std::visit input]
     Visit --> CheckVariant{Input type?}
     CheckVariant -->|string| SinglePath[encode_host_f32 string]
-    CheckVariant -->|vector<string>| BatchPath[encode_host_f32_sequences vector]
+    CheckVariant -->|"vector&lt;string&gt;"| BatchPath[encode_host_f32_sequences vector]
     SinglePath --> TokenizeSingle[Tokenize single string]
     BatchPath --> TokenizeBatch[Tokenize all strings]
     TokenizeSingle --> CheckContext1{> 512 tokens?}

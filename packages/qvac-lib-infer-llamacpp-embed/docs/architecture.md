@@ -105,7 +105,7 @@ graph TB
     end
 
     subgraph "Backend"
-        BARE[Bare Runtime<br/>(bare-fs)]
+        BARE["Bare Runtime<br/>(bare-fs)"]
         LLAMA[llama.cpp]
     end
 
@@ -154,7 +154,7 @@ graph TB
 ```mermaid
 classDiagram
     class GGMLBert {
-        +constructor({ files, config, logger, opts })
+        +constructor(args: GGMLBertArgs)
         +load() Promise~void~
         +run(text) Promise~QvacResponse~
         +cancel() Promise~void~
