@@ -54,7 +54,7 @@
 - **GPU acceleration**: Metal, Vulkan, OpenCL
 - **Quantized models**: GGUF, safetensors, checkpoint formats
 - **Diffusion models**: SD1.x, SD2.x, SDXL, SD3, FLUX.2 [klein]
-- **Generation modes**: txt2img
+- **Generation modes**: txt2img, img2img
 
 ## Target Platforms
 

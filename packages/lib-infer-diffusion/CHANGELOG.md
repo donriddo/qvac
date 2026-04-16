@@ -11,7 +11,7 @@ This release migrates the diffusion addon off `BaseInference` inheritance and on
 `ImgStableDiffusion` now takes a single `{ files, config, logger?, opts? }` object. The old `diskPath` + `modelName` + per-component filename pattern is gone — callers pass absolute paths directly via `files`. Companion model fields are renamed (`clipLModel` → `clipL`, `clipGModel` → `clipG`, `t5XxlModel` → `t5Xxl`, `llmModel` → `llm`, `vaeModel` → `vae`).
 
 ```js
-// BEFORE (≤ 0.1.x)
+// BEFORE (≤ 0.2.x)
 const model = new ImgStableDiffusion({
   diskPath: '/models',
   modelName: 'flux-2-klein-4b-Q8_0.gguf',
