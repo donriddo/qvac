@@ -66,11 +66,14 @@ function mapAddonEvent (rawEvent, rawData, rawError, state) {
     return { type: 'FinetuneProgress', data: rawData, error: null }
   }
 
-  // Default: name-based mapping. C++ event names mangle to things like
-  // `Error.something` and string payloads carry tokens.
+  // Name-based mapping. LogMsg must be checked before the string-to-Output
+  // fallback: `JsLogMsgOutputHandler` delivers the log as a plain string,
+  // so without this branch it would be misrouted into the job output.
   let type = rawEvent
   if (typeof rawEvent === 'string' && rawEvent.includes('Error')) {
     type = 'Error'
+  } else if (typeof rawEvent === 'string' && rawEvent.includes('LogMsg')) {
+    type = 'LogMsg'
   } else if (typeof rawData === 'string') {
     type = 'Output'
   }

@@ -68,6 +68,13 @@ test('string data maps to Output (token streaming)', function (t) {
   t.is(result.data, 'hello')
 })
 
+test('event name containing "LogMsg" maps to LogMsg (string payload not remapped to Output)', function (t) {
+  const state = makeState()
+  const result = mapAddonEvent('SomeLogMsg', 'native log line', null, state)
+  t.is(result.type, 'LogMsg', 'LogMsg event name wins over string-to-Output fallback')
+  t.is(result.data, 'native log line')
+})
+
 test('unknown event with non-TPS object falls through to default mapping', function (t) {
   const state = makeState()
   const result = mapAddonEvent('Unknown', { foo: 'bar' }, null, state)
