@@ -9,27 +9,19 @@ const { BertInterface, mapAddonEvent } = require('./addon')
 const RUN_BUSY_ERROR_MESSAGE = 'Cannot set new job: a job is already set or being processed'
 
 /**
- * Picks the primary GGUF path from an ordered file list.
- *
- * For sharded models the caller passes
- * `[tensors.txt, shard-00001-of-N.gguf, ..., shard-N-of-N.gguf]`.
- * The first entry matching the shard regex is returned so the value matches
- * the C++ `GGUFShards::expandGGUFIntoShards` regex contract.
- * For non-sharded single-file models the only entry is returned.
+ * Returns the first shard (matching `-NNNNN-of-MMMMM.gguf`) or the sole
+ * entry for single-file models. Matches the C++ shard-expansion contract
+ * in `GGUFShards::expandGGUFIntoShards`.
  *
  * @param {string[]} files - ordered array of absolute paths
- * @returns {string} the primary GGUF path
+ * @returns {string}
  */
 function pickPrimaryGgufPath (files) {
   const SHARD_REGEX = /-\d+-of-\d+\.gguf$/
   return files.find((p) => SHARD_REGEX.test(p)) || files[0]
 }
 
-/**
- * GGML client implementation for BERT GTE models. Loads weights from
- * caller-supplied absolute paths (single file or sharded) and wraps the
- * native BertInterface addon for embedding generation.
- */
+/** BERT client wrapping the native BertInterface for embedding generation. */
 class GGMLBert {
   constructor ({ files, config = {}, logger = null, opts = {} }) {
     if (!files || !Array.isArray(files.model) || files.model.length === 0) {
@@ -47,10 +39,7 @@ class GGMLBert {
     this._config = config
     this.logger = new QvacLogger(logger)
     this.opts = opts
-    // The cancel closure dereferences `this.addon` lazily, so it is safe even though
-    // `this.addon` is `null` at construction time — it is only invoked from
-    // `response.cancel()` after `_load()` has assigned the addon. The optional chain
-    // also makes a stale `response.cancel()` after `unload()` a no-op.
+    // Lazy deref + optional chain: safe before `_load()` and after `unload()`.
     this._job = createJobHandler({ cancel: () => this.addon?.cancel() })
     this._run = exclusiveRunQueue()
     this.addon = null
@@ -146,16 +135,10 @@ class GGMLBert {
   }
 
   _addonOutputCallback (addon, event, data, error) {
-    // Event-name normalization lives in `addon.js` (`mapAddonEvent`) so the
-    // native binding wrapper owns the C++ event vocabulary. This shim only
-    // dispatches the resulting logical event onto the active job.
     const mapped = mapAddonEvent(event, data, error)
     if (mapped === null) {
-      // Unknown event type — log it instead of feeding the payload into the
-      // active response output stream as if it were embedding data. The
-      // native layer is expected to emit only `Embeddings`, `Error`, or
-      // stats; reaching this branch indicates a native-layer change worth
-      // surfacing.
+      // Reaching here means the native layer added an event shape the JS
+      // wrapper does not know about. Warn and skip.
       this.logger.warn(`Unhandled addon event: ${event} (data type: ${typeof data})`)
       return
     }

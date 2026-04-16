@@ -1,18 +1,9 @@
 const path = require('bare-path')
 
 /**
- * Map a raw native event from the C++ embed addon to a logical event.
- *
- * The native binding emits events with C++-mangled names and varied
- * payload shapes. This wrapper normalizes them into one of:
- *   - `'Output'`     — embeddings payload (`Embeddings` family event)
- *   - `'Error'`      — failure
- *   - `'JobEnded'`   — terminal RuntimeStats payload (with `backendDevice`
- *                       mapped from `0/1` to `'cpu'/'gpu'`)
- *
- * Returns `{ type, data, error }` or `null` for unknown event names
- * (the caller logs at warn level and skips dispatch).
- *
+ * Normalize a raw native event into `Output` / `Error` / `JobEnded`, mapping
+ * `backendDevice` from `0/1` to `'cpu'/'gpu'`. Returns `null` for unknown
+ * event names (caller logs and skips dispatch).
  *
  * @param {string} rawEvent
  * @param {*} rawData
@@ -20,11 +11,7 @@ const path = require('bare-path')
  * @returns {{ type: string, data: *, error: * } | null}
  */
 function mapAddonEvent (rawEvent, rawData, rawError) {
-  // RuntimeStats: structurally detected so we don't couple to C++ key
-  // ordering. The embed addon emits these as the terminal event for a
-  // job (`tokens_per_second` is the marker; `total_tokens` /
-  // `total_time_ms` / `batch_size` / `context_size` are the other
-  // canonical fields).
+  // RuntimeStats detected structurally (any of the known stats keys).
   const isStatsData =
     rawData &&
     typeof rawData === 'object' &&
