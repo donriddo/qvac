@@ -54,9 +54,7 @@ class ImgStableDiffusion {
     this._config = config || {}
     this.logger = new QvacLogger(logger)
     this.opts = opts
-    // The cancel closure dereferences `this.addon` lazily, so it is safe even though
-    // `this.addon` is `null` at construction time — it is only invoked from
-    // `response.cancel()` after `_load()` has assigned the addon.
+    // Lazy deref + optional chain: safe before `_load()` and after `unload()`.
     this._job = createJobHandler({ cancel: () => this.addon?.cancel() })
     this._run = exclusiveRunQueue()
     this.addon = null

@@ -3,18 +3,9 @@
 const path = require('bare-path')
 
 /**
- * Map a raw native event from the C++ stable-diffusion addon to a logical
- * event consumed by `ImgStableDiffusion`.
- *
- * The native binding emits events with C++-mangled names and varied
- * payload shapes. This wrapper normalizes them into one of:
- *   - `'Output'`     — image bytes (`Uint8Array`) or progress JSON tick (`string`)
- *   - `'Error'`      — failure
- *   - `'JobEnded'`   — terminal RuntimeStats payload (object)
- *
- * Returns `{ type, data, error }` or `null` for unknown event/data shapes
- * (caller logs at debug level).
- *
+ * Normalize a raw native event into `Output` (image bytes or progress
+ * tick), `Error`, or `JobEnded`. Returns `null` for unknown shapes
+ * (caller logs and skips).
  *
  * @param {string} rawEvent
  * @param {*} rawData

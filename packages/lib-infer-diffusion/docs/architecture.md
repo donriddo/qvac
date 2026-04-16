@@ -771,4 +771,4 @@ Provide hand-written TypeScript definitions in `index.d.ts`.
 
 ---
 
-**Last Updated:** 2026-04-10
+**Last Updated:** 2026-04-16
