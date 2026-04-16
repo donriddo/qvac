@@ -279,22 +279,22 @@ class LlmLlamacpp {
   }
 
   async finetune (finetuningOptions = undefined) {
-    if (!this.addon) {
-      throw new Error('Addon not initialized. Call load() first.')
-    }
     if (!finetuningOptions) {
       throw new Error('Finetuning parameters are required.')
-    }
-    if (finetuningOptions.checkpointSaveDir) {
-      this._checkpointSaveDir = finetuningOptions.checkpointSaveDir
     }
     const paramsToSend = normalizeFinetuneParams(finetuningOptions)
     this.logger.info('finetune() called')
     this.logger.info('Finetuning parameters:', finetuningOptions)
 
     return this._run(async () => {
+      if (!this.addon) {
+        throw new Error('Addon not initialized. Call load() first.')
+      }
       if (this._hasActiveResponse) {
         throw new Error(RUN_BUSY_ERROR_MESSAGE)
+      }
+      if (finetuningOptions.checkpointSaveDir) {
+        this._checkpointSaveDir = finetuningOptions.checkpointSaveDir
       }
 
       const response = this._job.start()

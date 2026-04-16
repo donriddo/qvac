@@ -78,7 +78,7 @@ const path = require('bare-path')
 ### 2. Create the `args` obj
 
 ```js
-const dirPath = './models'
+const dirPath = path.resolve('./models')
 const modelName = 'Llama-3.2-1B-Instruct-Q4_0.gguf'
 
 const args = {
@@ -114,7 +114,7 @@ Example — loading a 5-shard model:
 const path = require('bare-path')
 const LlmLlamacpp = require('@qvac/llm-llamacpp')
 
-const dir = './models'
+const dir = path.resolve('./models')
 const modelBase = 'my-big-model-Q4_K_M'
 
 const model = new LlmLlamacpp({
@@ -351,7 +351,7 @@ const LlmLlamacpp = require('@qvac/llm-llamacpp')
 const fs = require('bare-fs')
 const path = require('bare-path')
 
-const dirPath = './models'
+const dirPath = path.resolve('./models')
 
 const model = new LlmLlamacpp({
   files: {

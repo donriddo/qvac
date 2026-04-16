@@ -76,7 +76,12 @@ export interface UserTextMessage {
 export interface UserMediaMessage {
   role: 'user'
   type: 'media'
-  content: Uint8Array
+  /**
+   * Either the raw bytes of an image/audio/video file (`Uint8Array`) or an
+   * absolute path to a file on disk (`string`). Path-mode is handled by the
+   * C++ layer via `loadMedia()`; byte-mode takes the `parseMedia` path.
+   */
+  content: Uint8Array | string
 }
 
 export interface ChatFunctionDefinition {
