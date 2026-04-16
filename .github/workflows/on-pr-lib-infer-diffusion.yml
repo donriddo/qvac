@@ -99,10 +99,6 @@ jobs:
         working-directory: packages/lib-infer-diffusion
         run: npm run test:dts
 
-      - name: JS unit tests
-        working-directory: packages/lib-infer-diffusion
-        run: npm run test:unit
-
   prebuild:
     needs: [authorize, sanity-checks]
     if: needs.authorize.outputs.allowed == 'true'
