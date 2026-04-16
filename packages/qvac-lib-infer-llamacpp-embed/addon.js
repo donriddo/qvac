@@ -93,17 +93,10 @@ class BertInterface {
   }
 
   /**
-   * Loads model weights. The native side reads the JS property names
-   * `chunk` and `completed` directly, so this object's field names are
-   * load-bearing — see `JsBlobsStream.hpp::appendBlob` in
-   * `qvac-lib-inference-addon-cpp` for the parser.
    * @param {Object} data
-   * @param {String} data.filename - Logical filename used to group chunks
-   *   into one shard. The native side keys `shards_in_progress` on this.
-   * @param {Uint8Array|null} data.chunk - Next chunk of bytes for the
-   *   current shard, or `null` on the final call when `completed` is true.
-   * @param {Boolean} data.completed - `false` while more chunks remain;
-   *   `true` on the last call to finalize the shard.
+   * @param {String} data.filename
+   * @param {Uint8Array|null} data.chunk
+   * @param {Boolean} data.completed
    */
   async loadWeights (data) {
     return this._binding.loadWeights(this._handle, data)
