@@ -162,14 +162,18 @@ class LlmLlamacpp {
       projectionPath: this._projectionModelPath,
       config: { ...this._config }
     }
+
+    this.logger.info('Creating addon with configuration:', configurationParams)
     this.addon = this._createAddon(configurationParams)
 
     try {
       if (this._files.length > 1) {
         await this._streamShards()
       }
+      this.logger.info('Activating addon')
       await this.addon.activate()
     } catch (loadError) {
+      this.logger.error('Error during model load:', loadError)
       // Best-effort cleanup of the partially-initialized addon so a subsequent
       // load() does not leak a zombie native instance.
       try { await this.addon?.unload?.() } catch (_) {}
@@ -348,6 +352,13 @@ class LlmLlamacpp {
     this._handleAddonOutputEvent(mapped.type, mapped.data, mapped.error)
   }
 
+  /**
+   * Instantiate the native addon with the given parameters.
+   * @param {Object} configurationParams - Configuration parameters for the addon
+   * @param {string} configurationParams.path - Local file or directory path
+   * @param {Object} configurationParams.settings - LLM-specific settings
+   * @returns {Addon} The instantiated addon interface
+   */
   _createAddon (configurationParams) {
     const binding = require('./binding')
     return new LlamaInterface(
