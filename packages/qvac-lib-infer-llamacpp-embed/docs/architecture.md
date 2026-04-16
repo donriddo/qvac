@@ -183,7 +183,7 @@ classDiagram
 
     class BertInterface {
         +runJob(input) Promise~boolean~
-        +loadWeights({filename, chunk, completed})
+        +loadWeights(data) Promise
         +activate() Promise
         +cancel() Promise
         +unload() Promise
