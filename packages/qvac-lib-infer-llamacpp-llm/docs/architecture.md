@@ -156,7 +156,7 @@ graph TB
 ```mermaid
 classDiagram
     class LlmLlamacpp {
-        +constructor({ files, config, logger, opts })
+        +constructor(args: LlmLlamacppArgs)
         +load() Promise~void~
         +run(messages, runOptions?) Promise~QvacResponse~
         +finetune(finetuningOptions) Promise~FinetuneHandle~

@@ -248,7 +248,7 @@ sequenceDiagram
     participant Queue as outputQueue
 
     User->>LlamaModel: finetune(opts) (opts always required, including on resume)
-    LlamaModel->>LlamaModel: enqueue on exclusiveRunQueue (_run), check _hasActiveResponse, normalize opts (validation object required; dataset requires validation.path; emits validationSplit/useEvalDatasetForValidation/evalDatasetPath)
+    LlamaModel->>LlamaModel: enqueue via exclusiveRunQueue and normalize opts (validation object required; dataset needs validation.path; emits flat validationSplit, useEvalDatasetForValidation, evalDatasetPath)
     LlamaModel->>Addon: finetune(params)
 
     Addon->>Binding: _binding.finetune(handle, params)
