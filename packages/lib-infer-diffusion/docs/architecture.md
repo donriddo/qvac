@@ -197,7 +197,7 @@ classDiagram
 | From | To | Type | Purpose |
 |------|-----|------|---------|
 | ImgStableDiffusion | JobHandler | Composition | Lifecycle of the active job (replaces inheriting from `BaseInference`) |
-| ImgStableDiffusion | ExclusiveRunQueue | Composition | Serializes `run()` and `unload()` (cancel is intentionally outside the queue so it can interrupt an in-flight run) |
+| ImgStableDiffusion | ExclusiveRunQueue | Composition | Serializes `load()`, `run()`, and `unload()` (cancel is intentionally outside the queue so it can interrupt an in-flight run) |
 | JobHandler | QvacResponse | Creates | Progress/result per generation |
 
 > **Note:** `ImgStableDiffusion` no longer extends `BaseInference`. It composes the helpers exposed by `@qvac/infer-base` (`createJobHandler`, `exclusiveRunQueue`) directly.
@@ -702,7 +702,7 @@ Diffusion generation takes significant time (seconds to minutes). Without coordi
 
 ### Decision
 
-Use the `exclusiveRunQueue()` helper from `@qvac/infer-base`. The constructor stores the queue as `this._run`, and `run()` and `unload()` wrap their bodies with `this._run(() => …)`. `cancel()` is intentionally **not** queued — it must be able to interrupt an in-flight `run()` to terminate it, so it bypasses the queue and delegates straight to `addon.cancel()` (which is itself a no-op when there is no active job). This replaces the previous `BaseInference._withExclusiveRun()` template-method approach with a small composable utility.
+Use the `exclusiveRunQueue()` helper from `@qvac/infer-base`. The constructor stores the queue as `this._run`, and `load()`, `run()`, and `unload()` wrap their bodies with `this._run(() => …)`. `cancel()` is intentionally **not** queued — it must be able to interrupt an in-flight `run()` to terminate it, so it bypasses the queue and delegates straight to `addon.cancel()` (which is itself a no-op when there is no active job). This replaces the previous `BaseInference._withExclusiveRun()` template-method approach with a small composable utility.
 
 ### Rationale
 
