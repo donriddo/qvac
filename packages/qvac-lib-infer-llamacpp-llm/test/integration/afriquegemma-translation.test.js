@@ -11,7 +11,6 @@ const platform = os.platform()
 const arch = os.arch()
 const isDarwinX64 = platform === 'darwin' && arch === 'x64'
 const isLinuxArm64 = platform === 'linux' && arch === 'arm64'
-const isMobile = platform === 'ios' || platform === 'android'
 const useCpu = isDarwinX64 || isLinuxArm64
 
 const AFRIQUEGEMMA_MODEL = {
@@ -154,7 +153,7 @@ const TIMEOUT = 1_800_000
 // WHY: Proves model produces valid translations across the primary language
 //      pairs the pitch promises. Includes low-resource pairs and reverse.
 // ---------------------------------------------------------------------------
-test('AfriqueGemma: core EN↔African language pairs', { timeout: TIMEOUT, skip: isMobile }, async t => {
+test('AfriqueGemma: core EN↔African language pairs', { timeout: TIMEOUT }, async t => {
   const [modelName, dirPath] = await resolveModel()
   const { addon } = await createAddon(dirPath, modelName)
   try {
@@ -198,7 +197,7 @@ test('AfriqueGemma: core EN↔African language pairs', { timeout: TIMEOUT, skip:
 // WHY: Mobile users need cross-language African communication; the pitch says
 //      this routes via bridge language. Two inference calls, same model.
 // ---------------------------------------------------------------------------
-test('AfriqueGemma: African-to-African via English pivot', { timeout: TIMEOUT, skip: isMobile }, async t => {
+test('AfriqueGemma: African-to-African via English pivot', { timeout: TIMEOUT }, async t => {
   const [modelName, dirPath] = await resolveModel()
   const { addon } = await createAddon(dirPath, modelName)
   try {
@@ -230,7 +229,7 @@ test('AfriqueGemma: African-to-African via English pivot', { timeout: TIMEOUT, s
 //      French, Portuguese, and Arabic must also produce valid output.
 //      Includes pt→sw to verify bridge→African direct translation.
 // ---------------------------------------------------------------------------
-test('AfriqueGemma: bridge languages (French, Portuguese, Arabic)', { timeout: TIMEOUT, skip: isMobile }, async t => {
+test('AfriqueGemma: bridge languages (French, Portuguese, Arabic)', { timeout: TIMEOUT }, async t => {
   const [modelName, dirPath] = await resolveModel()
   const { addon } = await createAddon(dirPath, modelName)
   try {
@@ -258,7 +257,7 @@ test('AfriqueGemma: bridge languages (French, Portuguese, Arabic)', { timeout: T
 // WHY: Real mobile text has multi-sentence paragraphs and numbers/dates.
 //      Sequential calls on same instance must not leak state.
 // ---------------------------------------------------------------------------
-test('AfriqueGemma: longer content, mixed content, sequential calls', { timeout: TIMEOUT, skip: isMobile }, async t => {
+test('AfriqueGemma: longer content, mixed content, sequential calls', { timeout: TIMEOUT }, async t => {
   const [modelName, dirPath] = await resolveModel()
   const { addon } = await createAddon(dirPath, modelName)
   try {
@@ -294,7 +293,7 @@ test('AfriqueGemma: longer content, mixed content, sequential calls', { timeout:
 //      non-Latin scripts (Amharic Ge'ez), and hooks (Hausa ɗ/ɓ). If the
 //      tokenizer corrupts Unicode input, these translations fail silently.
 // ---------------------------------------------------------------------------
-test('AfriqueGemma: African-language Unicode input (African → English)', { timeout: TIMEOUT, skip: isMobile }, async t => {
+test('AfriqueGemma: African-language Unicode input (African → English)', { timeout: TIMEOUT }, async t => {
   const [modelName, dirPath] = await resolveModel()
   const { addon } = await createAddon(dirPath, modelName)
   try {
@@ -332,7 +331,7 @@ test('AfriqueGemma: African-language Unicode input (African → English)', { tim
 //      stats, the UX breaks. Verifies onUpdate fires multiple times and
 //      performance stats are populated for visibility.
 // ---------------------------------------------------------------------------
-test('AfriqueGemma: streaming tokens arrive incrementally with stats', { timeout: TIMEOUT, skip: isMobile }, async t => {
+test('AfriqueGemma: streaming tokens arrive incrementally with stats', { timeout: TIMEOUT }, async t => {
   const [modelName, dirPath] = await resolveModel()
   const { addon } = await createAddon(dirPath, modelName)
   try {
