@@ -168,8 +168,8 @@ sequenceDiagram
     Addon->>Addon: uv_async_send()
     
     Note over Addon: UV async callback (JS thread)
-    Addon->>BI: jsOutputCallback('Output', jobId, embeddings)
-    BI->>GGMLBert: outputCb('Output', jobId, embeddings)
+    Addon->>BI: jsOutputCallback('Output', embeddings)
+    BI->>GGMLBert: outputCb('Output', embeddings)
     GGMLBert->>GGMLBert: Convert to Float32Array[]
     GGMLBert-->>App: Response.await() resolves with embeddings
 ```
@@ -322,8 +322,8 @@ sequenceDiagram
     Addon->>Addon: uv_async_send()
     
     Note over Addon: UV async callback (JS thread)
-    Addon->>BI: jsOutputCallback('Output', jobId, embeddings)
-    BI->>GGMLBert: outputCb('Output', jobId, embeddings)
+    Addon->>BI: jsOutputCallback('Output', embeddings)
+    BI->>GGMLBert: outputCb('Output', embeddings)
     GGMLBert->>GGMLBert: Convert to Float32Array
     GGMLBert-->>App: Response.await() resolves with embedding
 ```

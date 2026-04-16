@@ -1,6 +1,6 @@
 # Architecture Documentation
 
-**Package:** `@qvac/embed-llamacpp` v0.11.0  
+**Package:** `@qvac/embed-llamacpp` v0.14.0  
 **Stack:** JavaScript, C++20, llama.cpp, Bare Runtime, CMake, vcpkg  
 **License:** Apache-2.0  
 **Addon-cpp:** ≥1.1.2 (single job per run, `runJob(input)`, `cancel()` waits until job stopped, no transition callback)
@@ -126,7 +126,7 @@ graph TB
 
 | Package | Type | Version | Purpose |
 |---------|------|---------|---------|
-| @qvac/infer-base | Framework | ≥0.2.2 | `createJobHandler`, `exclusiveRunQueue`, `QvacResponse` helpers (composition, no base class) |
+| @qvac/infer-base | Framework | ^0.4.0 | `createJobHandler`, `exclusiveRunQueue`, `QvacResponse` helpers (composition, no base class) |
 | qvac-lib-inference-addon-cpp | Native | ≥1.1.2 | C++ addon framework |
 | llama.cpp | Native | ≥7248.2.1 | Inference engine |
 | Bare Runtime | Runtime | ≥1.24.0 | JavaScript execution, `bare-fs`, `bare-path` |
@@ -720,7 +720,7 @@ With addon-cpp ≥1.1.2, a single inference request is one `runJob({ type, input
 
 ### Decision
 
-Use the `exclusiveRunQueue()` helper from `@qvac/infer-base@^0.4.0`. The constructor stores the queue as `this._run`, and `run()` and `unload()` wrap their bodies with `this._run(() => …)`. This replaces the previous `BaseInference._withExclusiveRun()` template-method approach with a small composable utility, in line with the loader-removal refactor that dropped `BaseInference` inheritance.
+Use the `exclusiveRunQueue()` helper from `@qvac/infer-base@^0.4.0`. The constructor stores the queue as `this._run`, and `load()`, `run()`, and `unload()` wrap their bodies with `this._run(() => …)`. This replaces the previous `BaseInference._withExclusiveRun()` template-method approach with a small composable utility, in line with the loader-removal refactor that dropped `BaseInference` inheritance.
 
 **Note:** C++ level thread safety (mutex-protected job queue) and single-job semantics (runJob, cancel waits until stopped) are handled by the addon-cpp (≥1.1.2) framework.
 
