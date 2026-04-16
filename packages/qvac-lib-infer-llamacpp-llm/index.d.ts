@@ -269,13 +269,5 @@ export default class LlmLlamacpp {
 
 export { QvacResponse, FinetuneHandle, FinetuneProgressStats, FinetuneOptions, FinetuneValidation }
 
-/**
- * Picks the primary GGUF path from an ordered file list. For sharded models
- * the first entry matching `-NNNNN-of-MMMMM.gguf` is returned (the C++ layer
- * expands the rest from that marker). For non-sharded single-file models the
- * only entry is returned.
- *
- * Exported for unit testing and for callers who need to resolve the primary
- * path ahead of constructing a `LlmLlamacpp` instance.
- */
+/** Returns the first shard (matching `-NNNNN-of-MMMMM.gguf`) or the sole entry for single-file models. */
 export function pickPrimaryGgufPath(files: string[]): string
