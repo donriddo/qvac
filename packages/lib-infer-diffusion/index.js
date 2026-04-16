@@ -96,9 +96,9 @@ class ImgStableDiffusion {
     }
 
     this.logger.info('Creating stable-diffusion addon with configuration:', configurationParams)
-    this.addon = this._createAddon(configurationParams)
 
     try {
+      this.addon = this._createAddon(configurationParams)
       this.logger.info('Activating stable-diffusion addon')
       await this.addon.activate()
     } catch (loadError) {
