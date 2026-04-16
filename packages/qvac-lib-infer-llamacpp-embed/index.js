@@ -25,6 +25,11 @@ function pickPrimaryGgufPath (files) {
   return files.find((p) => SHARD_REGEX.test(p)) || files[0]
 }
 
+/**
+ * GGML client implementation for BERT GTE models. Loads weights from
+ * caller-supplied absolute paths (single file or sharded) and wraps the
+ * native BertInterface addon for embedding generation.
+ */
 class GGMLBert {
   constructor ({ files, config = {}, logger = null, opts = {} }) {
     if (!files || !Array.isArray(files.model) || files.model.length === 0) {
@@ -110,12 +115,15 @@ class GGMLBert {
     }
 
     this.logger.info('Starting inference embeddings for text:', text)
+    // Array input → type: 'sequences' (batched pass); string input → type: 'text'.
     const inputData = Array.isArray(text)
       ? { type: 'sequences', input: text }
       : { type: 'text', input: text }
 
     const response = this._job.start()
 
+    // addon-cpp guarantees no output events until runJob is fully accepted.
+    // If runJob throws or returns false, no events will fire for this job.
     let accepted
     try {
       accepted = await this.addon.runJob(inputData)
@@ -177,6 +185,10 @@ class GGMLBert {
     )
   }
 
+  /**
+   * Unload the model and clear resources. Ensures any in-flight job is resolved as failed.
+   * @returns {Promise<void>}
+   */
   async unload () {
     return this._run(async () => {
       await this.cancel()
@@ -194,6 +206,9 @@ class GGMLBert {
     })
   }
 
+  /**
+   * Cancel the current task.
+   */
   async cancel () {
     if (this.addon?.cancel) {
       await this.addon.cancel()
