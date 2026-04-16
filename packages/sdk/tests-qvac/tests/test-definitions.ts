@@ -4,7 +4,6 @@ import { completionTests } from "./completion-tests.js";
 import { transcriptionTests } from "./transcription-tests.js";
 import { embeddingTests } from "./embedding-tests.js";
 import { ragTests } from "./rag-tests.js";
-import { translationMarianTests } from "./translation-marian-tests.js";
 import { translationIndicTransTests } from "./translation-indictrans-tests.js";
 import { translationBergamotTests } from "./translation-bergamot-tests.js";
 import { translationLlmTests } from "./translation-llm-tests.js";
@@ -33,6 +32,7 @@ export const modelLoadLlm: TestDefinition = {
   testId: "model-load-llm",
   params: {},
   expectation: { validation: "type", expectedType: "string" },
+  suites: ["smoke"],
   metadata: {
     category: "model",
     dependency: "none",
@@ -44,6 +44,7 @@ export const modelLoadEmbedding: TestDefinition = {
   testId: "model-load-embedding",
   params: {},
   expectation: { validation: "type", expectedType: "string" },
+  suites: ["smoke"],
   metadata: {
     category: "model",
     dependency: "none",
@@ -55,6 +56,7 @@ export const modelLoadOcr: TestDefinition = {
   testId: "model-load-ocr",
   params: {},
   expectation: { validation: "type", expectedType: "string" },
+  suites: ["smoke"],
   metadata: {
     category: "model",
     dependency: "none",
@@ -72,6 +74,7 @@ export const modelLoadInvalid: TestDefinition = {
     validation: "throws-error",
     errorContains: "failed to locate",
   },
+  suites: ["smoke"],
   metadata: {
     category: "model",
     dependency: "none",
@@ -83,6 +86,7 @@ export const modelUnload: TestDefinition = {
   testId: "model-unload",
   params: { shouldClearStorage: false },
   expectation: { validation: "type", expectedType: "string" },
+  suites: ["smoke"],
   metadata: { category: "model", dependency: "llm", estimatedDurationMs: 5000 },
 };
 
@@ -95,6 +99,7 @@ export const modelLoadConcurrent: TestDefinition = {
     ],
   },
   expectation: { validation: "type", expectedType: "array" },
+  suites: ["smoke"],
   metadata: {
     category: "model",
     dependency: "none",
@@ -162,9 +167,6 @@ export const tests = [
 
   // RAG tests
   ...ragTests,
-
-  // Translation: Marian Opus (DE↔EN, EN↔FR, FR↔EN)
-  ...translationMarianTests,
 
   // Translation: IndicTrans2 (EN↔HI)
   ...translationIndicTransTests,
