@@ -112,6 +112,12 @@ function pickPrimaryGgufPath (files) {
   return files.find((p) => SHARD_REGEX.test(p)) || files[0]
 }
 
+/**
+ * GGML client implementation for Llama LLM models (text and multimodal).
+ * Loads weights from caller-supplied absolute paths (single file or sharded,
+ * with an optional projection model) and wraps the native LlamaInterface
+ * addon for inference, finetuning, and pause/resume.
+ */
 class LlmLlamacpp {
   constructor ({ files, config, logger = null, opts = {} }) {
     if (!files || !Array.isArray(files.model) || files.model.length === 0) {
@@ -224,6 +230,9 @@ class LlmLlamacpp {
 
     this.logger.info('Starting inference with prompt:', prompt)
 
+    // Separate media messages from text messages so the native side receives
+    // binary blobs directly and the JSON text payload carries a placeholder
+    // marker for each media item (empty-content message) for tokenization.
     const textMessages = []
     const mediaItems = []
 
@@ -240,6 +249,7 @@ class LlmLlamacpp {
 
     const promptMessages = []
 
+    // Send media first (in order), then the stringified text messages.
     for (const mediaData of mediaItems) {
       promptMessages.push({ type: 'media', content: mediaData })
     }
@@ -366,12 +376,21 @@ class LlmLlamacpp {
     )
   }
 
+  /**
+   * Pause finetuning, saving a checkpoint so training can resume later.
+   * Also cancels any inference job in flight.
+   */
   async pause () {
     if (this.addon?.cancel) {
       await this.addon.cancel()
     }
   }
 
+  /**
+   * Cancel finetuning and remove the pause checkpoint so the next
+   * `finetune()` call starts fresh instead of resuming. Also cancels
+   * any inference job in flight.
+   */
   async cancel () {
     if (this.addon?.cancel) {
       await this.addon.cancel()
@@ -394,6 +413,12 @@ class LlmLlamacpp {
     }
   }
 
+  /**
+   * Unload the model safely by cancelling the in-flight job and releasing
+   * native resources. Subsequent calls to `run()` / `finetune()` / `cancel()`
+   * are safe; they hit the `!this.addon` guard and throw or no-op.
+   * @returns {Promise<void>}
+   */
   async unload () {
     return this._run(async () => {
       try {
