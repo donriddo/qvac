@@ -134,6 +134,7 @@ The `config` is a plain JS object whose keys are forwarded directly to the nativ
 | `device`         | `"gpu"` \| `"cpu"`                            | `"gpu"`       | Device to run inference on                                                               |
 | `gpu_layers`     | string of integer                             | `"0"`         | Number of model layers to offload to GPU                                                 |
 | `batch_size`     | string of integer                             | `"2048"`      | Tokens processed per batch (input throughput)                                            |
+| `ctx_size`       | string of integer                             | model default | Maximum context window in tokens (llama.cpp `n_ctx`); capped by the model's trained context |
 | `pooling`        | `"none"` \| `"mean"` \| `"cls"` \| `"last"` \| `"rank"` | model default | Pooling strategy used to collapse token embeddings into a single sequence vector        |
 | `attention`      | `"causal"` \| `"non-causal"`                  | model default | Attention type                                                                            |
 | `embd_normalize` | string of integer                             | `"2"`         | Embedding normalization (`-1` = none, `0` = max abs int16, `1` = taxicab, `2` = euclidean, `>2` = p-norm) |
