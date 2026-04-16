@@ -96,28 +96,19 @@ function normalizeFinetuneParams (opts) {
 }
 
 /**
- * Picks the primary GGUF path from an ordered file list.
- *
- * For sharded models the caller passes
- * `[tensors.txt, shard-00001-of-N.gguf, ..., shard-N-of-N.gguf]`.
- * The first entry matching the shard regex is returned so the value matches
- * the C++ `GGUFShards::expandGGUFIntoShards` regex contract.
- * For non-sharded single-file models the only entry is returned.
+ * Returns the first shard (matching `-NNNNN-of-MMMMM.gguf`) or the sole
+ * entry for single-file models. Matches the C++ shard-expansion contract
+ * in `GGUFShards::expandGGUFIntoShards`.
  *
  * @param {string[]} files - ordered array of absolute paths
- * @returns {string} the primary GGUF path
+ * @returns {string}
  */
 function pickPrimaryGgufPath (files) {
   const SHARD_REGEX = /-\d+-of-\d+\.gguf$/
   return files.find((p) => SHARD_REGEX.test(p)) || files[0]
 }
 
-/**
- * GGML client implementation for Llama LLM models (text and multimodal).
- * Loads weights from caller-supplied absolute paths (single file or sharded,
- * with an optional projection model) and wraps the native LlamaInterface
- * addon for inference, finetuning, and pause/resume.
- */
+/** LLM client wrapping the native LlamaInterface for inference, finetuning, and pause/resume. */
 class LlmLlamacpp {
   constructor ({ files, config, logger = null, opts = {} }) {
     if (!files || !Array.isArray(files.model) || files.model.length === 0) {
@@ -144,18 +135,13 @@ class LlmLlamacpp {
     this._config = config
     this.logger = new QvacLogger(logger)
     this.opts = opts
-    // The cancel closure dereferences `this.addon` lazily, so it is safe even though
-    // `this.addon` is `null` at construction time — it is only invoked from
-    // `response.cancel()` after `_load()` has assigned the addon. The optional chain
-    // also makes a stale `response.cancel()` after `unload()` a no-op.
+    // Lazy deref + optional chain: safe before `_load()` and after `unload()`.
     this._job = createJobHandler({ cancel: () => this.addon?.cancel() })
     this._run = exclusiveRunQueue()
     this.addon = null
     this._checkpointSaveDir = null
     this._hasActiveResponse = false
-    // Stateful flag carried across `mapAddonEvent` calls so the post-finetune
-    // TPS trailer the C++ addon emits is not mistaken for a fresh inference
-    // result. Lives on the model so unit tests can poke at it.
+    // Carried across mapAddonEvent calls to drop the post-finetune TPS trailer.
     this._addonEventState = { skipNextRuntimeStats: false }
     this.state = { configLoaded: false }
   }
@@ -230,9 +216,7 @@ class LlmLlamacpp {
 
     this.logger.info('Starting inference with prompt:', prompt)
 
-    // Separate media messages from text messages so the native side receives
-    // binary blobs directly and the JSON text payload carries a placeholder
-    // marker for each media item (empty-content message) for tokenization.
+    // Separate media messages from text messages
     const textMessages = []
     const mediaItems = []
 
@@ -359,9 +343,7 @@ class LlmLlamacpp {
   }
 
   _addonOutputCallback (addon, event, data, error) {
-    // Event-name normalization lives in `addon.js` (`mapAddonEvent`) so the
-    // native binding wrapper owns the C++ event vocabulary. This shim only
-    // forwards the resulting logical event into `_handleAddonOutputEvent`.
+    // Event-name normalization lives in `addon.js` (`mapAddonEvent`).
     const mapped = mapAddonEvent(event, data, error, this._addonEventState)
     if (mapped === null) return
     this._handleAddonOutputEvent(mapped.type, mapped.data, mapped.error)

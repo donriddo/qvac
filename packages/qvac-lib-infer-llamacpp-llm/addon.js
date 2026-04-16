@@ -1,30 +1,14 @@
 const path = require('bare-path')
 
 /**
- * Map a raw native event from the C++ addon to a logical inference event.
+ * Normalize a raw native event into `Output` / `Error` / `JobEnded` /
+ * `FinetuneProgress`, or `null` to drop it. `state.skipNextRuntimeStats`
+ * is used to swallow the TPS trailer that follows a finetune terminal.
  *
- * The native binding emits events with C++-mangled names and varied payload
- * shapes. This wrapper normalizes them into one of:
- *   - `'Output'`            — token / partial output
- *   - `'Error'`             — failure
- *   - `'JobEnded'`          — terminal payload (TPS-shaped runtime stats OR
- *                              a finetune `{op:'finetune', status, stats?}` payload)
- *   - `'FinetuneProgress'`  — incremental finetune metrics
- *
- * Returns `{ type, data, error }` or `null` if the event should be dropped
- * (currently only used to swallow the TPS payload that the C++ addon emits
- * immediately after a finetune terminal — see `state.skipNextRuntimeStats`).
- *
- * Stateful because the C++ event ordering is stateful: the same TPS shape
- * means "inference finished" most of the time but means "stale finetune
- * trailer, ignore me" when it follows a finetune terminal.  The caller owns
- * the state object so the addon wrapper does not need to be a singleton.
- *
- * @param {string} rawEvent - native event name
- * @param {*} rawData       - native event payload
- * @param {*} rawError      - native error payload (only set for Error events)
- * @param {{ skipNextRuntimeStats: boolean }} state - mutable state shared
- *   across consecutive callbacks for one model instance
+ * @param {string} rawEvent
+ * @param {*} rawData
+ * @param {*} rawError
+ * @param {{ skipNextRuntimeStats: boolean }} state
  * @returns {{ type: string, data: *, error: * } | null}
  */
 function mapAddonEvent (rawEvent, rawData, rawError, state) {
@@ -109,19 +93,10 @@ class LlamaInterface {
   }
 
   /**
-   * Loads model weights. The native side reads the JS property names
-   * `chunk` and `completed` directly, so this object's field names are
-   * load-bearing — see `JsBlobsStream.hpp::appendBlob` in
-   * `qvac-lib-inference-addon-cpp` for the parser.
-   *
    * @param {Object} weightsData
-   * @param {String} weightsData.filename - Logical filename used to group
-   *   chunks into one shard. The native side keys `shards_in_progress` on
-   *   this.
-   * @param {Uint8Array|null} weightsData.chunk - Next chunk of bytes for the
-   *   current shard, or `null` on the final call when `completed` is true.
-   * @param {Boolean} weightsData.completed - `false` while more chunks
-   *   remain; `true` on the last call to finalize the shard.
+   * @param {String} weightsData.filename
+   * @param {Uint8Array|null} weightsData.chunk
+   * @param {Boolean} weightsData.completed
    */
   async loadWeights (weightsData) {
     this._binding.loadWeights(this._handle, weightsData)
