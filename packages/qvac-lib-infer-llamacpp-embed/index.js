@@ -30,6 +30,14 @@ class GGMLBert {
     if (!files || !Array.isArray(files.model) || files.model.length === 0) {
       throw new TypeError('files.model must be a non-empty array of absolute paths')
     }
+    for (const [i, entry] of files.model.entries()) {
+      if (typeof entry !== 'string' || entry.length === 0) {
+        throw new TypeError(`files.model[${i}] must be an absolute path string`)
+      }
+      if (!path.isAbsolute(entry)) {
+        throw new TypeError(`files.model[${i}] must be an absolute path (got: ${entry})`)
+      }
+    }
     this._files = files.model
     this._config = config
     this.logger = new QvacLogger(logger)
@@ -46,9 +54,11 @@ class GGMLBert {
   }
 
   async load () {
-    if (this.state.configLoaded) return
-    await this._load()
-    this.state.configLoaded = true
+    return this._run(async () => {
+      if (this.state.configLoaded) return
+      await this._load()
+      this.state.configLoaded = true
+    })
   }
 
   async _load () {

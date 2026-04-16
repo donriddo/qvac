@@ -113,6 +113,10 @@ jobs:
         working-directory: packages/qvac-lib-infer-llamacpp-embed
         run: npm run test:dts
 
+      - name: JS unit tests
+        working-directory: packages/qvac-lib-infer-llamacpp-embed
+        run: npm run test:unit
+
   prebuild:
     permissions:
       contents: write
