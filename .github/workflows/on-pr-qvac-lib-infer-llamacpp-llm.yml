@@ -115,6 +115,10 @@ jobs:
         working-directory: packages/qvac-lib-infer-llamacpp-llm
         run: npm run test:dts
 
+      - name: JS unit tests
+        working-directory: packages/qvac-lib-infer-llamacpp-llm
+        run: npm run test:unit
+
   prebuild:
     needs: [authorize, sanity-checks]
     if: needs.authorize.outputs.allowed == 'true'
