@@ -128,6 +128,14 @@ If `_streamShards()` or `addon.activate()` throws mid-load (for example a corrup
 
 `_addonOutputCallback` previously fed any non-stats / non-error event payload into `response.output`, including unknown events. It now logs unknown events at warn level (these indicate a native-layer change worth surfacing) and only forwards `Embeddings` payloads to the active response.
 
+### `load()` is serialized through the exclusive run queue
+
+`load()` is now routed through the same `exclusiveRunQueue` used by `run()` and `unload()`. Previously two overlapping `load()` calls on the same instance could both pass the `configLoaded` guard before it flipped to `true`, both stream shards into and activate the native addon, and clobber `this.addon` — leaking one native handle. Concurrent `load()` on a single instance is now safe.
+
+### Constructor rejects non-absolute path entries
+
+Each entry in `files.model` is now validated with `path.isAbsolute()` (matching the existing error-message contract). Relative paths are rejected at construction time instead of bubbling up from `bare-fs` or the native load.
+
 ## Pull Requests
 
 - [#1493](https://github.com/tetherto/qvac/pull/1493) - chore[bc]: embed addon interface refactor — remove BaseInference and WeightsProvider
