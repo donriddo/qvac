@@ -355,8 +355,9 @@ class LlmLlamacpp {
   /**
    * Instantiate the native addon with the given parameters.
    * @param {Object} configurationParams - Configuration parameters for the addon
-   * @param {string} configurationParams.path - Local file or directory path
-   * @param {Object} configurationParams.settings - LLM-specific settings
+   * @param {string} configurationParams.path - Absolute path to the primary model file (first shard for sharded models)
+   * @param {string} configurationParams.projectionPath - Absolute path to the multimodal projection model, or '' when not provided
+   * @param {Object} configurationParams.config - LLM-specific settings
    * @returns {Addon} The instantiated addon interface
    */
   _createAddon (configurationParams) {

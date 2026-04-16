@@ -252,6 +252,32 @@ const imageTestCases = [
   }
 ]
 
+async function describeImageByPath (inference, imageFilePath, prompt = TEST_CONSTANTS.defaultPrompt) {
+  const messages = [
+    { role: 'system', content: 'You are a helpful assistant.' },
+    { role: 'user', type: 'media', content: imageFilePath },
+    { role: 'user', content: prompt }
+  ]
+
+  const response = await inference.run(messages)
+  const generatedText = []
+  let error = null
+
+  response.onUpdate(data => {
+    generatedText.push(data)
+  }).onError(err => {
+    error = err
+  })
+
+  await response.await()
+
+  if (error) {
+    throw new Error('Inference error: ' + error)
+  }
+
+  return generatedText.join('')
+}
+
 for (const testCase of imageTestCases) {
   test(`llama addon can recognize ${testCase.name} in an image`, { timeout: TEST_CONSTANTS.timeout }, async t => {
     for (const deviceConfig of DEVICE_CONFIGS) {
@@ -282,6 +308,26 @@ for (const testCase of imageTestCases) {
     }
   })
 }
+
+test('llama addon accepts a file path string as media content', { timeout: TEST_CONSTANTS.timeout }, async t => {
+  const deviceConfig = DEVICE_CONFIGS[0]
+  const label = `[${deviceConfig.id.toUpperCase()}]`
+
+  const { inference } = await setupMultimodalInference(t, deviceConfig.device)
+
+  const imageFilePath = getMediaPath('elephant.jpg')
+  t.ok(fs.existsSync(imageFilePath), `${label} elephant.jpg image file should exist`)
+
+  const generatedText = await describeImageByPath(inference, imageFilePath)
+  t.comment(`${label} Generated text: ${generatedText}`)
+
+  t.ok(generatedText.length > 0, `${label} Should generate text output when media content is a file path`)
+  const { hasMatch, foundKeywords } = checkKeywordsInText(generatedText, ['elephant', 'elephants'])
+  t.ok(hasMatch,
+    `${label} Output should describe the elephant when image is passed as a path string. ` +
+    `Found keywords: ${foundKeywords.join(', ') || 'none'}. ` +
+    `Full output: "${generatedText}"`)
+})
 
 // TODO: Fix multi-image for smaller models? Seems like an image per separate message works
 // TODO: on smaller models, rather than all images on same message.
