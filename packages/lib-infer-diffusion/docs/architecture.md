@@ -1,6 +1,6 @@
 # Architecture Documentation
 
-**Package:** `@qvac/diffusion-cpp` v0.2.0
+**Package:** `@qvac/diffusion-cpp` v0.3.0
 **Stack:** JavaScript, C++20, stable-diffusion.cpp, Bare Runtime, CMake, vcpkg
 **License:** Apache-2.0
 

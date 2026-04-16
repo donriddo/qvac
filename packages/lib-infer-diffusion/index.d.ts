@@ -184,9 +184,18 @@ export interface GenerationParams {
   img_cfg_scale?: number
   /** Skip last N CLIP encoder layers (SD1.x/SD2.x) */
   clip_skip?: number
-  /** Input image as PNG/JPEG bytes for img2img (not yet supported — throws at runtime) */
+  /**
+   * Input image as PNG/JPEG bytes for img2img.
+   *
+   * FLUX.2: in-context conditioning (`ref_images`). Requires an explicit
+   * `prediction: 'flux2_flow'` in the config or the addon falls back to the
+   * SD/SDEdit branch.
+   *
+   * SD1.x / SD2.x / SDXL / SD3: SDEdit (the image is noised to the level
+   * set by `strength`, then denoised for the remaining steps).
+   */
   init_image?: Uint8Array
-  /** img2img denoising strength (0.0–1.0). 0 = keep source, 1 = ignore source (not yet supported) */
+  /** img2img denoising strength (0.0 to 1.0). 0 keeps the source image, 1 ignores it. Applies to the SDEdit branch (SD1.x/SD2.x/SDXL/SD3); ignored for FLUX.2 in-context conditioning. */
   strength?: number
 }
 
