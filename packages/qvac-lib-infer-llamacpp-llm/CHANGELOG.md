@@ -11,7 +11,7 @@ This release migrates the LLM addon off `BaseInference` inheritance and the `Wei
 `LlmLlamacpp` now takes a single `{ files, config, logger?, opts? }` object. The old `Loader` + `diskPath` + `modelName` + two-arg `(args, config)` shape is gone — callers pre-resolve absolute paths and supply them as `files.model`.
 
 ```js
-// BEFORE (≤ 0.14.x)
+// BEFORE (≤ 0.15.x)
 const FilesystemDL = require('@qvac/dl-filesystem')
 const loader = new FilesystemDL({ dirPath: '/models' })
 const model = new LlmLlamacpp({
