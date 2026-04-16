@@ -343,7 +343,6 @@ class LlmLlamacpp {
   }
 
   _addonOutputCallback (addon, event, data, error) {
-    // Event-name normalization lives in `addon.js` (`mapAddonEvent`).
     const mapped = mapAddonEvent(event, data, error, this._addonEventState)
     if (mapped === null) return
     this._handleAddonOutputEvent(mapped.type, mapped.data, mapped.error)
