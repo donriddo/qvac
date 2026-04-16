@@ -118,6 +118,14 @@ Every `FinetuneOptions` field carries a `/** … */` doc comment again, includin
 
 The `_createFilteredLogger` infrastructure that wrapped the user-supplied logger to swallow `'No response found for job'` warnings was tied to the old `BaseInference` `_jobToResponse` Map. The new architecture cannot emit that message at all, so the filter, the wrapped logger, and the `_originalLogger` indirection are all removed. The user-supplied logger is now used directly.
 
+### `load()` is serialized through the exclusive run queue
+
+`load()` is now routed through the same `exclusiveRunQueue` used by `run()`, `finetune()`, and `unload()`. Previously two overlapping `load()` calls on the same instance could both pass the `configLoaded` guard before it flipped to `true`, both stream shards into and activate the native addon, and clobber `this.addon` — leaking one native handle. Concurrent `load()` on a single instance is now safe.
+
+### Constructor rejects non-absolute path entries
+
+Each entry in `files.model` is now validated with `path.isAbsolute()` (matching the existing error-message contract), and the same check now applies to the optional `files.projectionModel` — previously it had no validation at all. Relative paths are rejected at construction time instead of bubbling up from `bare-fs` or the native load.
+
 ## Pull Requests
 
 - [#1494](https://github.com/tetherto/qvac/pull/1494) - chore[bc]: LLM addon interface refactor — remove BaseInference and WeightsProvider
