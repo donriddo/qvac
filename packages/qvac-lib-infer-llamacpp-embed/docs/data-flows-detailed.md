@@ -337,7 +337,7 @@ sequenceDiagram
 ```mermaid
 flowchart TD
     Start([run input]) --> CheckType{Is Array?}
-    CheckType -->|Yes| ArrayPath["type: 'sequences'<br/>input: string[]"]
+    CheckType -->|Yes| ArrayPath["type: 'sequences'<br/>input: array of strings"]
     CheckType -->|No| StringPath["type: 'text'<br/>input: string"]
     ArrayPath --> RunJob[runJob to addon]
     StringPath --> RunJob
