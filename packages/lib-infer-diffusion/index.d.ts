@@ -186,7 +186,11 @@ export interface GenerationParams {
   clip_skip?: number
   /** Input image as PNG/JPEG bytes for img2img. */
   init_image?: Uint8Array
-  /** img2img denoising strength (0.0 to 1.0). 0 = keep source, 1 = ignore source. */
+  /**
+   * img2img denoising strength (0.0 to 1.0). 0 = keep source, 1 = ignore source.
+   * SD1.x/SD2.x/SDXL/SD3 only. FLUX.2 ignores `strength` and routes `init_image`
+   * through in-context conditioning instead.
+   */
   strength?: number
 }
 
