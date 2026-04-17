@@ -64,9 +64,9 @@ class GGMLBert {
     }
 
     this.logger.info('Creating addon with configuration:', configurationParams)
-    this.addon = this._createAddon(configurationParams)
 
     try {
+      this.addon = this._createAddon(configurationParams)
       if (this._files.length > 1) {
         await this._streamShards()
       }
