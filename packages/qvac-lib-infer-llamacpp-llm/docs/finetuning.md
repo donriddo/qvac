@@ -248,12 +248,12 @@ sequenceDiagram
     participant Queue as outputQueue
 
     User->>LlamaModel: finetune(opts) (opts always required, including on resume)
-    LlamaModel->>LlamaModel: enqueue via exclusiveRunQueue and normalize opts (validation object required; dataset needs validation.path; emits flat validationSplit, useEvalDatasetForValidation, evalDatasetPath)
+    LlamaModel->>LlamaModel: enqueue via exclusiveRunQueue and normalize opts (validation object required, dataset needs validation.path, emits flat validationSplit/useEvalDatasetForValidation/evalDatasetPath)
     LlamaModel->>Addon: finetune(params)
 
     Addon->>Binding: _binding.finetune(handle, params)
     Binding->>AddonJs: finetune(env, info)
-    AddonJs->>AddonJs: JsInterface.getInstance, getLlamaModel(instance); tryGetObject for params; build Prompt with finetuningParams and outputCallback
+    AddonJs->>AddonJs: JsInterface.getInstance, getLlamaModel(instance), tryGetObject for params, build Prompt with finetuningParams and outputCallback
     AddonJs->>AddonCpp: runJob(any(prompt))
     AddonCpp->>JobRunner: runJob(any)
     JobRunner->>LlamaModelCpp: process(job) → branch on finetuningParams → finetune(params, outputCallback)
@@ -263,7 +263,7 @@ sequenceDiagram
     LlamaModel-->>User: handle { await() }
 
     Note over JobRunner,LlamaModelCpp: Finetune runs in JobRunner thread (same as inference)
-    LlamaModelCpp->>LlamaModelCpp: pauseCheckpointExists(checkpointDir)? clearPauseRequest(); resume or fresh path
+    LlamaModelCpp->>LlamaModelCpp: pauseCheckpointExists(checkpointDir)? clearPauseRequest() — resume or fresh path
     LlamaModelCpp->>Helpers: prepareTrainingDataset, training loop
     loop each batch / completion
         Helpers->>LlamaModelCpp: logCallback(msg) for progress
@@ -293,7 +293,7 @@ sequenceDiagram
     Addon->>Binding: _binding.cancel(handle)
     Binding->>AddonJs: qvac_lib_inference_addon_llama::cancel(env, info)
 
-    AddonJs->>AddonJs: JsInterface.getInstance, getLlamaModel(instance); isFinetuneRunning()?
+    AddonJs->>AddonJs: JsInterface.getInstance, getLlamaModel(instance), isFinetuneRunning check
     AddonJs->>LlamaModelCpp: llamaModel->requestPause()
     LlamaModelCpp->>LlamaModelCpp: currentCheckpointState_->pauseRequested.store(true)
     LlamaModelCpp->>LlamaModelCpp: llama_opt_request_stop(ctx)
