@@ -30,6 +30,7 @@ import { lifecycleTests } from "./lifecycle-tests.js";
 import { configTests } from "./config-tests.js";
 import { noLingeringBareTests } from "./no-lingering-bare-tests.js";
 import { wrongModelTests } from "./wrong-model-tests.js";
+import { multiGpuTests } from "./multi-gpu-tests.js";
 
 // Model loading tests
 export const modelLoadLlm: TestDefinition = {
@@ -273,6 +274,9 @@ export const tests = [
 
   // No-lingering-bare regression tests
   ...noLingeringBareTests,
+
+  // Multi-GPU config smoke (verifies split-mode and main-gpu flow through stack)
+  ...multiGpuTests,
 
   // Additional model tests
   modelSwitchLlm,
