@@ -66,6 +66,7 @@ import { DelegatedInferenceExecutor } from "../shared/executors/delegated-infere
 import { MobileDiffusionExecutor } from "./executors/diffusion-executor.js";
 import { LifecycleExecutor } from "../shared/executors/lifecycle-executor.js";
 import { ConfigExecutor } from "../shared/executors/config-executor.js";
+import { MultiGpuExecutor } from "../shared/executors/multi-gpu-executor.js";
 
 const resources = new ResourceManager();
 
@@ -374,6 +375,7 @@ export const executor = createExecutor({
     new MobileDiffusionExecutor(resources),
     new LifecycleExecutor(resources),
     new ConfigExecutor(),
+    new MultiGpuExecutor(),
   ],
   profiling: {
     init: () => profiler.enable({ mode: "summary", includeServerBreakdown: true }),
