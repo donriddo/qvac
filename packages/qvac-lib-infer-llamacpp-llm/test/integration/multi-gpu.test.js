@@ -48,22 +48,22 @@ async function runMultiGpuTest (t, extraConfig, assertDevices) {
     return
   }
 
-  const [modelName, dirPath] = await ensureModel({
-    modelName: MODEL.name,
-    downloadUrl: MODEL.url
-  })
-
-  const modelPath = path.join(dirPath, modelName)
+  let addon = null
   const specLogger = attachSpecLogger({ forwardToConsole: true })
-
-  const addon = new LlmLlamacpp({
-    files: { model: [modelPath] },
-    config: { ...BASE_CONFIG, ...extraConfig },
-    logger: null,
-    opts: { stats: true }
-  })
-
   try {
+    const [modelName, dirPath] = await ensureModel({
+      modelName: MODEL.name,
+      downloadUrl: MODEL.url
+    })
+
+    const modelPath = path.join(dirPath, modelName)
+    addon = new LlmLlamacpp({
+      files: { model: [modelPath] },
+      config: { ...BASE_CONFIG, ...extraConfig },
+      logger: null,
+      opts: { stats: true }
+    })
+
     await addon.load()
     const response = await addon.run(PROMPT)
     const output = await collectResponse(response)
@@ -74,9 +74,12 @@ async function runMultiGpuTest (t, extraConfig, assertDevices) {
 
     const devices = extractBufferDevices(specLogger.logs)
     assertDevices(t, devices)
+  } catch (error) {
+    console.error(error)
+    t.fail('multi-gpu test failed: ' + error.message)
   } finally {
     specLogger.release()
-    await addon.unload().catch(() => {})
+    if (addon) await addon.unload().catch(() => {})
   }
 }
 

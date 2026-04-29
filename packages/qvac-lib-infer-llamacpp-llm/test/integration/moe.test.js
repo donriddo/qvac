@@ -38,18 +38,19 @@ test('llm addon can run MoE models [dolphin-mixtral-2x7b]', {
   skip: isDarwinX64 || isMobile || isLinuxArm64 ||
     isWindowsX64 // TODO: unskip this once we have a new Windows runner with a GPU
 }, async t => {
-  const [modelName, dirPath] = await ensureModel({ modelName: MODEL.name, downloadUrl: MODEL.url })
-
-  const modelPath = path.join(dirPath, modelName)
+  let inference = null
   const specLogger = attachSpecLogger({ forwardToConsole: true })
-  const inference = new LlmLlamacpp({
-    files: { model: [modelPath] },
-    config: CONFIG,
-    logger: console,
-    opts: { stats: true }
-  })
-
   try {
+    const [modelName, dirPath] = await ensureModel({ modelName: MODEL.name, downloadUrl: MODEL.url })
+
+    const modelPath = path.join(dirPath, modelName)
+    inference = new LlmLlamacpp({
+      files: { model: [modelPath] },
+      config: CONFIG,
+      logger: console,
+      opts: { stats: true }
+    })
+
     await inference.load()
     const response = await inference.run(PROMPT)
     const text = await response._finishPromise
@@ -57,8 +58,11 @@ test('llm addon can run MoE models [dolphin-mixtral-2x7b]', {
     t.ok(text.length > 0, 'should generate text output')
     t.ok(response.stats.TPS > 0, 'should have TPS stats')
     t.ok(response.stats.ppTPS > 0, 'should have ppTPS stats')
+  } catch (error) {
+    console.error(error)
+    t.fail('llm addon can run MoE models: ' + error.message)
   } finally {
     specLogger.release()
-    await inference.unload().catch(() => {})
+    if (inference) await inference.unload().catch(() => {})
   }
 })

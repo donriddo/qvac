@@ -34,41 +34,43 @@ function containsEmoji (text) {
 }
 
 test('model returns UTF-8 emoji without truncation', { timeout: 600_000 }, async t => {
-  const [modelName, dirPath] = await ensureModel({
-    modelName: MODEL.name,
-    downloadUrl: MODEL.url
-  })
-
-  const modelPath = path.join(dirPath, modelName)
-  const specLogger = attachSpecLogger({ forwardToConsole: true })
+  let model = null
+  let specLogger = null
   let loggerReleased = false
   const releaseLogger = () => {
     if (loggerReleased) return
     loggerReleased = true
-    specLogger.release()
+    if (specLogger) specLogger.release()
   }
-
-  const config = {
-    device: useCpu ? 'cpu' : 'gpu',
-    gpu_layers: '999',
-    ctx_size: '1024',
-    temp: '0',
-    top_p: '0.8',
-    top_k: '30',
-    n_predict: '8',
-    seed: '42',
-    verbosity: '2'
-  }
-
-  const model = new LlmLlamacpp({
-    files: { model: [modelPath] },
-    config,
-    logger: console,
-    opts: { stats: true }
-  })
-
-  let output = ''
   try {
+    const [modelName, dirPath] = await ensureModel({
+      modelName: MODEL.name,
+      downloadUrl: MODEL.url
+    })
+
+    const modelPath = path.join(dirPath, modelName)
+    specLogger = attachSpecLogger({ forwardToConsole: true })
+
+    const config = {
+      device: useCpu ? 'cpu' : 'gpu',
+      gpu_layers: '999',
+      ctx_size: '1024',
+      temp: '0',
+      top_p: '0.8',
+      top_k: '30',
+      n_predict: '8',
+      seed: '42',
+      verbosity: '2'
+    }
+
+    model = new LlmLlamacpp({
+      files: { model: [modelPath] },
+      config,
+      logger: console,
+      opts: { stats: true }
+    })
+
+    let output = ''
     await model.load()
     const response = await model.run(UTF8_PROMPT)
     await response
@@ -83,8 +85,11 @@ test('model returns UTF-8 emoji without truncation', { timeout: 600_000 }, async
     t.is(Buffer.from(normalized, 'utf8').toString('utf8'), normalized, 'utf8 encoding round-trip succeeds')
     t.is(normalized, '😀', 'model respected exact emoji instruction')
     t.ok(response.stats.generatedTokens > 0, 'token stats recorded')
+  } catch (error) {
+    console.error(error)
+    t.fail('model returns UTF-8 emoji without truncation: ' + error.message)
   } finally {
-    await model.unload().catch(() => {})
+    if (model) await model.unload().catch(() => {})
     releaseLogger()
   }
 })

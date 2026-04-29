@@ -69,14 +69,15 @@ const TIMEOUT = 1_800_000
 // WHY: Users pass empty strings through UIs and pipelines; must not segfault.
 // ---------------------------------------------------------------------------
 test('AfriqueGemma: empty and whitespace input must not crash', { timeout: TIMEOUT }, async t => {
-  const [modelName, dirPath] = await resolveModel()
-  const addon = new LlmLlamacpp({
-    files: { model: [path.join(dirPath, modelName)] },
-    config: AFRIQUEGEMMA_CONFIG,
-    logger: console,
-    opts: { stats: true }
-  })
+  let addon = null
   try {
+    const [modelName, dirPath] = await resolveModel()
+    addon = new LlmLlamacpp({
+      files: { model: [path.join(dirPath, modelName)] },
+      config: AFRIQUEGEMMA_CONFIG,
+      logger: console,
+      opts: { stats: true }
+    })
     await addon.load()
     const emptyPrompt = 'Translate English to Swahili.\nEnglish: \nSwahili:'
     const r1 = await addon.run([{ role: 'user', content: emptyPrompt }])
@@ -86,8 +87,11 @@ test('AfriqueGemma: empty and whitespace input must not crash', { timeout: TIMEO
     const r2 = await addon.run([{ role: 'user', content: wsPrompt }])
     await collectTranslation(r2)
     t.pass('whitespace-style prompt did not crash')
+  } catch (error) {
+    console.error(error)
+    t.fail('AfriqueGemma: empty and whitespace input must not crash: ' + error.message)
   } finally {
-    await addon.unload().catch(() => {})
+    if (addon) await addon.unload().catch(() => {})
   }
 })
 
@@ -98,36 +102,39 @@ test('AfriqueGemma: empty and whitespace input must not crash', { timeout: TIMEO
 //      creating a new instance after unload is the supported reload pattern.
 // ---------------------------------------------------------------------------
 test('AfriqueGemma: lifecycle load-unload-fresh-load-use', { timeout: TIMEOUT }, async t => {
-  const [modelName, dirPath] = await resolveModel()
-  const addon1 = new LlmLlamacpp({
-    files: { model: [path.join(dirPath, modelName)] },
-    config: AFRIQUEGEMMA_CONFIG,
-    logger: console,
-    opts: { stats: true }
-  })
+  let addon1 = null
+  let addon2 = null
   try {
+    const [modelName, dirPath] = await resolveModel()
+    addon1 = new LlmLlamacpp({
+      files: { model: [path.join(dirPath, modelName)] },
+      config: AFRIQUEGEMMA_CONFIG,
+      logger: console,
+      opts: { stats: true }
+    })
     await addon1.load()
     const r1 = await addon1.run([{ role: 'user', content: EN_SW_PROMPT }])
     const out1 = await collectTranslation(r1)
     t.ok(out1.length > 0, 'first run produced output')
     await addon1.unload()
-  } catch (err) {
-    await addon1.unload().catch(() => {})
-    throw err
-  }
-  const addon2 = new LlmLlamacpp({
-    files: { model: [path.join(dirPath, modelName)] },
-    config: AFRIQUEGEMMA_CONFIG,
-    logger: console,
-    opts: { stats: true }
-  })
-  try {
+    addon1 = null
+
+    addon2 = new LlmLlamacpp({
+      files: { model: [path.join(dirPath, modelName)] },
+      config: AFRIQUEGEMMA_CONFIG,
+      logger: console,
+      opts: { stats: true }
+    })
     await addon2.load()
     const r2 = await addon2.run([{ role: 'user', content: EN_SW_PROMPT }])
     const out2 = await collectTranslation(r2)
     t.ok(out2.length > 0, 'second run after fresh load produced output')
+  } catch (error) {
+    console.error(error)
+    t.fail('AfriqueGemma: lifecycle load-unload-fresh-load-use: ' + error.message)
   } finally {
-    await addon2.unload().catch(() => {})
+    if (addon1) await addon1.unload().catch(() => {})
+    if (addon2) await addon2.unload().catch(() => {})
   }
 })
 
@@ -137,14 +144,15 @@ test('AfriqueGemma: lifecycle load-unload-fresh-load-use', { timeout: TIMEOUT },
 // WHY: Cancelling mid-operation must not corrupt state; model should be reusable.
 // ---------------------------------------------------------------------------
 test('AfriqueGemma: cancel mid-translation, model reusable after', { timeout: TIMEOUT }, async t => {
-  const [modelName, dirPath] = await resolveModel()
-  const addon = new LlmLlamacpp({
-    files: { model: [path.join(dirPath, modelName)] },
-    config: { ...AFRIQUEGEMMA_CONFIG, n_predict: '512' },
-    logger: console,
-    opts: { stats: true }
-  })
+  let addon = null
   try {
+    const [modelName, dirPath] = await resolveModel()
+    addon = new LlmLlamacpp({
+      files: { model: [path.join(dirPath, modelName)] },
+      config: { ...AFRIQUEGEMMA_CONFIG, n_predict: '512' },
+      logger: console,
+      opts: { stats: true }
+    })
     await addon.load()
     const longPrompt = 'Translate English to Swahili.\nEnglish: The children are playing in the park. Their mother watches from the bench. The sun is shining brightly today. Many families enjoy this beautiful place.\nSwahili:'
     const response = await addon.run([{ role: 'user', content: longPrompt }])
@@ -168,8 +176,11 @@ test('AfriqueGemma: cancel mid-translation, model reusable after', { timeout: TI
     const r2 = await addon.run([{ role: 'user', content: EN_SW_PROMPT }])
     const out2 = await collectTranslation(r2)
     t.ok(out2.length > 0, 'model produced output after cancel')
+  } catch (error) {
+    console.error(error)
+    t.fail('AfriqueGemma: cancel mid-translation, model reusable after: ' + error.message)
   } finally {
-    await addon.unload().catch(() => {})
+    if (addon) await addon.unload().catch(() => {})
   }
 })
 
@@ -180,27 +191,36 @@ test('AfriqueGemma: cancel mid-translation, model reusable after', { timeout: TI
 // Verifies the addon either rejects with a clear message or defaults to jinja.
 // ---------------------------------------------------------------------------
 test('AfriqueGemma: tools true required for load', { timeout: TIMEOUT }, async t => {
-  const [modelName, dirPath] = await resolveModel()
-  const configWithoutTools = {
-    ...AFRIQUEGEMMA_CONFIG,
-    tools: undefined
-  }
-  delete configWithoutTools.tools
-  const addon = new LlmLlamacpp({
-    files: { model: [path.join(dirPath, modelName)] },
-    config: configWithoutTools,
-    logger: console
-  })
+  let addon = null
   try {
-    await addon.load()
-    t.pass('load without tools succeeded (addon defaults to jinja)')
-    await addon.unload().catch(() => {})
-  } catch (err) {
-    const msg = (err?.message || '').toLowerCase()
-    t.ok(
-      /template|jinja|tools|not supported|custom/.test(msg),
-      'load without tools fails with clear message about template/jinja'
-    )
+    const [modelName, dirPath] = await resolveModel()
+    const configWithoutTools = {
+      ...AFRIQUEGEMMA_CONFIG,
+      tools: undefined
+    }
+    delete configWithoutTools.tools
+    addon = new LlmLlamacpp({
+      files: { model: [path.join(dirPath, modelName)] },
+      config: configWithoutTools,
+      logger: console
+    })
+    try {
+      await addon.load()
+      t.pass('load without tools succeeded (addon defaults to jinja)')
+      await addon.unload().catch(() => {})
+      addon = null
+    } catch (err) {
+      const msg = (err?.message || '').toLowerCase()
+      t.ok(
+        /template|jinja|tools|not supported|custom/.test(msg),
+        'load without tools fails with clear message about template/jinja'
+      )
+    }
+  } catch (error) {
+    console.error(error)
+    t.fail('AfriqueGemma: tools true required for load: ' + error.message)
+  } finally {
+    if (addon) await addon.unload().catch(() => {})
   }
 })
 
@@ -213,48 +233,64 @@ test('AfriqueGemma: tools true required for load', { timeout: TIMEOUT }, async t
 // unhandled rejection. This test documents the expected behaviour.
 // ---------------------------------------------------------------------------
 test('AfriqueGemma: run after unload rejects cleanly', { timeout: TIMEOUT }, async t => {
-  const [modelName, dirPath] = await resolveModel()
-  const addon = new LlmLlamacpp({
-    files: { model: [path.join(dirPath, modelName)] },
-    config: AFRIQUEGEMMA_CONFIG,
-    logger: console,
-    opts: { stats: true }
-  })
-
-  await addon.load()
-  const r1 = await addon.run([{ role: 'user', content: EN_SW_PROMPT }])
-  const out1 = await collectTranslation(r1)
-  t.ok(out1.length > 0, 'inference works before unload')
-
-  await addon.unload()
-
-  let rejected = false
-  let hadUnhandled = false
-  const onUnhandled = () => { hadUnhandled = true }
-  if (typeof process !== 'undefined' && process.on) {
-    process.on('unhandledRejection', onUnhandled)
-  }
-
+  let addon = null
   try {
-    const r2 = await addon.run([{ role: 'user', content: EN_SW_PROMPT }])
+    const [modelName, dirPath] = await resolveModel()
+    addon = new LlmLlamacpp({
+      files: { model: [path.join(dirPath, modelName)] },
+      config: AFRIQUEGEMMA_CONFIG,
+      logger: console,
+      opts: { stats: true }
+    })
+
+    await addon.load()
+    const r1 = await addon.run([{ role: 'user', content: EN_SW_PROMPT }])
+    const out1 = await collectTranslation(r1)
+    t.ok(out1.length > 0, 'inference works before unload')
+
+    await addon.unload()
+    addon = null
+
+    let rejected = false
+    let hadUnhandled = false
+    const onUnhandled = () => { hadUnhandled = true }
+    if (typeof process !== 'undefined' && process.on) {
+      process.on('unhandledRejection', onUnhandled)
+    }
+
+    const unloadedAddon = new LlmLlamacpp({
+      files: { model: [path.join(dirPath, modelName)] },
+      config: AFRIQUEGEMMA_CONFIG,
+      logger: console,
+      opts: { stats: true }
+    })
+
     try {
-      await r2.await()
+      const r2 = await unloadedAddon.run([{ role: 'user', content: EN_SW_PROMPT }])
+      try {
+        await r2.await()
+      } catch (_) {
+        rejected = true
+      }
     } catch (_) {
       rejected = true
     }
-  } catch (_) {
-    rejected = true
-  }
 
-  if (typeof process !== 'undefined' && process.removeListener) {
-    process.removeListener('unhandledRejection', onUnhandled)
-  }
+    if (typeof process !== 'undefined' && process.removeListener) {
+      process.removeListener('unhandledRejection', onUnhandled)
+    }
 
-  if (hadUnhandled) {
-    t.comment('BUG: run() after unload() triggered unhandled promise rejection')
-    t.comment('Expected: synchronous throw or a response that resolves to an error')
+    if (hadUnhandled) {
+      t.comment('BUG: run() after unload() triggered unhandled promise rejection')
+      t.comment('Expected: synchronous throw or a response that resolves to an error')
+    }
+    t.ok(rejected || hadUnhandled, 'run() after unload() does not silently succeed')
+  } catch (error) {
+    console.error(error)
+    t.fail('AfriqueGemma: run after unload rejects cleanly: ' + error.message)
+  } finally {
+    if (addon) await addon.unload().catch(() => {})
   }
-  t.ok(rejected || hadUnhandled, 'run() after unload() does not silently succeed')
 })
 
 // ---------------------------------------------------------------------------
@@ -266,15 +302,16 @@ test('AfriqueGemma: run after unload rejects cleanly', { timeout: TIMEOUT }, asy
 //      in the token emission pipeline.
 // ---------------------------------------------------------------------------
 test('AfriqueGemma: small n_predict produces truncated but valid output', { timeout: TIMEOUT }, async t => {
-  const [modelName, dirPath] = await resolveModel()
-  const addon = new LlmLlamacpp({
-    files: { model: [path.join(dirPath, modelName)] },
-    config: { ...AFRIQUEGEMMA_CONFIG, n_predict: '8' },
-    logger: console,
-    opts: { stats: true }
-  })
-
+  let addon = null
   try {
+    const [modelName, dirPath] = await resolveModel()
+    addon = new LlmLlamacpp({
+      files: { model: [path.join(dirPath, modelName)] },
+      config: { ...AFRIQUEGEMMA_CONFIG, n_predict: '8' },
+      logger: console,
+      opts: { stats: true }
+    })
+
     await addon.load()
 
     const response = await addon.run([{ role: 'user', content: EN_SW_PROMPT }])
@@ -288,8 +325,11 @@ test('AfriqueGemma: small n_predict produces truncated but valid output', { time
       t.ok(genTokens <= 10, `generated ${genTokens} tokens (within n_predict=8 range)`)
       t.comment(`stats: generatedTokens=${genTokens}`)
     }
+  } catch (error) {
+    console.error(error)
+    t.fail('AfriqueGemma: small n_predict produces truncated but valid output: ' + error.message)
   } finally {
-    await addon.unload().catch(() => {})
+    if (addon) await addon.unload().catch(() => {})
   }
 })
 
@@ -303,15 +343,16 @@ test('AfriqueGemma: small n_predict produces truncated but valid output', { time
 //      context overflow in sliding-context tests).
 // ---------------------------------------------------------------------------
 test('AfriqueGemma: long input approaching ctx_size boundary', { timeout: TIMEOUT }, async t => {
-  const [modelName, dirPath] = await resolveModel()
-  const addon = new LlmLlamacpp({
-    files: { model: [path.join(dirPath, modelName)] },
-    config: { ...AFRIQUEGEMMA_CONFIG, ctx_size: '512', n_predict: '32' },
-    logger: console,
-    opts: { stats: true }
-  })
-
+  let addon = null
   try {
+    const [modelName, dirPath] = await resolveModel()
+    addon = new LlmLlamacpp({
+      files: { model: [path.join(dirPath, modelName)] },
+      config: { ...AFRIQUEGEMMA_CONFIG, ctx_size: '512', n_predict: '32' },
+      logger: console,
+      opts: { stats: true }
+    })
+
     await addon.load()
 
     const sentence = 'The children are playing in the park near the river where the birds sing every morning and the flowers bloom in spring. '
@@ -331,7 +372,10 @@ test('AfriqueGemma: long input approaching ctx_size boundary', { timeout: TIMEOU
     }
 
     t.ok(gotOutput || gotError, 'long input either produced output or a clear error — no crash or hang')
+  } catch (error) {
+    console.error(error)
+    t.fail('AfriqueGemma: long input approaching ctx_size boundary: ' + error.message)
   } finally {
-    await addon.unload().catch(() => {})
+    if (addon) await addon.unload().catch(() => {})
   }
 })

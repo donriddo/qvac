@@ -180,10 +180,13 @@ async function runPrompt (model, prompt) {
 
 test('[tools] prompt scenarios', { timeout: 1_800_000, skip: isDarwinX64 }, async t => {
   for (const modelVariant of TOOL_MODEL_VARIANTS) {
-    const { model, release } = await createToolModel(modelVariant)
-    const label = `[${modelVariant.id}]`
-
+    let release = null
     try {
+      const result = await createToolModel(modelVariant)
+      release = result.release
+      const model = result.model
+      const label = `[${modelVariant.id}]`
+
       const firstRun = await runPrompt(model, clonePrompt())
       t.ok(firstRun.text.length > 0, `${label} prompt1: generated text`)
       t.ok(firstRun.generatedTokens > 0, `${label} prompt1: generated tokens tracked`)
@@ -191,8 +194,11 @@ test('[tools] prompt scenarios', { timeout: 1_800_000, skip: isDarwinX64 }, asyn
       const secondRun = await runPrompt(model, buildPrompt2(firstRun.text))
       t.ok(secondRun.text.length > 0, `${label} prompt2: generated text`)
       t.ok(secondRun.generatedTokens > 0, `${label} prompt2: generated tokens tracked`)
+    } catch (error) {
+      console.error(error)
+      t.fail(`[tools] prompt scenarios [${modelVariant.id}]: ` + error.message)
     } finally {
-      await release()
+      if (release) await release()
     }
   }
 })
