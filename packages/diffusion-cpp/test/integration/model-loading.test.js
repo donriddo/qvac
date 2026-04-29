@@ -26,33 +26,40 @@ const DEFAULT_MODEL = {
 }
 
 test('model loading - load and unload', { timeout: testTimeout }, async t => {
-  const [downloadedModelName, modelDir] = await ensureModel({
-    modelName: DEFAULT_MODEL.name,
-    downloadUrl: DEFAULT_MODEL.url
-  })
+  let addon = null
+  try {
+    const [downloadedModelName, modelDir] = await ensureModel({
+      modelName: DEFAULT_MODEL.name,
+      downloadUrl: DEFAULT_MODEL.url
+    })
 
-  const config = {
-    threads: '4',
-    device: useCpu ? 'cpu' : 'gpu',
-    prediction: 'v'
+    const config = {
+      threads: '4',
+      device: useCpu ? 'cpu' : 'gpu',
+      prediction: 'v'
+    }
+
+    addon = new ImgStableDiffusion({
+      files: {
+        model: path.join(modelDir, downloadedModelName)
+      },
+      config,
+      logger: console
+    })
+
+    await addon.load()
+    t.pass('model loaded successfully')
+
+    await addon.unload()
+    t.pass('model unloaded successfully')
+
+    await addon.unload().catch(() => {})
+    t.pass('second unload is idempotent')
+  } catch (error) {
+    t.fail('model loading - load and unload: ' + error.message)
+  } finally {
+    if (addon) await addon.unload().catch(() => {})
   }
-
-  const addon = new ImgStableDiffusion({
-    files: {
-      model: path.join(modelDir, downloadedModelName)
-    },
-    config,
-    logger: console
-  })
-
-  await addon.load()
-  t.pass('model loaded successfully')
-
-  await addon.unload()
-  t.pass('model unloaded successfully')
-
-  await addon.unload().catch(() => {})
-  t.pass('second unload is idempotent')
 })
 
 // Keep event loop alive briefly to let pending async operations complete

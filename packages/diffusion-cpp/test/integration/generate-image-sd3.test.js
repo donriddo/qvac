@@ -31,38 +31,39 @@ const DEFAULT_MODEL = {
 test('SD3 Medium txt2img — generates a valid PNG image', { timeout: 900000, skip }, async (t) => {
   setupJsLogger(binding)
 
-  const [downloadedModelName, modelDir] = await ensureModel({
-    modelName: DEFAULT_MODEL.name,
-    downloadUrl: DEFAULT_MODEL.url
-  })
-
-  console.log('\n' + '='.repeat(60))
-  console.log('STABLE DIFFUSION 3 MEDIUM — INTEGRATION TEST')
-  console.log('='.repeat(60))
-  console.log(` Platform  : ${platform}`)
-  console.log(` Model     : ${downloadedModelName}`)
-  console.log(` Models dir: ${modelDir}`)
-
-  const modelPath = path.join(modelDir, downloadedModelName)
-  t.ok(fs.existsSync(modelPath), 'Model file exists on disk')
-
-  const model = new ImgStableDiffusion({
-    files: {
-      model: path.join(modelDir, downloadedModelName)
-    },
-    config: {
-      threads: 4,
-      device: useCpu ? 'cpu' : 'gpu',
-      prediction: 'flow',
-      flow_shift: '3.0'
-    },
-    logger: console
-  })
-
-  const images = []
-  const progressTicks = []
-
+  let model = null
   try {
+    const [downloadedModelName, modelDir] = await ensureModel({
+      modelName: DEFAULT_MODEL.name,
+      downloadUrl: DEFAULT_MODEL.url
+    })
+
+    console.log('\n' + '='.repeat(60))
+    console.log('STABLE DIFFUSION 3 MEDIUM — INTEGRATION TEST')
+    console.log('='.repeat(60))
+    console.log(` Platform  : ${platform}`)
+    console.log(` Model     : ${downloadedModelName}`)
+    console.log(` Models dir: ${modelDir}`)
+
+    const modelPath = path.join(modelDir, downloadedModelName)
+    t.ok(fs.existsSync(modelPath), 'Model file exists on disk')
+
+    model = new ImgStableDiffusion({
+      files: {
+        model: path.join(modelDir, downloadedModelName)
+      },
+      config: {
+        threads: 4,
+        device: useCpu ? 'cpu' : 'gpu',
+        prediction: 'flow',
+        flow_shift: '3.0'
+      },
+      logger: console
+    })
+
+    const images = []
+    const progressTicks = []
+
     // ── Load ─────────────────────────────────────────────────────────────────
     console.log('\n=== Loading model ===')
     const tLoad = Date.now()
@@ -129,9 +130,11 @@ test('SD3 Medium txt2img — generates a valid PNG image', { timeout: 900000, sk
     console.log(` Image size  : ${img.length} bytes`)
     console.log(' PNG valid   : true')
     console.log('='.repeat(60))
+  } catch (error) {
+    t.fail('SD3 Medium txt2img — generates a valid PNG image: ' + error.message)
   } finally {
     console.log('\n=== Cleanup ===')
-    await model.unload().catch(() => {})
+    if (model) await model.unload().catch(() => {})
     try {
       binding.releaseLogger()
     } catch (_) {}

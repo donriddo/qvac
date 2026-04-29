@@ -41,50 +41,51 @@ const VAE_MODEL = {
 test('FLUX.2 klein txt2img — generates a valid PNG image', { timeout: 1800000, skip }, async (t) => {
   setupJsLogger(binding)
 
-  const [downloadedModelName, modelDir] = await ensureModel({
-    modelName: DIFFUSION_MODEL.name,
-    downloadUrl: DIFFUSION_MODEL.url
-  })
-
-  await ensureModel({
-    modelName: LLM_MODEL.name,
-    downloadUrl: LLM_MODEL.url
-  })
-
-  await ensureModel({
-    modelName: VAE_MODEL.name,
-    downloadUrl: VAE_MODEL.url
-  })
-
-  console.log('\n' + '='.repeat(60))
-  console.log('FLUX.2 [klein] 4B — INTEGRATION TEST')
-  console.log('='.repeat(60))
-  console.log(` Platform  : ${platform}`)
-  console.log(` Model     : ${downloadedModelName}`)
-  console.log(` LLM       : ${LLM_MODEL.name}`)
-  console.log(` VAE       : ${VAE_MODEL.name}`)
-  console.log(` Models dir: ${modelDir}`)
-
-  const modelPath = path.join(modelDir, downloadedModelName)
-  t.ok(fs.existsSync(modelPath), 'Model file exists on disk')
-
-  const model = new ImgStableDiffusion({
-    files: {
-      model: path.join(modelDir, downloadedModelName),
-      llm: path.join(modelDir, LLM_MODEL.name),
-      vae: path.join(modelDir, VAE_MODEL.name)
-    },
-    config: {
-      threads: 4,
-      device: useCpu ? 'cpu' : 'gpu'
-    },
-    logger: console
-  })
-
-  const images = []
-  const progressTicks = []
-
+  let model = null
   try {
+    const [downloadedModelName, modelDir] = await ensureModel({
+      modelName: DIFFUSION_MODEL.name,
+      downloadUrl: DIFFUSION_MODEL.url
+    })
+
+    await ensureModel({
+      modelName: LLM_MODEL.name,
+      downloadUrl: LLM_MODEL.url
+    })
+
+    await ensureModel({
+      modelName: VAE_MODEL.name,
+      downloadUrl: VAE_MODEL.url
+    })
+
+    console.log('\n' + '='.repeat(60))
+    console.log('FLUX.2 [klein] 4B — INTEGRATION TEST')
+    console.log('='.repeat(60))
+    console.log(` Platform  : ${platform}`)
+    console.log(` Model     : ${downloadedModelName}`)
+    console.log(` LLM       : ${LLM_MODEL.name}`)
+    console.log(` VAE       : ${VAE_MODEL.name}`)
+    console.log(` Models dir: ${modelDir}`)
+
+    const modelPath = path.join(modelDir, downloadedModelName)
+    t.ok(fs.existsSync(modelPath), 'Model file exists on disk')
+
+    model = new ImgStableDiffusion({
+      files: {
+        model: path.join(modelDir, downloadedModelName),
+        llm: path.join(modelDir, LLM_MODEL.name),
+        vae: path.join(modelDir, VAE_MODEL.name)
+      },
+      config: {
+        threads: 4,
+        device: useCpu ? 'cpu' : 'gpu'
+      },
+      logger: console
+    })
+
+    const images = []
+    const progressTicks = []
+
     // ── Load ─────────────────────────────────────────────────────────────────
     console.log('\n=== Loading model ===')
     const tLoad = Date.now()
@@ -149,9 +150,11 @@ test('FLUX.2 klein txt2img — generates a valid PNG image', { timeout: 1800000,
     console.log(` Image size  : ${img.length} bytes`)
     console.log(' PNG valid   : true')
     console.log('='.repeat(60))
+  } catch (error) {
+    t.fail('FLUX.2 klein txt2img — generates a valid PNG image: ' + error.message)
   } finally {
     console.log('\n=== Cleanup ===')
-    await model.unload().catch(() => {})
+    if (model) await model.unload().catch(() => {})
     try {
       binding.releaseLogger()
     } catch (_) {}
