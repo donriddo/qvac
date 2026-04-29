@@ -4,6 +4,12 @@ const path = require('bare-path')
 const fs = require('bare-fs')
 const { pathToFileURL } = require('bare-url')
 
+if (typeof process !== 'undefined' && typeof process.on === 'function') {
+  process.on('unhandledRejection', (reason) => {
+    console.error('[integration-runner] Unhandled rejection:', reason instanceof Error ? reason.stack : reason)
+  })
+}
+
 async function runIntegrationModule (relativeModulePath, options = {}) {
   const modulePath = path.join(__dirname, relativeModulePath)
 
@@ -13,8 +19,25 @@ async function runIntegrationModule (relativeModulePath, options = {}) {
   }
 
   const moduleUrl = pathToFileURL(modulePath).href
-  await import(moduleUrl)
-  return modulePath
+  try {
+    await import(moduleUrl)
+  } catch (error) {
+    console.error(`[integration-runner] Module failed to load or run: ${error.message}`)
+    return {
+      modulePath,
+      summary: {
+        total: 1,
+        passed: 0,
+        failed: 1,
+        error: {
+          message: error.message,
+          code: error.code,
+          stack: error.stack
+        }
+      }
+    }
+  }
+  return { modulePath, summary: null }
 }
 
 global.runIntegrationModule = runIntegrationModule
