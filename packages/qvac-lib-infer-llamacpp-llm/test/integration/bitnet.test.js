@@ -27,38 +27,42 @@ async function collectResponse (response) {
 }
 
 test('bitnet model can run simple inference', { timeout: 600_000, skip: !isAndroid }, async t => {
-  const [modelName, dirPath] = await ensureModel({
-    modelName: BITNET_MODEL.name,
-    downloadUrl: BITNET_MODEL.url
-  })
-
-  const modelPath = path.join(dirPath, modelName)
+  let addon = null
   const specLogger = attachSpecLogger({ forwardToConsole: true })
-
-  const config = {
-    gpu_layers: '999',
-    ctx_size: '1024',
-    device: 'gpu',
-    n_predict: '32',
-    verbosity: '2'
-  }
-
-  const addon = new LlmLlamacpp({
-    files: { model: [modelPath] },
-    config,
-    logger: console,
-    opts: { stats: true }
-  })
-
   try {
+    const [modelName, dirPath] = await ensureModel({
+      modelName: BITNET_MODEL.name,
+      downloadUrl: BITNET_MODEL.url
+    })
+
+    const modelPath = path.join(dirPath, modelName)
+
+    const config = {
+      gpu_layers: '999',
+      ctx_size: '1024',
+      device: 'gpu',
+      n_predict: '32',
+      verbosity: '2'
+    }
+
+    addon = new LlmLlamacpp({
+      files: { model: [modelPath] },
+      config,
+      logger: console,
+      opts: { stats: true }
+    })
+
     await addon.load()
     const response = await addon.run(PROMPT)
     const output = await collectResponse(response)
 
     t.ok(output.length > 0, 'bitnet model should generate output')
     t.comment(`BitNet output: "${output}"`)
+  } catch (error) {
+    console.error(error)
+    t.fail('bitnet model can run simple inference: ' + error.message)
   } finally {
-    await addon.unload().catch(() => { })
+    if (addon) await addon.unload().catch(() => {})
     specLogger.release()
   }
 })

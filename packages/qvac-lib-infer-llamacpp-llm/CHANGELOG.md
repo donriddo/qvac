@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.19.1] - 2026-04-29
+
+This release improves download reliability and prevents test-process crashes on mobile (iOS/Android) when network errors occur during model downloads.
+
+## Bug Fixes
+
+### Retry logic and atomic writes for model downloads
+
+`ensureModel()` in the integration test utilities now retries transient network failures (DNS lookup failure, connection reset, timeout, 5xx responses) with exponential backoff and jitter. Downloads are written to a `.part` file first and renamed to the final path only after a size check passes, so a partial download from a previous interrupted run can never be used as a cached file.
+
+Zero-byte cached files (left by previous failures that wrote an empty file before crashing) are now detected and removed before attempting a fresh download.
+
+### Unhandled rejection containment in the mobile test runner
+
+When `ensureModel()` threw a network error outside a `try/catch` block in an integration test, the Bare runtime on iOS/Android treated the resulting rejected promise as an unhandled rejection and terminated the process. Because brittle's test infrastructure never had a chance to record a failure, Appium saw no FAIL marker and reported the run as a silent crash.
+
+Two complementary fixes address this:
+
+- `integration-runtime.cjs` now wraps `import()` in a `try/catch` that returns a structured error summary instead of propagating the rejection, and installs a `process.on('unhandledRejection', ...)` handler as a last-resort containment layer.
+- All 16 integration test files now wrap their test bodies (including the `ensureModel()` / `resolveModel()` / `setupModel()` / `createToolModel()` / `createAddon()` call sites) in a `try/catch` that calls `t.fail()` with a descriptive message rather than allowing the async test function to reject.
+
+## Pull Requests
+
+- [#1815](https://github.com/tetherto/qvac/pull/1815) - fix: improve mobile download robustness and prevent unhandled rejection crashes
+
 ## [0.19.0] - 2026-04-29
 
 This release adds per-request structured-output support to the LLM addon: callers can now constrain a single completion to either a JSON Schema or a raw GBNF grammar without reloading the model.

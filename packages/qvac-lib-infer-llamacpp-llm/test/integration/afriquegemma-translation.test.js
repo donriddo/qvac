@@ -154,9 +154,11 @@ const TIMEOUT = 1_800_000
 //      pairs the pitch promises. Includes low-resource pairs and reverse.
 // ---------------------------------------------------------------------------
 test('AfriqueGemma: core EN↔African language pairs', { timeout: TIMEOUT }, async t => {
-  const [modelName, dirPath] = await resolveModel()
-  const { addon } = await createAddon(dirPath, modelName)
+  let addon = null
   try {
+    const [modelName, dirPath] = await resolveModel()
+    const result = await createAddon(dirPath, modelName)
+    addon = result.addon
     await addon.load()
     t.pass('model loaded (Gemma 3 4B base, Q4_K_M via llama.cpp)')
 
@@ -183,8 +185,11 @@ test('AfriqueGemma: core EN↔African language pairs', { timeout: TIMEOUT }, asy
     const r2 = await addon.run([{ role: 'user', content: detPrompt }])
     const out2 = await collectTranslation(r2)
     t.is(out1, out2, `deterministic: "${out1}"`)
+  } catch (error) {
+    console.error(error)
+    t.fail('AfriqueGemma: core EN↔African language pairs: ' + error.message)
   } finally {
-    await addon.unload().catch(() => {})
+    if (addon) await addon.unload().catch(() => {})
   }
 })
 
@@ -198,9 +203,11 @@ test('AfriqueGemma: core EN↔African language pairs', { timeout: TIMEOUT }, asy
 //      this routes via bridge language. Two inference calls, same model.
 // ---------------------------------------------------------------------------
 test('AfriqueGemma: African-to-African via English pivot', { timeout: TIMEOUT }, async t => {
-  const [modelName, dirPath] = await resolveModel()
-  const { addon } = await createAddon(dirPath, modelName)
+  let addon = null
   try {
+    const [modelName, dirPath] = await resolveModel()
+    const result = await createAddon(dirPath, modelName)
+    addon = result.addon
     await addon.load()
 
     const step1Prompt = 'Translate Swahili to English.\nSwahili: Watoto wanacheza kwenye bustani.\nEnglish:'
@@ -214,8 +221,11 @@ test('AfriqueGemma: African-to-African via English pivot', { timeout: TIMEOUT },
     const yorubaOutput = await collectTranslation(r2)
     t.ok(yorubaOutput.length > 0, 'pivot step 2 (en→yo) produced output')
     t.ok(!yorubaOutput.includes('English:'), 'final output is not English echo')
+  } catch (error) {
+    console.error(error)
+    t.fail('AfriqueGemma: African-to-African via English pivot: ' + error.message)
   } finally {
-    await addon.unload().catch(() => {})
+    if (addon) await addon.unload().catch(() => {})
   }
 })
 
@@ -230,9 +240,11 @@ test('AfriqueGemma: African-to-African via English pivot', { timeout: TIMEOUT },
 //      Includes pt→sw to verify bridge→African direct translation.
 // ---------------------------------------------------------------------------
 test('AfriqueGemma: bridge languages (French, Portuguese, Arabic)', { timeout: TIMEOUT }, async t => {
-  const [modelName, dirPath] = await resolveModel()
-  const { addon } = await createAddon(dirPath, modelName)
+  let addon = null
   try {
+    const [modelName, dirPath] = await resolveModel()
+    const result = await createAddon(dirPath, modelName)
+    addon = result.addon
     await addon.load()
 
     for (const [key, { prompt, langPair }] of Object.entries(BRIDGE_PAIRS)) {
@@ -246,8 +258,11 @@ test('AfriqueGemma: bridge languages (French, Portuguese, Arabic)', { timeout: T
         t.ok(translation.length >= 5, `${langPair}: bridge→African direct produced meaningful output`)
       }
     }
+  } catch (error) {
+    console.error(error)
+    t.fail('AfriqueGemma: bridge languages (French, Portuguese, Arabic): ' + error.message)
   } finally {
-    await addon.unload().catch(() => {})
+    if (addon) await addon.unload().catch(() => {})
   }
 })
 
@@ -258,9 +273,11 @@ test('AfriqueGemma: bridge languages (French, Portuguese, Arabic)', { timeout: T
 //      Sequential calls on same instance must not leak state.
 // ---------------------------------------------------------------------------
 test('AfriqueGemma: longer content, mixed content, sequential calls', { timeout: TIMEOUT }, async t => {
-  const [modelName, dirPath] = await resolveModel()
-  const { addon } = await createAddon(dirPath, modelName)
+  let addon = null
   try {
+    const [modelName, dirPath] = await resolveModel()
+    const result = await createAddon(dirPath, modelName)
+    addon = result.addon
     await addon.load()
 
     const longerPrompt = 'Translate English to Swahili.\nEnglish: The children are playing in the park. Their mother watches from the bench. The sun is shining brightly today.\nSwahili:'
@@ -279,8 +296,11 @@ test('AfriqueGemma: longer content, mixed content, sequential calls', { timeout:
       const out = await collectTranslation(resp)
       t.ok(out.length > 0, `sequential ${langPair}: produced output`)
     }
+  } catch (error) {
+    console.error(error)
+    t.fail('AfriqueGemma: longer content, mixed content, sequential calls: ' + error.message)
   } finally {
-    await addon.unload().catch(() => {})
+    if (addon) await addon.unload().catch(() => {})
   }
 })
 
@@ -294,9 +314,11 @@ test('AfriqueGemma: longer content, mixed content, sequential calls', { timeout:
 //      tokenizer corrupts Unicode input, these translations fail silently.
 // ---------------------------------------------------------------------------
 test('AfriqueGemma: African-language Unicode input (African → English)', { timeout: TIMEOUT }, async t => {
-  const [modelName, dirPath] = await resolveModel()
-  const { addon } = await createAddon(dirPath, modelName)
+  let addon = null
   try {
+    const [modelName, dirPath] = await resolveModel()
+    const result = await createAddon(dirPath, modelName)
+    addon = result.addon
     await addon.load()
 
     const yorubaPrompt = 'Translate Yoruba to English.\nYoruba: Àwọn ọmọ náà ń ṣeré nínú ọgbà.\nEnglish:'
@@ -318,8 +340,11 @@ test('AfriqueGemma: African-language Unicode input (African → English)', { tim
     t.ok(/[a-zA-Z]{3,}/.test(hausaOut), 'Hausa → English: output is Latin/English text')
 
     t.comment('All non-Latin/diacritic inputs produced valid English output')
+  } catch (error) {
+    console.error(error)
+    t.fail('AfriqueGemma: African-language Unicode input (African → English): ' + error.message)
   } finally {
-    await addon.unload().catch(() => {})
+    if (addon) await addon.unload().catch(() => {})
   }
 })
 
@@ -332,9 +357,11 @@ test('AfriqueGemma: African-language Unicode input (African → English)', { tim
 //      performance stats are populated for visibility.
 // ---------------------------------------------------------------------------
 test('AfriqueGemma: streaming tokens arrive incrementally with stats', { timeout: TIMEOUT }, async t => {
-  const [modelName, dirPath] = await resolveModel()
-  const { addon } = await createAddon(dirPath, modelName)
+  let addon = null
   try {
+    const [modelName, dirPath] = await resolveModel()
+    const result = await createAddon(dirPath, modelName)
+    addon = result.addon
     await addon.load()
 
     const chunks = []
@@ -365,7 +392,10 @@ test('AfriqueGemma: streaming tokens arrive incrementally with stats', { timeout
     } else {
       t.comment('stats not available on response object — skipping perf log')
     }
+  } catch (error) {
+    console.error(error)
+    t.fail('AfriqueGemma: streaming tokens arrive incrementally with stats: ' + error.message)
   } finally {
-    await addon.unload().catch(() => {})
+    if (addon) await addon.unload().catch(() => {})
   }
 })
