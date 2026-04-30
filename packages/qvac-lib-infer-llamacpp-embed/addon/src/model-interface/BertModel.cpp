@@ -262,6 +262,39 @@ common_params setupParams(
   configVector.emplace_back("--model");
   configVector.emplace_back(modelGgufPath);
 
+  llama_split_mode splitMode = LLAMA_SPLIT_MODE_NONE;
+  {
+    auto hIt = configFilemap.find("split-mode");
+    auto uIt = configFilemap.find("split_mode");
+    if (hIt != configFilemap.end() && uIt != configFilemap.end()) {
+      throw qvac_errors::StatusError(
+          qvac_errors::general_error::InvalidArgument,
+          string_format(
+              "%s: both 'split-mode' and 'split_mode' are present; "
+              "use one or the other.\n",
+              __func__));
+    }
+    if (auto it = (hIt != configFilemap.end()) ? hIt : uIt;
+        it != configFilemap.end()) {
+      std::string val = it->second;
+      std::transform(val.begin(), val.end(), val.begin(), ::tolower);
+      if (val == "layer") {
+        splitMode = LLAMA_SPLIT_MODE_LAYER;
+      } else if (val == "row") {
+        splitMode = LLAMA_SPLIT_MODE_ROW;
+      } else if (val != "none") {
+        throw qvac_errors::StatusError(
+            qvac_errors::general_error::InvalidArgument,
+            string_format(
+                "%s: invalid split-mode '%s', must be 'none', 'layer', or "
+                "'row'.\n",
+                __func__,
+                it->second.c_str()));
+      }
+      configFilemap.erase(it);
+    }
+  }
+
   auto deviceIt = configFilemap.find("device");
   if (deviceIt == configFilemap.end()) {
     std::string errorMsg =
@@ -281,20 +314,46 @@ common_params setupParams(
     const std::pair<BackendType, std::string> chosenBackend =
         chooseBackend(preferredBackend, llamaLogCallback, mainGpu);
 
-    if (chosenBackend.first != BackendType::GPU &&
-        chosenBackend.first != BackendType::CPU) {
+    if (chosenBackend.first == BackendType::GPU) {
+      resolvedBackendDevice = 1;
+      params.split_mode = splitMode;
+
+      if (splitMode != LLAMA_SPLIT_MODE_NONE && mainGpu.has_value()) {
+        if (std::holds_alternative<int>(mainGpu.value())) {
+          configFilemap["main-gpu"] =
+              std::to_string(std::get<int>(mainGpu.value()));
+        } else {
+          qvac_lib_infer_llamacpp_embed::logging::llamaLogCallback(
+              GGML_LOG_LEVEL_WARN,
+              "[BertModel] main-gpu 'dedicated'/'integrated' ignored in "
+              "multi-GPU split-mode; use an integer device index instead\n",
+              nullptr);
+        }
+      }
+    } else if (chosenBackend.first == BackendType::CPU) {
+      resolvedBackendDevice = 0;
+      params.split_mode = LLAMA_SPLIT_MODE_NONE;
+      if (splitMode != LLAMA_SPLIT_MODE_NONE) {
+        qvac_lib_infer_llamacpp_embed::logging::llamaLogCallback(
+            GGML_LOG_LEVEL_WARN,
+            "[BertModel] split-mode, tensor-split and main-gpu ignored: "
+            "no GPU backend available, falling back to CPU\n",
+            nullptr);
+        configFilemap.erase("tensor-split");
+      }
+    } else {
       throw qvac_errors::StatusError(
           qvac_errors::general_error::InternalError,
           "preferredDeviceFromString: wrong deduced device, must be 'gpu' or "
           "'cpu'.\n");
     }
-    if (chosenBackend.first == BackendType::GPU) {
-      resolvedBackendDevice = 1;
-    } else {
-      resolvedBackendDevice = 0;
+    // In multi-GPU split mode we intentionally omit --device so llama.cpp
+    // distributes layers/rows across all available GPUs rather than pinning
+    // to the single backend that chooseBackend selected.
+    if (splitMode == LLAMA_SPLIT_MODE_NONE) {
+      configVector.emplace_back("--device");
+      configVector.emplace_back(chosenBackend.second);
     }
-    configVector.emplace_back("--device");
-    configVector.emplace_back(chosenBackend.second);
     configFilemap.erase(deviceIt);
   }
 

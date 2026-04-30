@@ -49,4 +49,10 @@ std::pair<BackendType, std::string> chooseBackend(
 std::pair<BackendType, std::string> chooseBackend(
     BackendType preferredBackendType, llamaLogCallbackF llamaLogcallback,
     const std::optional<MainGpu>& mainGpu = std::nullopt);
+
+/// @brief Count GPU devices available for multi-GPU split mode.
+/// Returns the number of discrete GPUs when any are present; otherwise
+/// falls back to the iGPU count. This mirrors backends like Vulkan which
+/// exclude iGPUs by default when discrete GPUs exist.
+size_t getEffectiveGpuDeviceCount(const BackendInterface& bckI);
 } // namespace backend_selection
