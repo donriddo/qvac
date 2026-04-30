@@ -549,6 +549,10 @@ BertModel::preprocessPrompt(const std::string& prompt) const {
   return splitLines(prompt, init_.params.embd_sep);
 }
 
+const common_params& BertModel::getCommonParams() const {
+  return init_.params;
+}
+
 bool BertModel::isLoaded() const {
   return is_loaded_ && model_ != nullptr && ctx_ != nullptr;
 }
