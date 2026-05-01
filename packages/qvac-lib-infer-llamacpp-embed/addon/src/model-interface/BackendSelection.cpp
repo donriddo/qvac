@@ -23,13 +23,8 @@ struct DeviceDescription {
       const BackendInterface& bckI)
       : gpuDescription(bckI.ggml_backend_dev_description(dev)),
         gpuBackend(bckI.ggml_backend_dev_name(dev)) {
-    std::transform(
-        gpuDescription.begin(),
-        gpuDescription.end(),
-        gpuDescription.begin(),
-        tolower);
-    std::transform(
-        gpuBackend.begin(), gpuBackend.end(), gpuBackend.begin(), tolower);
+    std::ranges::transform(gpuDescription, gpuDescription.begin(), tolower);
+    std::ranges::transform(gpuBackend, gpuBackend.begin(), tolower);
     {
       std::string backendTypeStr;
       switch (backendTypeEnum) {
@@ -168,18 +163,18 @@ backend_selection::parseMainGpu(const std::string& mainGpuStr) {
   } catch (const std::exception&) {
     // Not an integer, try enum values
     std::string lowerStr = mainGpuStr;
-    std::transform(lowerStr.begin(), lowerStr.end(), lowerStr.begin(), tolower);
+    std::ranges::transform(lowerStr, lowerStr.begin(), tolower);
 
     if (lowerStr == "integrated") {
       return MainGpu(MainGpuType::Integrated);
-    } else if (lowerStr == "dedicated") {
-      return MainGpu(MainGpuType::Dedicated);
-    } else {
-      throw qvac_errors::StatusError(
-          qvac_errors::general_error::InvalidArgument,
-          "main-gpu must be an integer device index, 'integrated', or "
-          "'dedicated'");
     }
+    if (lowerStr == "dedicated") {
+      return MainGpu(MainGpuType::Dedicated);
+    }
+    throw qvac_errors::StatusError(
+        qvac_errors::general_error::InvalidArgument,
+        "main-gpu must be an integer device index, 'integrated', or "
+        "'dedicated'");
   }
 }
 
@@ -192,12 +187,12 @@ std::optional<MainGpu> backend_selection::tryMainGpuFromMap(
         qvac_errors::general_error::InvalidArgument,
         "both 'main-gpu' and 'main_gpu' are present; use one or the other.");
   }
-  auto it = (hIt != configFilemap.end()) ? hIt : uIt;
-  if (it == configFilemap.end()) {
+  auto foundIt = (hIt != configFilemap.end()) ? hIt : uIt;
+  if (foundIt == configFilemap.end()) {
     return std::nullopt;
   }
-  std::optional<MainGpu> mainGpu = parseMainGpu(it->second);
-  configFilemap.erase(it);
+  std::optional<MainGpu> mainGpu = parseMainGpu(foundIt->second);
+  configFilemap.erase(foundIt);
   return mainGpu;
 }
 
@@ -272,14 +267,14 @@ std::pair<BackendType, std::string> backend_selection::chooseBackend(
     const BackendType preferredBackendType, llamaLogCallbackF llamaLogcallback,
     const std::optional<MainGpu>& mainGpu) {
   BackendInterface bckI{
-      ggml_backend_dev_count,
-      ggml_backend_dev_backend_reg,
-      ggml_backend_dev_get,
-      ggml_backend_reg_name,
-      ggml_backend_dev_description,
-      ggml_backend_dev_name,
-      ggml_backend_dev_type,
-      llamaLogcallback};
+      .ggml_backend_dev_count = ggml_backend_dev_count,
+      .ggml_backend_dev_backend_reg = ggml_backend_dev_backend_reg,
+      .ggml_backend_dev_get = ggml_backend_dev_get,
+      .ggml_backend_reg_name = ggml_backend_reg_name,
+      .ggml_backend_dev_description = ggml_backend_dev_description,
+      .ggml_backend_dev_name = ggml_backend_dev_name,
+      .ggml_backend_dev_type = ggml_backend_dev_type,
+      .llamaLogCallback = llamaLogcallback};
   return backend_selection::chooseBackend(preferredBackendType, bckI, mainGpu);
 }
 

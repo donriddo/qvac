@@ -28,7 +28,7 @@ using llamaLogCallbackF =
     void (*)(ggml_log_level level, const char* text, void* userData);
 
 struct BackendInterface {
-  size_t (*ggml_backend_dev_count)(void);
+  size_t (*ggml_backend_dev_count)();
   ggml_backend_reg_t (*ggml_backend_dev_backend_reg)(ggml_backend_dev_t device);
   ggml_backend_dev_t (*ggml_backend_dev_get)(size_t index);
   const char* (*ggml_backend_reg_name)(ggml_backend_reg_t reg);

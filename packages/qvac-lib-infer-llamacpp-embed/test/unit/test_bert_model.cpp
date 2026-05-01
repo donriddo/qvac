@@ -9,11 +9,10 @@
 #include <qvac-lib-inference-addon-cpp/Errors.hpp>
 #include <qvac-lib-inference-addon-cpp/RuntimeStats.hpp>
 
-#include "test_common.hpp"
-
 #include "addon/AddonCpp.hpp"
 #include "addon/BertErrors.hpp"
 #include "model-interface/BertModel.hpp"
+#include "test_common.hpp"
 
 namespace fs = std::filesystem;
 
