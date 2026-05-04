@@ -8,7 +8,7 @@ const GGMLBert = require('../../index.js')
 
 const TRANSIENT_ERROR_CODES = new Set([
   'EAI_NODATA', 'EAI_AGAIN', 'ENOTFOUND', 'ETIMEDOUT',
-  'ECONNRESET', 'EPIPE', 'ECONNABORTED'
+  'ECONNRESET', 'EPIPE', 'ECONNABORTED', 'ESIZE'
 ])
 
 function isTransientError (err) {
@@ -335,6 +335,19 @@ async function cleanupResources (inference) {
   await inference.unload()
 }
 
+const test = require('brittle')
+
+function safeTest (name, opts, fn) {
+  test(name, opts, async (t) => {
+    try {
+      await fn(t)
+    } catch (err) {
+      console.error(err)
+      t.fail(`${name}: ${err.message}`)
+    }
+  })
+}
+
 module.exports = {
   downloadFile,
   ensureModel,
@@ -347,5 +360,6 @@ module.exports = {
   waitForCompletion,
   setupErrorHandlers,
   removeErrorHandlers,
-  cleanupResources
+  cleanupResources,
+  safeTest
 }

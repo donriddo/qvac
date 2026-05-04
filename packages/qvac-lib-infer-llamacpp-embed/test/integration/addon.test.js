@@ -11,7 +11,8 @@ const {
   setupErrorHandlers,
   removeErrorHandlers,
   cleanupResources,
-  getModelConfigs
+  getModelConfigs,
+  safeTest
 } = require('./utils')
 
 const platform = os.platform()
@@ -598,109 +599,84 @@ async function setupModelApiBehavior (t) {
   return { inference }
 }
 
-test('idle | run: allowed, returns QvacResponse', { timeout: TEST_TIMEOUT }, async t => {
+safeTest('idle | run: allowed, returns QvacResponse', { timeout: TEST_TIMEOUT }, async t => {
+  const { inference } = await setupModelApiBehavior(t)
+  const response = await inference.run('Hello world')
+  t.ok(response, 'run() returns a response')
+  t.ok(typeof response.await === 'function' || response._finishPromise != null, 'response has await or _finishPromise')
+  const embeddings = await waitForCompletion(response)
+  t.ok(embeddings != null && embeddings[0]?.length > 0, 'inference produces embeddings')
+  t.ok(
+    response?.stats?.backendDevice === 'cpu' || response?.stats?.backendDevice === 'gpu',
+    'runtime stats report resolved backendDevice as cpu or gpu'
+  )
+})
+
+safeTest('idle | cancel: allowed, no-op', { timeout: TEST_TIMEOUT }, async t => {
+  const { inference } = await setupModelApiBehavior(t)
+  await inference.cancel()
+  t.pass('cancel when idle does not throw')
+})
+
+safeTest('run | cancel: allowed, cancels current job', { timeout: TEST_TIMEOUT }, async t => {
+  const { inference } = await setupModelApiBehavior(t)
+  const sequences = Array.from({ length: 2 }, (_, i) => `Sequence ${i} for cancel test.`)
+  const response = await inference.run(sequences)
+  const cancelPromise = inference.cancel()
   try {
-    const { inference } = await setupModelApiBehavior(t)
-    const response = await inference.run('Hello world')
-    t.ok(response, 'run() returns a response')
-    t.ok(typeof response.await === 'function' || response._finishPromise != null, 'response has await or _finishPromise')
-    const embeddings = await waitForCompletion(response)
-    t.ok(embeddings != null && embeddings[0]?.length > 0, 'inference produces embeddings')
+    await waitForCompletion(response)
+  } catch (err) {
+    if (!/cancel|aborted|stopp?ed|Failed/i.test(extractErrorMessage(err))) throw err
+  }
+  await cancelPromise
+  t.pass('cancel during run resolves and stops job')
+})
+
+safeTest('run | response.cancel(): equivalent to model.cancel(), resolves when job stopped', { timeout: TEST_TIMEOUT }, async t => {
+  const { inference } = await setupModelApiBehavior(t)
+  const sequences = Array.from({ length: 24 }, (_, i) => `Sequence ${i} for response.cancel test.`)
+  const response = await inference.run(sequences)
+  const cancelPromise = typeof response.cancel === 'function' ? response.cancel() : inference.cancel()
+  try {
+    await waitForCompletion(response)
+  } catch (err) {
+    if (!/cancel|aborted|stopp?ed|Failed/i.test(extractErrorMessage(err))) throw err
+  }
+  await cancelPromise
+  t.pass('response.cancel() resolves when job has stopped')
+})
+
+safeTest('run | run: second run() throws busy error', { timeout: TEST_TIMEOUT }, async t => {
+  const { inference } = await setupModelApiBehavior(t)
+  const sequences = Array.from({ length: 16 }, (_, i) => `Sequence ${i}.`)
+  const firstResponse = await inference.run(sequences)
+  let firstError = null
+  if (typeof firstResponse.onError === 'function') {
+    firstResponse.onError(err => { firstError = err })
+  }
+
+  const result = await Promise.race([
+    inference.run('Short')
+      .then(() => ({ kind: 'no-throw' }))
+      .catch(err => ({ kind: 'busy', err })),
+    waitForCompletion(firstResponse)
+      .then(() => ({ kind: 'first-done' }))
+      .catch(() => ({ kind: 'first-done' }))
+  ])
+
+  if (result.kind === 'busy') {
     t.ok(
-      response?.stats?.backendDevice === 'cpu' || response?.stats?.backendDevice === 'gpu',
-      'runtime stats report resolved backendDevice as cpu or gpu'
+      /already set or being processed/.test(result.err.message),
+      'second run() throws "already set or being processed"'
     )
-  } catch (error) {
-    console.error(error)
-    t.fail('idle | run: allowed, returns QvacResponse: ' + error.message)
+  } else if (result.kind === 'first-done') {
+    t.comment('First job finished before second run() was rejected; skipping concurrency assertion')
+    t.pass('first job completed (concurrency assertion skipped)')
+  } else {
+    t.fail('second run() should have thrown busy error while first job was still active')
   }
-})
 
-test('idle | cancel: allowed, no-op', { timeout: TEST_TIMEOUT }, async t => {
-  try {
-    const { inference } = await setupModelApiBehavior(t)
-    await inference.cancel()
-    t.pass('cancel when idle does not throw')
-  } catch (error) {
-    console.error(error)
-    t.fail('idle | cancel: allowed, no-op: ' + error.message)
-  }
-})
-
-test('run | cancel: allowed, cancels current job', { timeout: TEST_TIMEOUT }, async t => {
-  try {
-    const { inference } = await setupModelApiBehavior(t)
-    const sequences = Array.from({ length: 2 }, (_, i) => `Sequence ${i} for cancel test.`)
-    const response = await inference.run(sequences)
-    const cancelPromise = inference.cancel()
-    try {
-      await waitForCompletion(response)
-    } catch (err) {
-      if (!/cancel|aborted|stopp?ed|Failed/i.test(extractErrorMessage(err))) throw err
-    }
-    await cancelPromise
-    t.pass('cancel during run resolves and stops job')
-  } catch (error) {
-    console.error(error)
-    t.fail('run | cancel: allowed, cancels current job: ' + error.message)
-  }
-})
-
-test('run | response.cancel(): equivalent to model.cancel(), resolves when job stopped', { timeout: TEST_TIMEOUT }, async t => {
-  try {
-    const { inference } = await setupModelApiBehavior(t)
-    const sequences = Array.from({ length: 24 }, (_, i) => `Sequence ${i} for response.cancel test.`)
-    const response = await inference.run(sequences)
-    const cancelPromise = typeof response.cancel === 'function' ? response.cancel() : inference.cancel()
-    try {
-      await waitForCompletion(response)
-    } catch (err) {
-      if (!/cancel|aborted|stopp?ed|Failed/i.test(extractErrorMessage(err))) throw err
-    }
-    await cancelPromise
-    t.pass('response.cancel() resolves when job has stopped')
-  } catch (error) {
-    console.error(error)
-    t.fail('run | response.cancel(): equivalent to model.cancel(), resolves when job stopped: ' + error.message)
-  }
-})
-
-test('run | run: second run() throws busy error', { timeout: TEST_TIMEOUT }, async t => {
-  try {
-    const { inference } = await setupModelApiBehavior(t)
-    const sequences = Array.from({ length: 16 }, (_, i) => `Sequence ${i}.`)
-    const firstResponse = await inference.run(sequences)
-    let firstError = null
-    if (typeof firstResponse.onError === 'function') {
-      firstResponse.onError(err => { firstError = err })
-    }
-
-    const result = await Promise.race([
-      inference.run('Short')
-        .then(() => ({ kind: 'no-throw' }))
-        .catch(err => ({ kind: 'busy', err })),
-      waitForCompletion(firstResponse)
-        .then(() => ({ kind: 'first-done' }))
-        .catch(() => ({ kind: 'first-done' }))
-    ])
-
-    if (result.kind === 'busy') {
-      t.ok(
-        /already set or being processed/.test(result.err.message),
-        'second run() throws "already set or being processed"'
-      )
-    } else if (result.kind === 'first-done') {
-      t.comment('First job finished before second run() was rejected; skipping concurrency assertion')
-      t.pass('first job completed (concurrency assertion skipped)')
-    } else {
-      t.fail('second run() should have thrown busy error while first job was still active')
-    }
-
-    const embeddings = await waitForCompletion(firstResponse)
-    t.ok(embeddings != null && embeddings[0]?.length > 0, 'first response completes with embeddings')
-    t.ok(!firstError, 'first response did not fail')
-  } catch (error) {
-    console.error(error)
-    t.fail('run | run: second run() throws busy error: ' + error.message)
-  }
+  const embeddings = await waitForCompletion(firstResponse)
+  t.ok(embeddings != null && embeddings[0]?.length > 0, 'first response completes with embeddings')
+  t.ok(!firstError, 'first response did not fail')
 })
