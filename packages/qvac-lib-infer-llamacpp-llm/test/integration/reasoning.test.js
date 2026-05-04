@@ -1,6 +1,5 @@
 'use strict'
 
-const test = require('brittle')
 const path = require('bare-path')
 const { ensureModel, safeTest } = require('./utils')
 const { attachSpecLogger } = require('./spec-logger')

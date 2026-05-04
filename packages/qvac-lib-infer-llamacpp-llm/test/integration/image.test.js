@@ -1,6 +1,5 @@
 'use strict'
 // test/integration/image.test.js
-const test = require('brittle')
 const fs = require('bare-fs')
 const path = require('bare-path')
 const { ensureModel, getMediaPath, safeTest } = require('./utils')

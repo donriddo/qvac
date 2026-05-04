@@ -1,6 +1,5 @@
 'use strict'
 
-const test = require('brittle')
 const LlmLlamacpp = require('../../index.js')
 const { safeTest } = require('./utils')
 const os = require('bare-os')

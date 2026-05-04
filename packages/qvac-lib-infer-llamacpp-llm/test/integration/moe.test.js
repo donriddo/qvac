@@ -1,6 +1,5 @@
 'use strict'
 
-const test = require('brittle')
 const os = require('bare-os')
 const path = require('bare-path')
 const LlmLlamacpp = require('../../index.js')

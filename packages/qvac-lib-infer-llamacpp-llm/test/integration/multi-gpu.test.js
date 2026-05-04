@@ -1,6 +1,5 @@
 'use strict'
 
-const test = require('brittle')
 const process = require('bare-process')
 const LlmLlamacpp = require('../../index.js')
 const { ensureModel, safeTest } = require('./utils')

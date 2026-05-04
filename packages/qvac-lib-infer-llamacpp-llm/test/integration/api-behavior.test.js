@@ -2,7 +2,6 @@
 
 // Tests must match the behavior described in README section "API behavior by state".
 
-const test = require('brittle')
 const path = require('bare-path')
 const LlmLlamacpp = require('../../index.js')
 const { ensureModel, safeTest } = require('./utils')
