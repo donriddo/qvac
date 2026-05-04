@@ -1,5 +1,7 @@
 'use strict'
 
+/* global Bare */
+
 if (typeof Bare !== 'undefined' && typeof Bare.on === 'function') {
   Bare.on('unhandledRejection', (reason) => {
     console.error('[integration-runner] Unhandled rejection:', reason instanceof Error ? reason.stack : reason)

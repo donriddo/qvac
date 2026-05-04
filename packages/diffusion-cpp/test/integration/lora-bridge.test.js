@@ -4,7 +4,6 @@ const fs = require('bare-fs')
 const path = require('bare-path')
 const os = require('bare-os')
 const proc = require('bare-process')
-const test = require('brittle')
 const binding = require('../../binding')
 const ImgStableDiffusion = require('../../index')
 const {
