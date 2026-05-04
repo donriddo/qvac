@@ -3,7 +3,7 @@
 const test = require('brittle')
 
 const LlmLlamacpp = require('../../index.js')
-const { ensureModel } = require('./utils')
+const { ensureModel, safeTest } = require('./utils')
 const HttpDL = require('./http-loader')
 const os = require('bare-os')
 const path = require('bare-path')
@@ -41,7 +41,7 @@ async function collectResponse (response) {
   return chunks.join('').trim()
 }
 
-test('filesystem loader can run inference end-to-end', { timeout: 600_000, skip: isDarwinX64 }, async t => {
+safeTest('filesystem loader can run inference end-to-end', { timeout: 600_000, skip: isDarwinX64 }, async t => {
   let addon = null
   try {
     const [modelName, dirPath] = await ensureModel({
@@ -70,15 +70,12 @@ test('filesystem loader can run inference end-to-end', { timeout: 600_000, skip:
     const output = await collectResponse(response)
 
     t.ok(output.length > 0, 'filesystem-loaded model should generate output')
-  } catch (error) {
-    console.error(error)
-    t.fail('filesystem-loaded model should generate output: ' + error.message)
   } finally {
     if (addon) await addon.unload().catch(() => {})
   }
 })
 
-test('model unload is clean and idempotent', { timeout: 600_000 }, async t => {
+safeTest('model unload is clean and idempotent', { timeout: 600_000 }, async t => {
   let addon = null
   try {
     const [modelName, dirPath] = await ensureModel({
@@ -119,9 +116,6 @@ test('model unload is clean and idempotent', { timeout: 600_000 }, async t => {
     await addon.unload().catch(err => {
       if (err) t.fail('unload should be idempotent: ' + err.message)
     })
-  } catch (error) {
-    console.error(error)
-    t.fail('model unload is clean and idempotent: ' + error.message)
   } finally {
     if (addon) await addon.unload().catch(() => {})
   }

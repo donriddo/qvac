@@ -3,7 +3,7 @@
 const test = require('brittle')
 const path = require('bare-path')
 const LlmLlamacpp = require('../../index.js')
-const { ensureModel } = require('./utils')
+const { ensureModel, safeTest } = require('./utils')
 const { attachSpecLogger } = require('./spec-logger')
 const os = require('bare-os')
 
@@ -178,7 +178,7 @@ async function runPrompt (model, prompt) {
   return await collectResponse(response)
 }
 
-test('[tools] prompt scenarios', { timeout: 1_800_000, skip: isDarwinX64 }, async t => {
+safeTest('[tools] prompt scenarios', { timeout: 1_800_000, skip: isDarwinX64 }, async t => {
   for (const modelVariant of TOOL_MODEL_VARIANTS) {
     let release = null
     try {
@@ -194,9 +194,6 @@ test('[tools] prompt scenarios', { timeout: 1_800_000, skip: isDarwinX64 }, asyn
       const secondRun = await runPrompt(model, buildPrompt2(firstRun.text))
       t.ok(secondRun.text.length > 0, `${label} prompt2: generated text`)
       t.ok(secondRun.generatedTokens > 0, `${label} prompt2: generated tokens tracked`)
-    } catch (error) {
-      console.error(error)
-      t.fail(`[tools] prompt scenarios [${modelVariant.id}]: ` + error.message)
     } finally {
       if (release) await release()
     }

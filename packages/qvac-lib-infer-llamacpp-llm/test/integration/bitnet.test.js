@@ -3,7 +3,7 @@
 const test = require('brittle')
 const path = require('bare-path')
 const LlmLlamacpp = require('../../index.js')
-const { ensureModel } = require('./utils')
+const { ensureModel, safeTest } = require('./utils')
 const { attachSpecLogger } = require('./spec-logger')
 
 const os = require('bare-os')
@@ -26,7 +26,7 @@ async function collectResponse (response) {
   return chunks.join('').trim()
 }
 
-test('bitnet model can run simple inference', { timeout: 600_000, skip: !isAndroid }, async t => {
+safeTest('bitnet model can run simple inference', { timeout: 600_000, skip: !isAndroid }, async t => {
   let addon = null
   const specLogger = attachSpecLogger({ forwardToConsole: true })
   try {
@@ -58,9 +58,6 @@ test('bitnet model can run simple inference', { timeout: 600_000, skip: !isAndro
 
     t.ok(output.length > 0, 'bitnet model should generate output')
     t.comment(`BitNet output: "${output}"`)
-  } catch (error) {
-    console.error(error)
-    t.fail('bitnet model can run simple inference: ' + error.message)
   } finally {
     if (addon) await addon.unload().catch(() => {})
     specLogger.release()

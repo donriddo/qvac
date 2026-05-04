@@ -3,7 +3,7 @@
 const test = require('brittle')
 const path = require('bare-path')
 const LlmLlamacpp = require('../../index.js')
-const { ensureModel } = require('./utils')
+const { ensureModel, safeTest } = require('./utils')
 const { attachSpecLogger } = require('./spec-logger')
 const os = require('bare-os')
 
@@ -62,52 +62,42 @@ async function collectResponse (response) {
   return chunks.join('')
 }
 
-test('generationParams | predict controls output length', { timeout: 600_000 }, async t => {
-  try {
-    const { model } = await setupModel(t, { seed: '42' })
+safeTest('generationParams | predict controls output length', { timeout: 600_000 }, async t => {
+  const { model } = await setupModel(t, { seed: '42' })
 
-    const responseShort = await model.run(PROMPT, {
-      generationParams: { predict: 8 }
-    })
-    const outputShort = await collectResponse(responseShort)
-    const shortTokens = Number(responseShort?.stats?.generatedTokens || 0)
+  const responseShort = await model.run(PROMPT, {
+    generationParams: { predict: 8 }
+  })
+  const outputShort = await collectResponse(responseShort)
+  const shortTokens = Number(responseShort?.stats?.generatedTokens || 0)
 
-    const responseLong = await model.run(PROMPT, {
-      generationParams: { predict: 48 }
-    })
-    const outputLong = await collectResponse(responseLong)
-    const longTokens = Number(responseLong?.stats?.generatedTokens || 0)
+  const responseLong = await model.run(PROMPT, {
+    generationParams: { predict: 48 }
+  })
+  const outputLong = await collectResponse(responseLong)
+  const longTokens = Number(responseLong?.stats?.generatedTokens || 0)
 
-    t.ok(shortTokens > 0, `predict=8 generated ${shortTokens} tokens`)
-    t.ok(longTokens > 0, `predict=48 generated ${longTokens} tokens`)
-    t.ok(shortTokens <= 8, `predict=8 respects limit (got ${shortTokens})`)
-    t.ok(longTokens > shortTokens, `predict=48 (${longTokens} tokens) > predict=8 (${shortTokens} tokens)`)
-    t.ok(outputLong.length > outputShort.length, 'longer predict produces longer text output')
-  } catch (error) {
-    console.error(error)
-    t.fail('generationParams | predict controls output length: ' + error.message)
-  }
+  t.ok(shortTokens > 0, `predict=8 generated ${shortTokens} tokens`)
+  t.ok(longTokens > 0, `predict=48 generated ${longTokens} tokens`)
+  t.ok(shortTokens <= 8, `predict=8 respects limit (got ${shortTokens})`)
+  t.ok(longTokens > shortTokens, `predict=48 (${longTokens} tokens) > predict=8 (${shortTokens} tokens)`)
+  t.ok(outputLong.length > outputShort.length, 'longer predict produces longer text output')
 })
 
-test('generationParams | load-time defaults restored after override', { timeout: 600_000 }, async t => {
-  try {
-    const { model } = await setupModel(t, { n_predict: '32', seed: '42' })
+safeTest('generationParams | load-time defaults restored after override', { timeout: 600_000 }, async t => {
+  const { model } = await setupModel(t, { n_predict: '32', seed: '42' })
 
-    const responseOverride = await model.run(PROMPT, {
-      generationParams: { predict: 5 }
-    })
-    await collectResponse(responseOverride)
-    const overrideTokens = Number(responseOverride?.stats?.generatedTokens || 0)
+  const responseOverride = await model.run(PROMPT, {
+    generationParams: { predict: 5 }
+  })
+  await collectResponse(responseOverride)
+  const overrideTokens = Number(responseOverride?.stats?.generatedTokens || 0)
 
-    const responseDefault = await model.run(PROMPT)
-    await collectResponse(responseDefault)
-    const defaultTokens = Number(responseDefault?.stats?.generatedTokens || 0)
+  const responseDefault = await model.run(PROMPT)
+  await collectResponse(responseDefault)
+  const defaultTokens = Number(responseDefault?.stats?.generatedTokens || 0)
 
-    t.ok(overrideTokens <= 5, `override predict=5 respected (got ${overrideTokens})`)
-    t.ok(defaultTokens > overrideTokens, `default run (${defaultTokens} tokens) exceeds overridden run (${overrideTokens} tokens)`)
-    t.is(defaultTokens, 32, `default run tokens (${defaultTokens}) should be 32`)
-  } catch (error) {
-    console.error(error)
-    t.fail('generationParams | load-time defaults restored after override: ' + error.message)
-  }
+  t.ok(overrideTokens <= 5, `override predict=5 respected (got ${overrideTokens})`)
+  t.ok(defaultTokens > overrideTokens, `default run (${defaultTokens} tokens) exceeds overridden run (${overrideTokens} tokens)`)
+  t.is(defaultTokens, 32, `default run tokens (${defaultTokens}) should be 32`)
 })

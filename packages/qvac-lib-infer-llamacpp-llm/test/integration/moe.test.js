@@ -4,7 +4,7 @@ const test = require('brittle')
 const os = require('bare-os')
 const path = require('bare-path')
 const LlmLlamacpp = require('../../index.js')
-const { ensureModel } = require('./utils')
+const { ensureModel, safeTest } = require('./utils')
 const { attachSpecLogger } = require('./spec-logger')
 
 const platform = os.platform()
@@ -33,7 +33,7 @@ const PROMPT = [
   { role: 'user', content: 'Hello, say something brief.' }
 ]
 
-test('llm addon can run MoE models [dolphin-mixtral-2x7b]', {
+safeTest('llm addon can run MoE models [dolphin-mixtral-2x7b]', {
   timeout: 1_800_000,
   skip: isDarwinX64 || isMobile || isLinuxArm64 ||
     isWindowsX64 // TODO: unskip this once we have a new Windows runner with a GPU
@@ -58,9 +58,6 @@ test('llm addon can run MoE models [dolphin-mixtral-2x7b]', {
     t.ok(text.length > 0, 'should generate text output')
     t.ok(response.stats.TPS > 0, 'should have TPS stats')
     t.ok(response.stats.ppTPS > 0, 'should have ppTPS stats')
-  } catch (error) {
-    console.error(error)
-    t.fail('llm addon can run MoE models: ' + error.message)
   } finally {
     specLogger.release()
     if (inference) await inference.unload().catch(() => {})

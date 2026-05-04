@@ -2,7 +2,7 @@
 
 const test = require('brittle')
 const LlmLlamacpp = require('../../index.js')
-const { ensureModel } = require('./utils')
+const { ensureModel, safeTest } = require('./utils')
 const os = require('bare-os')
 const fs = require('bare-fs')
 const path = require('bare-path')
@@ -153,7 +153,7 @@ const TIMEOUT = 1_800_000
 // WHY: Proves model produces valid translations across the primary language
 //      pairs the pitch promises. Includes low-resource pairs and reverse.
 // ---------------------------------------------------------------------------
-test('AfriqueGemma: core EN↔African language pairs', { timeout: TIMEOUT }, async t => {
+safeTest('AfriqueGemma: core EN↔African language pairs', { timeout: TIMEOUT }, async t => {
   let addon = null
   try {
     const [modelName, dirPath] = await resolveModel()
@@ -185,9 +185,6 @@ test('AfriqueGemma: core EN↔African language pairs', { timeout: TIMEOUT }, asy
     const r2 = await addon.run([{ role: 'user', content: detPrompt }])
     const out2 = await collectTranslation(r2)
     t.is(out1, out2, `deterministic: "${out1}"`)
-  } catch (error) {
-    console.error(error)
-    t.fail('AfriqueGemma: core EN↔African language pairs: ' + error.message)
   } finally {
     if (addon) await addon.unload().catch(() => {})
   }
@@ -202,7 +199,7 @@ test('AfriqueGemma: core EN↔African language pairs', { timeout: TIMEOUT }, asy
 // WHY: Mobile users need cross-language African communication; the pitch says
 //      this routes via bridge language. Two inference calls, same model.
 // ---------------------------------------------------------------------------
-test('AfriqueGemma: African-to-African via English pivot', { timeout: TIMEOUT }, async t => {
+safeTest('AfriqueGemma: African-to-African via English pivot', { timeout: TIMEOUT }, async t => {
   let addon = null
   try {
     const [modelName, dirPath] = await resolveModel()
@@ -221,9 +218,6 @@ test('AfriqueGemma: African-to-African via English pivot', { timeout: TIMEOUT },
     const yorubaOutput = await collectTranslation(r2)
     t.ok(yorubaOutput.length > 0, 'pivot step 2 (en→yo) produced output')
     t.ok(!yorubaOutput.includes('English:'), 'final output is not English echo')
-  } catch (error) {
-    console.error(error)
-    t.fail('AfriqueGemma: African-to-African via English pivot: ' + error.message)
   } finally {
     if (addon) await addon.unload().catch(() => {})
   }
@@ -239,7 +233,7 @@ test('AfriqueGemma: African-to-African via English pivot', { timeout: TIMEOUT },
 //      French, Portuguese, and Arabic must also produce valid output.
 //      Includes pt→sw to verify bridge→African direct translation.
 // ---------------------------------------------------------------------------
-test('AfriqueGemma: bridge languages (French, Portuguese, Arabic)', { timeout: TIMEOUT }, async t => {
+safeTest('AfriqueGemma: bridge languages (French, Portuguese, Arabic)', { timeout: TIMEOUT }, async t => {
   let addon = null
   try {
     const [modelName, dirPath] = await resolveModel()
@@ -258,9 +252,6 @@ test('AfriqueGemma: bridge languages (French, Portuguese, Arabic)', { timeout: T
         t.ok(translation.length >= 5, `${langPair}: bridge→African direct produced meaningful output`)
       }
     }
-  } catch (error) {
-    console.error(error)
-    t.fail('AfriqueGemma: bridge languages (French, Portuguese, Arabic): ' + error.message)
   } finally {
     if (addon) await addon.unload().catch(() => {})
   }
@@ -272,7 +263,7 @@ test('AfriqueGemma: bridge languages (French, Portuguese, Arabic)', { timeout: T
 // WHY: Real mobile text has multi-sentence paragraphs and numbers/dates.
 //      Sequential calls on same instance must not leak state.
 // ---------------------------------------------------------------------------
-test('AfriqueGemma: longer content, mixed content, sequential calls', { timeout: TIMEOUT }, async t => {
+safeTest('AfriqueGemma: longer content, mixed content, sequential calls', { timeout: TIMEOUT }, async t => {
   let addon = null
   try {
     const [modelName, dirPath] = await resolveModel()
@@ -296,9 +287,6 @@ test('AfriqueGemma: longer content, mixed content, sequential calls', { timeout:
       const out = await collectTranslation(resp)
       t.ok(out.length > 0, `sequential ${langPair}: produced output`)
     }
-  } catch (error) {
-    console.error(error)
-    t.fail('AfriqueGemma: longer content, mixed content, sequential calls: ' + error.message)
   } finally {
     if (addon) await addon.unload().catch(() => {})
   }
@@ -313,7 +301,7 @@ test('AfriqueGemma: longer content, mixed content, sequential calls', { timeout:
 //      non-Latin scripts (Amharic Ge'ez), and hooks (Hausa ɗ/ɓ). If the
 //      tokenizer corrupts Unicode input, these translations fail silently.
 // ---------------------------------------------------------------------------
-test('AfriqueGemma: African-language Unicode input (African → English)', { timeout: TIMEOUT }, async t => {
+safeTest('AfriqueGemma: African-language Unicode input (African → English)', { timeout: TIMEOUT }, async t => {
   let addon = null
   try {
     const [modelName, dirPath] = await resolveModel()
@@ -340,9 +328,6 @@ test('AfriqueGemma: African-language Unicode input (African → English)', { tim
     t.ok(/[a-zA-Z]{3,}/.test(hausaOut), 'Hausa → English: output is Latin/English text')
 
     t.comment('All non-Latin/diacritic inputs produced valid English output')
-  } catch (error) {
-    console.error(error)
-    t.fail('AfriqueGemma: African-language Unicode input (African → English): ' + error.message)
   } finally {
     if (addon) await addon.unload().catch(() => {})
   }
@@ -356,7 +341,7 @@ test('AfriqueGemma: African-language Unicode input (African → English)', { tim
 //      stats, the UX breaks. Verifies onUpdate fires multiple times and
 //      performance stats are populated for visibility.
 // ---------------------------------------------------------------------------
-test('AfriqueGemma: streaming tokens arrive incrementally with stats', { timeout: TIMEOUT }, async t => {
+safeTest('AfriqueGemma: streaming tokens arrive incrementally with stats', { timeout: TIMEOUT }, async t => {
   let addon = null
   try {
     const [modelName, dirPath] = await resolveModel()
@@ -392,9 +377,6 @@ test('AfriqueGemma: streaming tokens arrive incrementally with stats', { timeout
     } else {
       t.comment('stats not available on response object — skipping perf log')
     }
-  } catch (error) {
-    console.error(error)
-    t.fail('AfriqueGemma: streaming tokens arrive incrementally with stats: ' + error.message)
   } finally {
     if (addon) await addon.unload().catch(() => {})
   }

@@ -2,7 +2,7 @@
 
 const test = require('brittle')
 const path = require('bare-path')
-const { ensureModel } = require('./utils')
+const { ensureModel, safeTest } = require('./utils')
 const { attachSpecLogger } = require('./spec-logger')
 const os = require('bare-os')
 const LlmLlamacpp = require('../../index.js')
@@ -125,48 +125,38 @@ function createFollowUpMessages (initialMessages, previousResponse) {
     }
   ]
 }
-test('reasoning tag EOS replacement works with tools=false', {
+safeTest('reasoning tag EOS replacement works with tools=false', {
   skip: isDarwinX64 || isWindowsX64, // TODO: unskip isWindowsX64 once we have GPU, takes too long
   timeout: 600_000
 }, async t => {
-  try {
-    const { inference } = await setupReasoningModel(t, false)
+  const { inference } = await setupReasoningModel(t, false)
 
-    const messages1 = createInitialMessages()
-    const response1 = await runCompletion(inference, messages1)
-    verifyReasoningTags(t, response1, 'First completion')
+  const messages1 = createInitialMessages()
+  const response1 = await runCompletion(inference, messages1)
+  verifyReasoningTags(t, response1, 'First completion')
 
-    const messages2 = createFollowUpMessages(messages1, response1)
-    const response2 = await runCompletion(inference, messages2)
+  const messages2 = createFollowUpMessages(messages1, response1)
+  const response2 = await runCompletion(inference, messages2)
 
-    verifyReasoningTags(t, response2, 'Second completion')
-    verifyContinuedAfterReasoning(t, response2, 'tools=false')
-    t.comment(`Second completion output length: ${response2.length}`)
-  } catch (error) {
-    console.error(error)
-    t.fail('reasoning tag EOS replacement works with tools=false: ' + error.message)
-  }
+  verifyReasoningTags(t, response2, 'Second completion')
+  verifyContinuedAfterReasoning(t, response2, 'tools=false')
+  t.comment(`Second completion output length: ${response2.length}`)
 })
 
-test('reasoning tag EOS replacement works with tools=true', {
+safeTest('reasoning tag EOS replacement works with tools=true', {
   skip: isDarwinX64 || isWindowsX64, // TODO: unskip isWindowsX64 once we have GPU, takes too long
   timeout: 600_000
 }, async t => {
-  try {
-    const { inference } = await setupReasoningModel(t, true)
+  const { inference } = await setupReasoningModel(t, true)
 
-    const messages1 = createInitialMessages()
-    const response1 = await runCompletion(inference, messages1)
-    verifyReasoningTags(t, response1, 'First completion (tools=true)')
+  const messages1 = createInitialMessages()
+  const response1 = await runCompletion(inference, messages1)
+  verifyReasoningTags(t, response1, 'First completion (tools=true)')
 
-    const messages2 = createFollowUpMessages(messages1, response1)
-    const response2 = await runCompletion(inference, messages2)
+  const messages2 = createFollowUpMessages(messages1, response1)
+  const response2 = await runCompletion(inference, messages2)
 
-    verifyReasoningTags(t, response2, 'Second completion (tools=true)')
-    verifyContinuedAfterReasoning(t, response2, 'tools=true')
-    t.comment(`Second completion output length: ${response2.length}`)
-  } catch (error) {
-    console.error(error)
-    t.fail('reasoning tag EOS replacement works with tools=true: ' + error.message)
-  }
+  verifyReasoningTags(t, response2, 'Second completion (tools=true)')
+  verifyContinuedAfterReasoning(t, response2, 'tools=true')
+  t.comment(`Second completion output length: ${response2.length}`)
 })

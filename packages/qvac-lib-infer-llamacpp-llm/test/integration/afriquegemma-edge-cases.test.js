@@ -2,6 +2,7 @@
 
 const test = require('brittle')
 const LlmLlamacpp = require('../../index.js')
+const { safeTest } = require('./utils')
 const os = require('bare-os')
 const fs = require('bare-fs')
 const path = require('bare-path')
@@ -68,7 +69,7 @@ const TIMEOUT = 1_800_000
 //
 // WHY: Users pass empty strings through UIs and pipelines; must not segfault.
 // ---------------------------------------------------------------------------
-test('AfriqueGemma: empty and whitespace input must not crash', { timeout: TIMEOUT }, async t => {
+safeTest('AfriqueGemma: empty and whitespace input must not crash', { timeout: TIMEOUT }, async t => {
   let addon = null
   try {
     const [modelName, dirPath] = await resolveModel()
@@ -87,9 +88,6 @@ test('AfriqueGemma: empty and whitespace input must not crash', { timeout: TIMEO
     const r2 = await addon.run([{ role: 'user', content: wsPrompt }])
     await collectTranslation(r2)
     t.pass('whitespace-style prompt did not crash')
-  } catch (error) {
-    console.error(error)
-    t.fail('AfriqueGemma: empty and whitespace input must not crash: ' + error.message)
   } finally {
     if (addon) await addon.unload().catch(() => {})
   }
@@ -101,7 +99,7 @@ test('AfriqueGemma: empty and whitespace input must not crash', { timeout: TIMEO
 // WHY: Apps that swap models or recover from errors need lifecycle to work;
 //      creating a new instance after unload is the supported reload pattern.
 // ---------------------------------------------------------------------------
-test('AfriqueGemma: lifecycle load-unload-fresh-load-use', { timeout: TIMEOUT }, async t => {
+safeTest('AfriqueGemma: lifecycle load-unload-fresh-load-use', { timeout: TIMEOUT }, async t => {
   let addon1 = null
   let addon2 = null
   try {
@@ -129,9 +127,6 @@ test('AfriqueGemma: lifecycle load-unload-fresh-load-use', { timeout: TIMEOUT },
     const r2 = await addon2.run([{ role: 'user', content: EN_SW_PROMPT }])
     const out2 = await collectTranslation(r2)
     t.ok(out2.length > 0, 'second run after fresh load produced output')
-  } catch (error) {
-    console.error(error)
-    t.fail('AfriqueGemma: lifecycle load-unload-fresh-load-use: ' + error.message)
   } finally {
     if (addon1) await addon1.unload().catch(() => {})
     if (addon2) await addon2.unload().catch(() => {})
@@ -143,7 +138,7 @@ test('AfriqueGemma: lifecycle load-unload-fresh-load-use', { timeout: TIMEOUT },
 //
 // WHY: Cancelling mid-operation must not corrupt state; model should be reusable.
 // ---------------------------------------------------------------------------
-test('AfriqueGemma: cancel mid-translation, model reusable after', { timeout: TIMEOUT }, async t => {
+safeTest('AfriqueGemma: cancel mid-translation, model reusable after', { timeout: TIMEOUT }, async t => {
   let addon = null
   try {
     const [modelName, dirPath] = await resolveModel()
@@ -176,9 +171,6 @@ test('AfriqueGemma: cancel mid-translation, model reusable after', { timeout: TI
     const r2 = await addon.run([{ role: 'user', content: EN_SW_PROMPT }])
     const out2 = await collectTranslation(r2)
     t.ok(out2.length > 0, 'model produced output after cancel')
-  } catch (error) {
-    console.error(error)
-    t.fail('AfriqueGemma: cancel mid-translation, model reusable after: ' + error.message)
   } finally {
     if (addon) await addon.unload().catch(() => {})
   }
@@ -190,7 +182,7 @@ test('AfriqueGemma: cancel mid-translation, model reusable after', { timeout: TI
 // WHY: tools enables Jinja chat template; easy to miss, produces confusing error.
 // Verifies the addon either rejects with a clear message or defaults to jinja.
 // ---------------------------------------------------------------------------
-test('AfriqueGemma: tools true required for load', { timeout: TIMEOUT }, async t => {
+safeTest('AfriqueGemma: tools true required for load', { timeout: TIMEOUT }, async t => {
   let addon = null
   try {
     const [modelName, dirPath] = await resolveModel()
@@ -216,9 +208,6 @@ test('AfriqueGemma: tools true required for load', { timeout: TIMEOUT }, async t
         'load without tools fails with clear message about template/jinja'
       )
     }
-  } catch (error) {
-    console.error(error)
-    t.fail('AfriqueGemma: tools true required for load: ' + error.message)
   } finally {
     if (addon) await addon.unload().catch(() => {})
   }
@@ -232,7 +221,7 @@ test('AfriqueGemma: tools true required for load', { timeout: TIMEOUT }, async t
 // BUG: Currently the addon returns an invalid response object that causes an
 // unhandled rejection. This test documents the expected behaviour.
 // ---------------------------------------------------------------------------
-test('AfriqueGemma: run after unload rejects cleanly', { timeout: TIMEOUT }, async t => {
+safeTest('AfriqueGemma: run after unload rejects cleanly', { timeout: TIMEOUT }, async t => {
   let addon = null
   try {
     const [modelName, dirPath] = await resolveModel()
@@ -285,9 +274,6 @@ test('AfriqueGemma: run after unload rejects cleanly', { timeout: TIMEOUT }, asy
       t.comment('Expected: synchronous throw or a response that resolves to an error')
     }
     t.ok(rejected || hadUnhandled, 'run() after unload() does not silently succeed')
-  } catch (error) {
-    console.error(error)
-    t.fail('AfriqueGemma: run after unload rejects cleanly: ' + error.message)
   } finally {
     if (addon) await addon.unload().catch(() => {})
   }
@@ -301,7 +287,7 @@ test('AfriqueGemma: run after unload rejects cleanly', { timeout: TIMEOUT }, asy
 //      crashing or producing garbled output. Catches buffer handling bugs
 //      in the token emission pipeline.
 // ---------------------------------------------------------------------------
-test('AfriqueGemma: small n_predict produces truncated but valid output', { timeout: TIMEOUT }, async t => {
+safeTest('AfriqueGemma: small n_predict produces truncated but valid output', { timeout: TIMEOUT }, async t => {
   let addon = null
   try {
     const [modelName, dirPath] = await resolveModel()
@@ -325,9 +311,6 @@ test('AfriqueGemma: small n_predict produces truncated but valid output', { time
       t.ok(genTokens <= 10, `generated ${genTokens} tokens (within n_predict=8 range)`)
       t.comment(`stats: generatedTokens=${genTokens}`)
     }
-  } catch (error) {
-    console.error(error)
-    t.fail('AfriqueGemma: small n_predict produces truncated but valid output: ' + error.message)
   } finally {
     if (addon) await addon.unload().catch(() => {})
   }
@@ -342,7 +325,7 @@ test('AfriqueGemma: small n_predict produces truncated but valid output', { time
 //      A crash or silent hang is unacceptable on mobile (see: SIGABRT on
 //      context overflow in sliding-context tests).
 // ---------------------------------------------------------------------------
-test('AfriqueGemma: long input approaching ctx_size boundary', { timeout: TIMEOUT }, async t => {
+safeTest('AfriqueGemma: long input approaching ctx_size boundary', { timeout: TIMEOUT }, async t => {
   let addon = null
   try {
     const [modelName, dirPath] = await resolveModel()
@@ -372,9 +355,6 @@ test('AfriqueGemma: long input approaching ctx_size boundary', { timeout: TIMEOU
     }
 
     t.ok(gotOutput || gotError, 'long input either produced output or a clear error — no crash or hang')
-  } catch (error) {
-    console.error(error)
-    t.fail('AfriqueGemma: long input approaching ctx_size boundary: ' + error.message)
   } finally {
     if (addon) await addon.unload().catch(() => {})
   }

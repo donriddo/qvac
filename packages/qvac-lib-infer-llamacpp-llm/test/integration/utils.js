@@ -7,7 +7,7 @@ const process = require('bare-process')
 
 const TRANSIENT_ERROR_CODES = new Set([
   'EAI_NODATA', 'EAI_AGAIN', 'ENOTFOUND', 'ETIMEDOUT',
-  'ECONNRESET', 'EPIPE', 'ECONNABORTED'
+  'ECONNRESET', 'EPIPE', 'ECONNABORTED', 'ESIZE'
 ])
 
 function isTransientError (err) {
@@ -517,6 +517,19 @@ async function verifyFinalStatus (t, model, result = null) {
   t.ok(result, 'Result must be provided')
 }
 
+const test = require('brittle')
+
+function safeTest (name, opts, fn) {
+  test(name, opts, async (t) => {
+    try {
+      await fn(t)
+    } catch (err) {
+      console.error(err)
+      t.fail(`${name}: ${err.message}`)
+    }
+  })
+}
+
 module.exports = {
   ensureModel,
   ensureModelPath,
@@ -536,5 +549,6 @@ module.exports = {
   setupParams,
   verifyPauseCheckpoint,
   handleEarlyCompletion,
-  verifyFinalStatus
+  verifyFinalStatus,
+  safeTest
 }

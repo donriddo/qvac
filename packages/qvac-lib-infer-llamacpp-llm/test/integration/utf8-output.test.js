@@ -3,7 +3,7 @@
 const test = require('brittle')
 const path = require('bare-path')
 const LlmLlamacpp = require('../../index.js')
-const { ensureModel } = require('./utils')
+const { ensureModel, safeTest } = require('./utils')
 const { attachSpecLogger } = require('./spec-logger')
 const os = require('bare-os')
 
@@ -33,7 +33,7 @@ function containsEmoji (text) {
   return /\u{1F600}/u.test(text)
 }
 
-test('model returns UTF-8 emoji without truncation', { timeout: 600_000 }, async t => {
+safeTest('model returns UTF-8 emoji without truncation', { timeout: 600_000 }, async t => {
   let model = null
   let specLogger = null
   let loggerReleased = false
@@ -85,9 +85,6 @@ test('model returns UTF-8 emoji without truncation', { timeout: 600_000 }, async
     t.is(Buffer.from(normalized, 'utf8').toString('utf8'), normalized, 'utf8 encoding round-trip succeeds')
     t.is(normalized, '😀', 'model respected exact emoji instruction')
     t.ok(response.stats.generatedTokens > 0, 'token stats recorded')
-  } catch (error) {
-    console.error(error)
-    t.fail('model returns UTF-8 emoji without truncation: ' + error.message)
   } finally {
     if (model) await model.unload().catch(() => {})
     releaseLogger()

@@ -3,7 +3,7 @@
 const test = require('brittle')
 const path = require('bare-path')
 const LlmLlamacpp = require('../../index.js')
-const { ensureModel } = require('./utils')
+const { ensureModel, safeTest } = require('./utils')
 const os = require('bare-os')
 
 const platform = os.platform()
@@ -72,7 +72,7 @@ async function collectResponse (response) {
   return chunks.join('').trim()
 }
 
-test('Two instances can run inference simultaneously', {
+safeTest('Two instances can run inference simultaneously', {
   timeout: 900_000,
   skip: isWindowsX64 // TODO: unskip this once we have a new Windows runner with a GPU
 }, async t => {
@@ -100,16 +100,13 @@ test('Two instances can run inference simultaneously', {
 
     t.ok(output1.length > 0, 'first instance produced output')
     t.ok(output2.length > 0, 'second instance produced output')
-  } catch (error) {
-    console.error(error)
-    t.fail('Two instances can run inference simultaneously: ' + error.message)
   } finally {
     if (addon1) await addon1.unload().catch(() => {})
     if (addon2) await addon2.unload().catch(() => {})
   }
 })
 
-test('Repeated load/unload cycles should remain stable', {
+safeTest('Repeated load/unload cycles should remain stable', {
   timeout: 900_000,
   skip: isWindowsX64 // TODO: unskip this once we have a new Windows runner with a GPU
 }, async t => {
@@ -139,15 +136,12 @@ test('Repeated load/unload cycles should remain stable', {
     }
 
     t.pass(`all ${NUM_CYCLES} load/unload cycles completed successfully`)
-  } catch (error) {
-    console.error(error)
-    t.fail('Repeated load/unload cycles should remain stable: ' + error.message)
   } finally {
     if (currentAddon) await currentAddon.unload().catch(() => {})
   }
 })
 
-test('Unloading one instance does not affect another generating instance', {
+safeTest('Unloading one instance does not affect another generating instance', {
   timeout: 900_000,
   skip: isWindowsX64 // TODO: unskip this once we have a new Windows runner with a GPU
 }, async t => {
@@ -203,16 +197,13 @@ test('Unloading one instance does not affect another generating instance', {
     const output1 = chunks.join('').trim()
     t.ok(output1.length > 0, 'instance 1 completed generation after instance 2 was unloaded')
     t.ok(unloadedInstance2, 'instance 2 was unloaded during instance 1 generation')
-  } catch (error) {
-    console.error(error)
-    t.fail('Unloading one instance does not affect another generating instance: ' + error.message)
   } finally {
     if (addon1) await addon1.unload().catch(() => {})
     if (addon2) await addon2.unload().catch(() => {})
   }
 })
 
-test('Multiple load/unload cycles on one instance while another generates', {
+safeTest('Multiple load/unload cycles on one instance while another generates', {
   timeout: 900_000,
   skip: isWindowsX64 // TODO: unskip this once we have a new Windows runner with a GPU
 }, async t => {
@@ -278,9 +269,6 @@ test('Multiple load/unload cycles on one instance while another generates', {
     const output1 = chunks.join('').trim()
     t.ok(output1.length > 0, 'instance 1 completed generation')
     t.ok(cyclesCompleted > 0, `completed ${cyclesCompleted} load/unload cycles during generation`)
-  } catch (error) {
-    console.error(error)
-    t.fail('Multiple load/unload cycles on one instance while another generates: ' + error.message)
   } finally {
     if (addon1) await addon1.unload().catch(() => {})
   }
