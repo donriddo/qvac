@@ -115,7 +115,7 @@ async function downloadFileOnce (url, dest, opts) {
         function resetIdleTimer () {
           clearTimeout(idleTimer)
           idleTimer = setTimeout(() => {
-            response.destroy(new Error(`Idle timeout downloading ${urlHost(reqUrl)}`))
+            response.destroy(Object.assign(new Error(`Idle timeout downloading ${urlHost(reqUrl)}`), { code: 'ETIMEDOUT' }))
           }, idleTimeoutMs)
         }
 
@@ -137,7 +137,7 @@ async function downloadFileOnce (url, dest, opts) {
       })
 
       reqTimer = setTimeout(() => {
-        req.destroy(new Error(`Request timeout downloading ${urlHost(reqUrl)}`))
+        req.destroy(Object.assign(new Error(`Request timeout downloading ${urlHost(reqUrl)}`), { code: 'ETIMEDOUT' }))
       }, timeoutMs)
 
       req.on('error', (err) => {
