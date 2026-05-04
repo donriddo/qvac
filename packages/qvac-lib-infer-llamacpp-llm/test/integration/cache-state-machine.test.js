@@ -341,63 +341,63 @@ safeTest('Cache to no-cache to cache transition works correctly', { timeout: 600
 safeTest('Canceled runs produce smaller stats than full runs', { timeout: 600_000 }, async t => {
   const { model } = await setupModel(t, { n_predict: '1024', ctx_size: '4096' })
 
-    // Use prompt without session so cache is not used and n_past starts from prompt only
-    const noCachePrompt = [...STOP_PROMPT]
+  // Use prompt without session so cache is not used and n_past starts from prompt only
+  const noCachePrompt = [...STOP_PROMPT]
 
-    // Run full inference without cancelling
-    const fullStats = await runAndCollectStats(model, noCachePrompt)
+  // Run full inference without cancelling
+  const fullStats = await runAndCollectStats(model, noCachePrompt)
 
-    // Run and cancel after first token
-    const cancelAfterFirstStats = await runAndCancelAfterFirstToken(model, noCachePrompt)
+  // Run and cancel after first token
+  const cancelAfterFirstStats = await runAndCancelAfterFirstToken(model, noCachePrompt)
 
-    // Run with timeout cancellation
-    const timeoutStats = await runWithTimeoutCancellation(model, noCachePrompt)
+  // Run with timeout cancellation
+  const timeoutStats = await runWithTimeoutCancellation(model, noCachePrompt)
 
-    // Verify cancel-after-first-token stats are smaller than full run
-    // On Windows compare <= due to less responsive threads, which can lead to timeout false positives in CI
-    // since we are testing asynchronously, the timeout may not have been able to cancel the run in time, leading to false positives.
-    if (os.platform() === 'win32') {
-      t.ok(
-        cancelAfterFirstStats.generatedTokens <= fullStats.generatedTokens,
+  // Verify cancel-after-first-token stats are smaller than full run
+  // On Windows compare <= due to less responsive threads, which can lead to timeout false positives in CI
+  // since we are testing asynchronously, the timeout may not have been able to cancel the run in time, leading to false positives.
+  if (os.platform() === 'win32') {
+    t.ok(
+      cancelAfterFirstStats.generatedTokens <= fullStats.generatedTokens,
       `cancel-after-first generatedTokens (${cancelAfterFirstStats.generatedTokens}) <= full run (${fullStats.generatedTokens}) [WindowsCI flaky]`
-      )
-    } else {
-      t.ok(
-        cancelAfterFirstStats.generatedTokens < fullStats.generatedTokens,
+    )
+  } else {
+    t.ok(
+      cancelAfterFirstStats.generatedTokens < fullStats.generatedTokens,
       `cancel-after-first generatedTokens (${cancelAfterFirstStats.generatedTokens}) < full run (${fullStats.generatedTokens})`
-      )
-    }
-    t.ok(
-      cancelAfterFirstStats.CacheTokens <= fullStats.CacheTokens,
+    )
+  }
+  t.ok(
+    cancelAfterFirstStats.CacheTokens <= fullStats.CacheTokens,
     `cancel-after-first CacheTokens (${cancelAfterFirstStats.CacheTokens}) <= full run (${fullStats.CacheTokens})`
-    )
-    t.ok(
-      cancelAfterFirstStats._chunkCount <= fullStats._chunkCount,
+  )
+  t.ok(
+    cancelAfterFirstStats._chunkCount <= fullStats._chunkCount,
     `cancel-after-first chunkCount (${cancelAfterFirstStats._chunkCount}) <= full run (${fullStats._chunkCount})`
-    )
+  )
 
-    // Verify timeout stats are smaller than full run stats
-    // On Windows compare <= due to less responsive threads, which can lead to timeout false positives in CI
-    // since we are testing asynchronously, the timeout may not have been able to cancel the run in time, leading to false positives.
-    if (os.platform() === 'win32') {
-      t.ok(
-        timeoutStats.generatedTokens <= fullStats.generatedTokens,
+  // Verify timeout stats are smaller than full run stats
+  // On Windows compare <= due to less responsive threads, which can lead to timeout false positives in CI
+  // since we are testing asynchronously, the timeout may not have been able to cancel the run in time, leading to false positives.
+  if (os.platform() === 'win32') {
+    t.ok(
+      timeoutStats.generatedTokens <= fullStats.generatedTokens,
       `timeout generatedTokens (${timeoutStats.generatedTokens}) <= full run (${fullStats.generatedTokens}) [Windows CI flaky]`
-      )
-    } else {
-      t.ok(
-        timeoutStats.generatedTokens < fullStats.generatedTokens,
+    )
+  } else {
+    t.ok(
+      timeoutStats.generatedTokens < fullStats.generatedTokens,
       `timeout generatedTokens (${timeoutStats.generatedTokens}) < full run (${fullStats.generatedTokens})`
-      )
-    }
-    t.ok(
-      timeoutStats.CacheTokens <= fullStats.CacheTokens,
+    )
+  }
+  t.ok(
+    timeoutStats.CacheTokens <= fullStats.CacheTokens,
     `timeout CacheTokens (${timeoutStats.CacheTokens}) <= full run (${fullStats.CacheTokens})`
-    )
-    t.ok(
-      timeoutStats._chunkCount <= fullStats._chunkCount,
+  )
+  t.ok(
+    timeoutStats._chunkCount <= fullStats._chunkCount,
     `timeout chunkCount (${timeoutStats._chunkCount}) <= full run (${fullStats._chunkCount})`
-    )
+  )
 })
 
 safeTest('Options: cacheKey enables caching with non-zero CacheTokens', { timeout: 600_000 }, async t => {
