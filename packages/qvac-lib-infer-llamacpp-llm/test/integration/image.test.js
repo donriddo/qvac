@@ -3,7 +3,7 @@
 const test = require('brittle')
 const fs = require('bare-fs')
 const path = require('bare-path')
-const { ensureModel, getMediaPath } = require('./utils')
+const { ensureModel, getMediaPath, safeTest } = require('./utils')
 const LlmLlamacpp = require('../../index.js')
 const os = require('bare-os')
 const process = require('bare-process')
@@ -323,7 +323,7 @@ async function describeImageByPath (inference, imageFilePath, prompt = TEST_CONS
 }
 
 for (const testCase of imageTestCases) {
-  test(`llama addon can recognize ${testCase.name} in an image`, { timeout: TEST_CONSTANTS.timeout }, async t => {
+  safeTest(`llama addon can recognize ${testCase.name} in an image`, { timeout: TEST_CONSTANTS.timeout }, async t => {
     for (const deviceConfig of DEVICE_CONFIGS) {
       const label = `[${deviceConfig.id.toUpperCase()}]`
 
@@ -353,7 +353,7 @@ for (const testCase of imageTestCases) {
   })
 }
 
-test('llama addon accepts a file path string as media content', { timeout: TEST_CONSTANTS.timeout }, async t => {
+safeTest('llama addon accepts a file path string as media content', { timeout: TEST_CONSTANTS.timeout }, async t => {
   const deviceConfig = DEVICE_CONFIGS[0]
   const label = `[${deviceConfig.id.toUpperCase()}]`
 
@@ -376,7 +376,7 @@ test('llama addon accepts a file path string as media content', { timeout: TEST_
 // TODO: Fix multi-image for smaller models? Seems like an image per separate message works
 // TODO: on smaller models, rather than all images on same message.
 // TODO: Discussion at: https://github.com/tetherto/qvac/pull/172#discussion_r2807275659
-test('llama addon can handle multiple images in one prompt', { timeout: TEST_CONSTANTS.timeout, skip: true }, async t => {
+safeTest('llama addon can handle multiple images in one prompt', { timeout: TEST_CONSTANTS.timeout, skip: true }, async t => {
   const imageFiles = ['elephant.jpg', 'fruitPlate.png']
   const imagePaths = imageFiles.map(f => getMediaPath(f))
   const prompt = 'What is in these two images?'
