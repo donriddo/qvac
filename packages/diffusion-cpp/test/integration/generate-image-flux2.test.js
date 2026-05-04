@@ -10,7 +10,8 @@ const {
   ensureModel,
   detectPlatform,
   setupJsLogger,
-  isPng
+  isPng,
+  safeTest
 } = require('./utils')
 
 const proc = require('bare-process')
@@ -38,7 +39,7 @@ const VAE_MODEL = {
   url: 'https://huggingface.co/Comfy-Org/vae-text-encorder-for-flux-klein-4b/resolve/main/split_files/vae/flux2-vae.safetensors'
 }
 
-test('FLUX.2 klein txt2img — generates a valid PNG image', { timeout: 1800000, skip }, async (t) => {
+safeTest('FLUX.2 klein txt2img — generates a valid PNG image', { timeout: 1800000, skip }, async (t) => {
   setupJsLogger(binding)
 
   let model = null
@@ -150,8 +151,6 @@ test('FLUX.2 klein txt2img — generates a valid PNG image', { timeout: 1800000,
     console.log(` Image size  : ${img.length} bytes`)
     console.log(' PNG valid   : true')
     console.log('='.repeat(60))
-  } catch (error) {
-    t.fail('FLUX.2 klein txt2img — generates a valid PNG image: ' + error.message)
   } finally {
     console.log('\n=== Cleanup ===')
     if (model) await model.unload().catch(() => {})

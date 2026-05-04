@@ -11,7 +11,8 @@ const {
   ensureModel,
   detectPlatform,
   setupJsLogger,
-  isPng
+  isPng,
+  safeTest
 } = require('./utils')
 
 const platform = detectPlatform()
@@ -27,7 +28,7 @@ const DEFAULT_MODEL = {
   url: 'https://huggingface.co/gpustack/stable-diffusion-v2-1-GGUF/resolve/main/stable-diffusion-v2-1-Q8_0.gguf'
 }
 
-test('SD2.1 txt2img — generates a valid PNG image', { timeout: 600000, skip }, async (t) => {
+safeTest('SD2.1 txt2img — generates a valid PNG image', { timeout: 600000, skip }, async (t) => {
   setupJsLogger(binding)
 
   let model = null
@@ -129,8 +130,6 @@ test('SD2.1 txt2img — generates a valid PNG image', { timeout: 600000, skip },
     console.log(` Image size  : ${img.length} bytes`)
     console.log(' PNG valid   : true')
     console.log('='.repeat(60))
-  } catch (error) {
-    t.fail('SD2.1 txt2img — generates a valid PNG image: ' + error.message)
   } finally {
     console.log('\n=== Cleanup ===')
     if (model) await model.unload().catch(() => {})

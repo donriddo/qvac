@@ -10,7 +10,8 @@ const {
   ensureModel,
   detectPlatform,
   setupJsLogger,
-  isPng
+  isPng,
+  safeTest
 } = require('./utils')
 
 const proc = require('bare-process')
@@ -42,7 +43,7 @@ const STEPS = 10
 const GUIDANCE = 3.5
 const SEED = 20
 
-test('FLUX2-klein fusion (surjective) — face morphing via feature averaging', { timeout: 1800000, skip }, async (t) => {
+safeTest('FLUX2-klein fusion (surjective) — face morphing via feature averaging', { timeout: 1800000, skip }, async (t) => {
   setupJsLogger(binding)
 
   let model = null
@@ -184,8 +185,6 @@ test('FLUX2-klein fusion (surjective) — face morphing via feature averaging', 
     console.log(' PNG valid   : true')
     console.log(' Fusion mode : surjective (face morphing / feature averaging)')
     console.log('='.repeat(60))
-  } catch (error) {
-    t.fail('FLUX2-klein fusion (surjective) — face morphing via feature averaging: ' + error.message)
   } finally {
     console.log('\n=== Cleanup ===')
     if (model) await model.unload().catch(() => {})

@@ -10,7 +10,8 @@ const {
   ensureModel,
   detectPlatform,
   setupJsLogger,
-  isPng
+  isPng,
+  safeTest
 } = require('./utils')
 
 const proc = require('bare-process')
@@ -28,7 +29,7 @@ const DEFAULT_MODEL = {
   url: 'https://huggingface.co/gpustack/stable-diffusion-xl-base-1.0-GGUF/resolve/main/stable-diffusion-xl-base-1.0-Q4_0.gguf'
 }
 
-test('SDXL txt2img — generates a valid PNG image', { timeout: 900000, skip }, async (t) => {
+safeTest('SDXL txt2img — generates a valid PNG image', { timeout: 900000, skip }, async (t) => {
   setupJsLogger(binding)
 
   let model = null
@@ -127,8 +128,6 @@ test('SDXL txt2img — generates a valid PNG image', { timeout: 900000, skip }, 
     console.log(` Image size  : ${img.length} bytes`)
     console.log(' PNG valid   : true')
     console.log('='.repeat(60))
-  } catch (error) {
-    t.fail('SDXL txt2img — generates a valid PNG image: ' + error.message)
   } finally {
     console.log('\n=== Cleanup ===')
     if (model) await model.unload().catch(() => {})

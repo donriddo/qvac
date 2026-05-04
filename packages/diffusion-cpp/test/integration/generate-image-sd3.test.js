@@ -10,7 +10,8 @@ const {
   ensureModel,
   detectPlatform,
   setupJsLogger,
-  isPng
+  isPng,
+  safeTest
 } = require('./utils')
 
 const proc = require('bare-process')
@@ -28,7 +29,7 @@ const DEFAULT_MODEL = {
   url: 'https://huggingface.co/adamo1139/stable-diffusion-3-medium-ungated/resolve/main/sd3_medium_incl_clips.safetensors'
 }
 
-test('SD3 Medium txt2img — generates a valid PNG image', { timeout: 900000, skip }, async (t) => {
+safeTest('SD3 Medium txt2img — generates a valid PNG image', { timeout: 900000, skip }, async (t) => {
   setupJsLogger(binding)
 
   let model = null
@@ -130,8 +131,6 @@ test('SD3 Medium txt2img — generates a valid PNG image', { timeout: 900000, sk
     console.log(` Image size  : ${img.length} bytes`)
     console.log(' PNG valid   : true')
     console.log('='.repeat(60))
-  } catch (error) {
-    t.fail('SD3 Medium txt2img — generates a valid PNG image: ' + error.message)
   } finally {
     console.log('\n=== Cleanup ===')
     if (model) await model.unload().catch(() => {})

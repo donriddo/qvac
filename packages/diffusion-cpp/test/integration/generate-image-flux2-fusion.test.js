@@ -10,7 +10,8 @@ const {
   ensureModel,
   detectPlatform,
   setupJsLogger,
-  isPng
+  isPng,
+  safeTest
 } = require('./utils')
 
 const proc = require('bare-process')
@@ -42,7 +43,7 @@ const STEPS = 10
 const GUIDANCE = 3.5
 const SEED = 10
 
-test('FLUX2-klein fusion — fuses multiple reference images', { timeout: 1800000, skip }, async (t) => {
+safeTest('FLUX2-klein fusion — fuses multiple reference images', { timeout: 1800000, skip }, async (t) => {
   setupJsLogger(binding)
 
   let model = null
@@ -182,8 +183,6 @@ test('FLUX2-klein fusion — fuses multiple reference images', { timeout: 180000
     console.log(` Image size  : ${img.length} bytes`)
     console.log(' PNG valid   : true')
     console.log('='.repeat(60))
-  } catch (error) {
-    t.fail('FLUX2-klein fusion — fuses multiple reference images: ' + error.message)
   } finally {
     console.log('\n=== Cleanup ===')
     if (model) await model.unload().catch(() => {})

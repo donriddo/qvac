@@ -51,7 +51,7 @@ class GeneratedImageSaver {
 
 const TRANSIENT_ERROR_CODES = new Set([
   'EAI_NODATA', 'EAI_AGAIN', 'ENOTFOUND', 'ETIMEDOUT',
-  'ECONNRESET', 'EPIPE', 'ECONNABORTED'
+  'ECONNRESET', 'EPIPE', 'ECONNABORTED', 'ESIZE'
 ])
 
 function isTransientError (err) {
@@ -175,7 +175,7 @@ async function downloadFileWithRetries (urls, dest, opts) {
 
       const stats = fs.statSync(partPath)
       if (stats.size < minBytes) {
-        throw new Error(`Downloaded file too small: ${stats.size} bytes from ${urlHost(url)}`)
+        throw Object.assign(new Error(`Downloaded file too small: ${stats.size} bytes from ${urlHost(url)}`), { code: 'ESIZE' })
       }
 
       fs.renameSync(partPath, dest)
@@ -312,6 +312,19 @@ function isPng (buf) {
   )
 }
 
+const test = require('brittle')
+
+function safeTest (name, opts, fn) {
+  test(name, opts, async (t) => {
+    try {
+      await fn(t)
+    } catch (err) {
+      console.error(err)
+      t.fail(`${name}: ${err.message}`)
+    }
+  })
+}
+
 module.exports = {
   GeneratedImageSaver,
   downloadFile,
@@ -321,5 +334,6 @@ module.exports = {
   makeOutputCollector,
   detectPlatform,
   setupJsLogger,
-  isPng
+  isPng,
+  safeTest
 }

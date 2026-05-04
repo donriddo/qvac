@@ -10,7 +10,8 @@ const {
   ensureModel,
   detectPlatform,
   setupJsLogger,
-  isPng
+  isPng,
+  safeTest
 } = require('./utils')
 
 const proc = require('bare-process')
@@ -33,7 +34,7 @@ const CFG_SCALE = 3.5
 const STRENGTH = 0.75
 const SEED = 3
 
-test('SD3 Medium img2img — transforms an input image', { timeout: 1800000, skip }, async (t) => {
+safeTest('SD3 Medium img2img — transforms an input image', { timeout: 1800000, skip }, async (t) => {
   setupJsLogger(binding)
 
   let model = null
@@ -154,8 +155,6 @@ test('SD3 Medium img2img — transforms an input image', { timeout: 1800000, ski
     console.log(` Image size  : ${img.length} bytes`)
     console.log(' PNG valid   : true')
     console.log('='.repeat(60))
-  } catch (error) {
-    t.fail('SD3 Medium img2img — transforms an input image: ' + error.message)
   } finally {
     console.log('\n=== Cleanup ===')
     if (model) await model.unload().catch(() => {})

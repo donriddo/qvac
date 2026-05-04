@@ -11,7 +11,8 @@ const {
   ensureModel,
   detectPlatform,
   setupJsLogger,
-  isPng
+  isPng,
+  safeTest
 } = require('./utils')
 
 const platform = detectPlatform()
@@ -32,7 +33,7 @@ const LORA_ADAPTER = {
   url: 'https://huggingface.co/radames/sd-21-DPO-LoRA/resolve/main/pytorch_lora_weights-sd21-comfyui.safetensors'
 }
 
-test('SD2.1 txt2img with LoRA — generates a valid PNG image', { timeout: 600000, skip }, async (t) => {
+safeTest('SD2.1 txt2img with LoRA — generates a valid PNG image', { timeout: 600000, skip }, async (t) => {
   setupJsLogger(binding)
 
   let model = null
@@ -141,8 +142,6 @@ test('SD2.1 txt2img with LoRA — generates a valid PNG image', { timeout: 60000
     console.log(` Image size  : ${img.length} bytes`)
     console.log(' PNG valid   : true')
     console.log('='.repeat(60))
-  } catch (error) {
-    t.fail('SD2.1 txt2img with LoRA — generates a valid PNG image: ' + error.message)
   } finally {
     console.log('\n=== Cleanup ===')
     if (model) await model.unload().catch(() => {})

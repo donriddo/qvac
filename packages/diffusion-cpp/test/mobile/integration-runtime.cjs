@@ -1,8 +1,11 @@
 'use strict'
 
-if (typeof process !== 'undefined' && typeof process.on === 'function') {
-  process.on('unhandledRejection', (reason) => {
+if (typeof Bare !== 'undefined' && typeof Bare.on === 'function') {
+  Bare.on('unhandledRejection', (reason) => {
     console.error('[integration-runner] Unhandled rejection:', reason instanceof Error ? reason.stack : reason)
+  })
+  Bare.on('uncaughtException', (err) => {
+    console.error('[integration-runner] Uncaught exception:', err instanceof Error ? err.stack : err)
   })
 }
 

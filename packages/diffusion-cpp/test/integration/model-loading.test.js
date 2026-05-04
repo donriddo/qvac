@@ -6,7 +6,7 @@ const os = require('bare-os')
 const proc = require('bare-process')
 
 const ImgStableDiffusion = require('../../index.js')
-const { ensureModel } = require('./utils.js')
+const { ensureModel, safeTest } = require('./utils.js')
 
 const platform = os.platform()
 const arch = os.arch()
@@ -25,7 +25,7 @@ const DEFAULT_MODEL = {
   url: 'https://huggingface.co/gpustack/stable-diffusion-v2-1-GGUF/resolve/main/stable-diffusion-v2-1-Q8_0.gguf'
 }
 
-test('model loading - load and unload', { timeout: testTimeout }, async t => {
+safeTest('model loading - load and unload', { timeout: testTimeout }, async t => {
   let addon = null
   try {
     const [downloadedModelName, modelDir] = await ensureModel({
@@ -55,8 +55,6 @@ test('model loading - load and unload', { timeout: testTimeout }, async t => {
 
     await addon.unload().catch(() => {})
     t.pass('second unload is idempotent')
-  } catch (error) {
-    t.fail('model loading - load and unload: ' + error.message)
   } finally {
     if (addon) await addon.unload().catch(() => {})
   }
