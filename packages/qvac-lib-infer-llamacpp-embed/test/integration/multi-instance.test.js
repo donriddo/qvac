@@ -1,6 +1,5 @@
 'use strict'
 
-const test = require('brittle')
 const os = require('bare-os')
 const { createEmbeddingsTestInstance, getModelConfigs, waitForCompletion, safeTest } = require('./utils')
 
