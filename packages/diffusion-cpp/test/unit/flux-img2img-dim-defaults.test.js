@@ -4,6 +4,7 @@ const test = require('brittle')
 const { applyFluxImg2ImgDimDefaults } = require('../../index.js')
 
 const FLUX_PRED = 'flux2_flow'
+const FLUX1_PRED = 'flux_flow'
 const SD_PRED = 'euler'
 const BASE_PARAMS = { prompt: 'test', init_image: new Uint8Array([1, 2, 3]) }
 
@@ -30,6 +31,12 @@ test('height omitted — defaults height to 1024, preserves explicit width', fun
 test('fusion path (init_images) with both axes omitted — defaults to 1024x1024', function (t) {
   const params = { prompt: 'test' }
   const result = applyFluxImg2ImgDimDefaults(params, FLUX_PRED, true)
+  t.is(result.width, 1024)
+  t.is(result.height, 1024)
+})
+
+test('flux_flow (FLUX.1) — also defaults to 1024x1024', function (t) {
+  const result = applyFluxImg2ImgDimDefaults(BASE_PARAMS, FLUX1_PRED, false)
   t.is(result.width, 1024)
   t.is(result.height, 1024)
 })

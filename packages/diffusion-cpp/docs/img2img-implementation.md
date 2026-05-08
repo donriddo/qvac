@@ -19,20 +19,22 @@ Full img2img (image-to-image) support has been implemented for FLUX2-klein in th
 
 ### 2. **Addon JavaScript Layer** (`addon.js`)
 
-**Modified:** `runJob()` method to convert `Uint8Array` init_image to JSON-serializable array
+**Modified:** `runJob()` strips `init_image` / `init_images` from the JSON params and passes them directly to the C++ binding as binary buffers via `initImageBuffer` / `initImageBuffers`.
 
 ```javascript
-// Before: init_image Uint8Array didn't serialize properly
-const paramsJson = JSON.stringify(params)
-
-// After: Converts Uint8Array to array for C++ consumption
-if (params.init_image) {
-  serializable.init_image_bytes = Array.from(params.init_image)
-  delete serializable.init_image
-}
+// init_image path: strip from JSON, pass as binary buffer
+const serializable = { ...params }
+const imgBuf = serializable.init_image
+delete serializable.init_image
+const paramsJson = JSON.stringify(serializable)
+return this._binding.runJob(this._handle, {
+  type: 'text',
+  input: paramsJson,
+  initImageBuffer: imgBuf
+})
 ```
 
-This bridges the gap between JavaScript's `Uint8Array` and the C++ layer's expectation of a JSON array.
+The C++ binding receives the image bytes as a native `Buffer` rather than a JSON-encoded array, avoiding the serialisation overhead of large images.
 
 ### 3. **C++ Implementation** (Already Present)
 
@@ -45,13 +47,14 @@ The C++ addon (`addon/src/model-interface/SdModel.cpp`) already had full img2img
 
 ### 4. **JavaScript API** (`index.js`)
 
-Already implemented:
+The single public entry point is `run(params)`. `img2img` mode is selected automatically when `init_image` or `init_images` is present in `params`:
 
 ```javascript
-async img2img(params) {
-  if (!params.init_image) throw new Error('img2img requires init_image')
-  return this._runGeneration({ ...params, mode: 'img2img' })
+async run (params) {
+  return this._run(() => this._runInternal(params))
 }
+// Inside _runInternal:
+const mode = (params.init_image || hasInitImages) ? 'img2img' : 'txt2img'
 ```
 
 ### 5. **Test Suite** (`test/integration/generate-image-flux2-i2i.test.js`)
