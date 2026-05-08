@@ -12,6 +12,7 @@ const {
   setupJsLogger,
   isPng
 } = require('./utils')
+const { readImageDimensions } = require('../../addon')
 
 const proc = require('bare-process')
 
@@ -154,6 +155,10 @@ test('FLUX2-klein img2img — transforms an input image', { timeout: 1800000, sk
     t.ok(img instanceof Uint8Array, 'Image is a Uint8Array')
     t.ok(img.length > 1000, `Image has meaningful size (${img.length} bytes)`)
     t.ok(isPng(img), 'Image has valid PNG magic bytes')
+
+    const dims = readImageDimensions(img)
+    t.is(dims.width, 1024, 'Output width is 1024 (JS default applied)')
+    t.is(dims.height, 1024, 'Output height is 1024 (JS default applied)')
 
     // Saved to modelDir so mobile has write permission to the same path
     const outPath = path.join(modelDir, 'generate-image--flux2-i2i-seed42.png')

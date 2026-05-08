@@ -182,18 +182,8 @@ TEST(SdImg2ImgDiagnostics, PrintHeadshotDimensions) {
             << " bytes\n"
             << "[Diagnostic] Decoded dimensions : " << w << " x " << h << "\n"
             << "[Diagnostic] SdGenConfig default: 512 x 512\n"
-            << "[Diagnostic] Dimension match    : "
-            << (w == 512 && h == 512 ? "YES" : "NO") << "\n";
-
-  if (w != 512 || h != 512) {
-    std::cout << "[Diagnostic] ROOT CAUSE: init_image is " << w << "x" << h
-              << " but genParams.width/height default to 512x512.\n"
-              << "             GGML_ASSERT(image.width == tensor->ne[0]) fires "
-              << "because " << w << " != 512.\n"
-              << "             FIX: SdModel::process() must set "
-                 "genParams.width/height\n"
-              << "             from the decoded init_image dimensions.\n";
-  }
+            << "[Diagnostic] Note: index.js defaults FLUX img2img to 1024x1024 "
+               "when dims are omitted; direct C++ callers use 512x512.\n";
 
   EXPECT_GT(w, 0) << "Failed to decode headshot width";
   EXPECT_GT(h, 0) << "Failed to decode headshot height";

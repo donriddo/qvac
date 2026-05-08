@@ -302,8 +302,8 @@ require('bare-fs').writeFileSync('output.png', images[0])
 |-----------|------|---------|-------------|
 | `prompt` | string | — | Text prompt |
 | `negative_prompt` | string | `''` | Things to avoid in the output |
-| `width` | number | `512` | Output width in pixels (multiple of 8) |
-| `height` | number | `512` | Output height in pixels (multiple of 8) |
+| `width` | number | `512` (FLUX img2img: `1024`) | Output width in pixels (multiple of 8) |
+| `height` | number | `512` (FLUX img2img: `1024`) | Output height in pixels (multiple of 8) |
 | `steps` | number | `20` | Number of diffusion steps |
 | `guidance` | number | `3.5` | Distilled guidance scale (FLUX.2) |
 | `cfg_scale` | number | `7.0` | Classifier-free guidance scale (SD1.x / SD2.x) |

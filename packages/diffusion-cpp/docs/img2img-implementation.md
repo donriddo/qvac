@@ -116,7 +116,7 @@ const response = await model.img2img({
   init_image: initImage,
   strength: 0.5,      // 0 = keep original, 1 = full redraw
   steps: 20,
-  // Note: width/height auto-detected from init_image
+  // width/height omitted → JS defaults to 1024x1024 for FLUX img2img
   guidance: 3.5,      // FLUX2 distilled guidance
   seed: 42
 })
@@ -140,7 +140,7 @@ await response.onUpdate((data) => {
 | `guidance` | number | FLUX2 distilled guidance (default: 3.5) |
 | `seed` | number | Random seed, -1 for random (default: -1) |
 
-**Important:** Do NOT specify `width` or `height` for img2img. The dimensions are automatically detected from the input image.
+**FLUX.2 img2img:** `width`/`height` default to 1024 each when omitted. You can pass any explicit multiple-of-8 values. **SDEdit (SD1.x/SD2.x/SDXL/SD3) img2img:** omit `width`/`height` or match the input image dimensions — mismatched values cause a tensor-shape error.
 
 ## Technical Details
 

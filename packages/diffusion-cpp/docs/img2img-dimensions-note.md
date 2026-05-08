@@ -1,57 +1,47 @@
-# Important: img2img Dimensions
+# img2img Dimensions
 
-## The Issue
+## FLUX.2 img2img (`prediction: 'flux2_flow'`)
 
-When using `model.img2img()`, **DO NOT specify `width` or `height` parameters**.
-
-If you do, you'll get this error:
-```
-GGML_ASSERT(image.width == tensor->ne[0]) failed
-```
-
-## Why?
-
-For img2img, stable-diffusion.cpp automatically detects the dimensions from the input image. When you manually specify width/height, it creates a mismatch between:
-- The latent tensor size (based on width/height params)
-- The actual input image dimensions
-
-## Correct Usage
+Output dimensions are **independent of the input image size**. When `width`/`height` are omitted, the addon defaults both to **1024**. You can pass any explicit multiple-of-8 values — the reference image is auto-resized inside `generate_image()`.
 
 ```javascript
-// CORRECT - No width/height
-await model.img2img({
+// Omit width/height → 1024×1024 output (FLUX img2img default)
+await model.run({
   prompt: 'professional headshot',
   init_image: imageBuffer,
-  strength: 0.5,
   steps: 20
 })
 
-// WRONG - Specifying width/height causes crash
-await model.img2img({
+// Explicit dimensions — any multiple-of-8 values work
+await model.run({
   prompt: 'professional headshot',
   init_image: imageBuffer,
+  width: 768,
+  height: 1024,
+  steps: 20
+})
+```
+
+## SDEdit img2img (SD1.x / SD2.x / SDXL / SD3)
+
+When `width`/`height` are omitted, output dimensions are taken from the input image (rounded up to the next multiple of 8). Supplying explicit values that differ from the input image dimensions will cause a tensor-shape mismatch error in stable-diffusion.cpp, so omit them or match them to the input.
+
+```javascript
+// Correct — dimensions match input image
+await model.run({
+  prompt: 'professional headshot',
+  init_image: imageBuffer,   // e.g. 512×512 image
   strength: 0.5,
-  steps: 20,
-  width: 800,   // DON'T DO THIS
-  height: 800   // DON'T DO THIS
+  steps: 20
+  // width/height omitted → taken from input image
 })
 ```
 
 ## Resolution Requirements
 
-Your input image should already be:
-- A multiple of 8 in both dimensions (e.g., 512, 640, 768, 800, 1024)
-- Within FLUX2's supported range (up to 1024x1024 works well)
-
-If your image isn't a multiple of 8, stable-diffusion.cpp will handle it internally.
-
-## CLI vs JavaScript API
-
-Note that the **CLI** (`sd-cli`) works differently:
-- CLI: You CAN specify `--width` and `--height` (they resize the init image)
-- JavaScript API: You CANNOT specify width/height (auto-detected only)
-
-This is why `scripts/headshot.sh` works with width/height but the JavaScript example doesn't.
+- All dimensions must be multiples of 8.
+- FLUX.2 works well at 1024×1024 (the default when omitted).
+- For SDEdit, if your input image dimensions are not multiples of 8, stable-diffusion.cpp rounds up internally.
 
 ---
 
@@ -141,4 +131,3 @@ await model.run({
   steps: 20
 })
 ```
-
