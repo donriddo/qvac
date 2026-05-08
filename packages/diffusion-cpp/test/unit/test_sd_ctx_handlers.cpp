@@ -195,6 +195,10 @@ TEST(SdCtxHandlers_Upscaler, InvalidThreadCountsThrow) {
   }
 }
 
+TEST(SdCtxHandlers_ComputeAndCompatFlags, DiffusionFaDefaultIsTrue) {
+  EXPECT_TRUE(SdCtxConfig{}.diffusionFlashAttn);
+}
+
 TEST(
     SdCtxHandlers_ComputeAndCompatFlags,
     DiffusionFaConvAndSdxlFlagsMapAndInvalidThrow) {
