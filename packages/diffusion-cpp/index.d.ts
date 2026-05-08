@@ -207,7 +207,9 @@ export interface GenerationParams {
   lora?: string
   /** Post-generation ESRGAN upscale. Requires files.esrgan. */
   upscale?: boolean | { repeats?: number }
+  /** Output width (multiple of 8). FLUX img2img defaults to 1024 when omitted. */
   width?: number
+  /** Output height (multiple of 8). FLUX img2img defaults to 1024 when omitted. */
   height?: number
   steps?: number
   /** CFG scale (SD1/SD2/SDXL/SD3) */
