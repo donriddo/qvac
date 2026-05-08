@@ -242,7 +242,8 @@ Config values are coerced to strings internally. Generation parameters (prompt, 
 | `rng` | `'cpu'` \| `'cuda'` \| `'std_default'` | `'cuda'` | RNG backend (`'cuda'` = philox RNG — not GPU-specific despite the name; recommended) |
 | `clip_on_cpu` | `true` \| `false` | `false` | Force CLIP encoder to run on CPU |
 | `vae_on_cpu` | `true` \| `false` | `false` | Force VAE to run on CPU |
-| `flash_attn` | `true` \| `false` | `false` | Enable flash attention (reduces memory) |
+| `flash_attn` | `true` \| `false` | `false` | Enable flash attention for all components (text encoder, diffusion model, VAE) |
+| `diffusion_fa` | `true` \| `false` | `true` | Enable flash attention for the diffusion model only. FLUX2 requires this to avoid materialising the full Q·Kᵀ matrix in VRAM. Safe for all model families — falls back to standard attention on backends that don't support it. Opt out with `false`. |
 | `upscaler_tile_size` | number | `128` | ESRGAN upscaler tile size |
 
 ### 4. Create a Model Instance

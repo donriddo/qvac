@@ -89,7 +89,7 @@ export interface SdConfig {
   vae_tiling?: boolean
   /** Enable flash attention for memory efficiency */
   flash_attn?: boolean
-  /** Enable flash attention for diffusion model specifically */
+  /** Enable flash attention for diffusion model only. Defaults to true (required for FLUX2 to avoid materialising the full Q·Kᵀ matrix; safe for all families — falls back on unsupported backends). */
   diffusion_fa?: boolean
   /** Use memory-mapped model loading */
   mmap?: boolean
