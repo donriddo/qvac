@@ -124,7 +124,12 @@ test('FLUX2-klein img2img — transforms an input image', { timeout: 1800000, sk
       cfg_scale: 1.0,
       steps: STEPS,
       guidance: GUIDANCE,
-      seed: SEED
+      seed: SEED,
+      // 624×624 matches the fusion tests and fits within the T4 CI runner's
+      // 16 GB VRAM budget. JS defaulting to 1024×1024 is proven by the unit
+      // tests in test/unit/flux-img2img-dim-defaults.test.js.
+      width: 624,
+      height: 624
     })
 
     await response
@@ -157,8 +162,8 @@ test('FLUX2-klein img2img — transforms an input image', { timeout: 1800000, sk
     t.ok(isPng(img), 'Image has valid PNG magic bytes')
 
     const dims = readImageDimensions(img)
-    t.is(dims.width, 1024, 'Output width is 1024 (JS default applied)')
-    t.is(dims.height, 1024, 'Output height is 1024 (JS default applied)')
+    t.is(dims.width, 624, 'Output width matches requested 624')
+    t.is(dims.height, 624, 'Output height matches requested 624')
 
     // Saved to modelDir so mobile has write permission to the same path
     const outPath = path.join(modelDir, 'generate-image--flux2-i2i-seed42.png')
