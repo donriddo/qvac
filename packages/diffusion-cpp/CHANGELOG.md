@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.7.1] - 2026-05-08
+
+### Fixed
+
+- FLUX2 img2img OOM on large input images: `_fillDimsFromImage` in `addon.js` was copying the input image's pixel dimensions as the output resolution when `width`/`height` were omitted, causing allocations proportional to the input image (e.g. ~288 GB for a 2252×4000 photo). `index.js` now defaults FLUX single-ref img2img to 1024×1024 when the caller omits both dimensions.
+- FLUX2 img2img OOM during diffusion: `diffusion_fa` was not set in `img2img-flux2.js` and `img2img-flux2-f16.js`, causing FLUX2 to materialise the full Q·KᵀT joint-attention matrix in VRAM without flash attention. Both examples now set `diffusion_fa: true`.
+- `img2img-flux2.js` and `img2img-flux2-f16.js`: add explicit `width: 1024, height: 1024` to `run()` params so examples work with any input image regardless of its dimensions.
+- Remove dead 512×512 dimension override in `SdModel.cpp`: the `if (gen.width == 512 && gen.height == 512)` block was unreachable because `addon.js::_fillDimsFromImage` always fills width/height before the JSON reaches C++.
+
 ## [0.7.0] - 2026-05-06
 
 ### Added

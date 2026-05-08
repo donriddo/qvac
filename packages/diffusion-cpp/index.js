@@ -426,11 +426,23 @@ class ImgStableDiffusion {
       throw new Error(RUN_BUSY_ERROR_MESSAGE)
     }
 
+    // FLUX single-ref img2img: output dimensions are independent of the reference
+    // image. addon.js::_fillDimsFromImage copies the input image's pixel size as
+    // the output size when width/height are omitted, which OOMs on any large photo
+    // because FLUX2 generates at the full input resolution. Default to 1024x1024
+    // — the standard FLUX2 resolution that fits in 32 GB and produces good results.
+    let runParams = params
+    const isFluxSingleRef = params.init_image &&
+      (pred === 'flux2_flow' || pred === 'flux_flow')
+    if (isFluxSingleRef && !runParams.width && !runParams.height) {
+      runParams = { ...runParams, width: 1024, height: 1024 }
+    }
+
     const response = this._job.start()
 
     let accepted
     try {
-      accepted = await this.addon.runJob({ ...params, mode })
+      accepted = await this.addon.runJob({ ...runParams, mode })
     } catch (error) {
       this._job.fail(error)
       throw error
