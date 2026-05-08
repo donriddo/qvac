@@ -539,10 +539,9 @@ std::any SdModel::process(const std::any& input) {
       const int imgH = static_cast<int>(initImg.height);
 
       if (isFluxFamily) {
-        // genParams.width/height already set from gen at line 518.
-        // index.js defaults FLUX single-ref img2img to 1024x1024 when the caller
-        // omits dimensions, so gen.width/height are never the C++ default (512)
-        // on the normal JS path. Direct C++ callers must supply explicit values.
+        // genParams.width/height are already assigned from gen earlier in this
+        // function. index.js defaults any missing FLUX img2img axis to 1024,
+        // so direct C++ callers must supply explicit dimensions.
 
         QLOG_IF(
             qvac_lib_inference_addon_cpp::logger::Priority::INFO,

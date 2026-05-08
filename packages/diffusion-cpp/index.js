@@ -199,8 +199,8 @@ class ImgStableDiffusion {
    * @param {string} params.prompt                  - Text prompt
    * @param {string} [params.negative_prompt]       - Negative prompt
    * @param {number} [params.steps=20]              - Denoising step count
-   * @param {number} [params.width=512]             - Output width (multiple of 8)
-   * @param {number} [params.height=512]            - Output height (multiple of 8)
+   * @param {number} [params.width]                 - Output width (multiple of 8). FLUX img2img defaults to 1024 when omitted.
+   * @param {number} [params.height]                - Output height (multiple of 8). FLUX img2img defaults to 1024 when omitted.
    * @param {number} [params.guidance=3.5]          - Distilled guidance (FLUX.2)
    * @param {number} [params.cfg_scale=7.0]         - CFG scale (SD1/SD2)
    * @param {string} [params.sampling_method]       - Sampler name
@@ -426,16 +426,24 @@ class ImgStableDiffusion {
       throw new Error(RUN_BUSY_ERROR_MESSAGE)
     }
 
-    // FLUX single-ref img2img: output dimensions are independent of the reference
-    // image. addon.js::_fillDimsFromImage copies the input image's pixel size as
-    // the output size when width/height are omitted, which OOMs on any large photo
-    // because FLUX2 generates at the full input resolution. Default to 1024x1024
-    // — the standard FLUX2 resolution that fits in 32 GB and produces good results.
+    // FLUX img2img: output dimensions are independent of the reference image.
+    // addon.js::_fillDimsFromImage copies the input image's pixel size as the
+    // output size for any axis the caller omits, which OOMs on large photos
+    // because FLUX2 generates at the full input resolution. Default any missing
+    // axis to 1024 — the standard FLUX2 resolution that fits in 32 GB.
+    // This covers both single-ref (init_image) and fusion (init_images) paths.
     let runParams = params
-    const isFluxSingleRef = params.init_image &&
+    const isFluxImg2Img = (params.init_image || hasInitImages) &&
       (pred === 'flux2_flow' || pred === 'flux_flow')
-    if (isFluxSingleRef && !runParams.width && !runParams.height) {
-      runParams = { ...runParams, width: 1024, height: 1024 }
+    if (isFluxImg2Img) {
+      const defaultDim = 1024
+      if (!runParams.width && !runParams.height) {
+        runParams = { ...runParams, width: defaultDim, height: defaultDim }
+      } else if (!runParams.width) {
+        runParams = { ...runParams, width: defaultDim }
+      } else if (!runParams.height) {
+        runParams = { ...runParams, height: defaultDim }
+      }
     }
 
     const response = this._job.start()

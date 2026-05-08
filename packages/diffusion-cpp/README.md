@@ -318,7 +318,7 @@ require('bare-fs').writeFileSync('output.png', images[0])
 
 #### Image-to-image (`init_image`)
 
-Pass `init_image` (a `Uint8Array` of PNG or JPEG bytes) to transform an existing image with a text prompt. Width and height are auto-detected from the image header and rounded to the nearest multiple of 8.
+Pass `init_image` (a `Uint8Array` of PNG or JPEG bytes) to transform an existing image with a text prompt. For SDEdit models (SD1.x / SD2.x / SDXL / SD3) `width` and `height` default to the input image's pixel dimensions (rounded to the nearest multiple of 8). For FLUX.2 models the output size is independent of the reference image — omit `width`/`height` to get the default 1024×1024 output, or supply them explicitly.
 
 The addon automatically selects the correct img2img strategy based on the model's prediction type:
 

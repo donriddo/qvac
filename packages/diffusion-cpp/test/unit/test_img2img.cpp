@@ -240,12 +240,12 @@ TEST_F(SdImg2ImgTest, Img2Img_512x512_ExplicitDimensions_Succeeds) {
         << "Output must be valid PNG";
 }
 
-// ── Real headshot: auto-detected dimensions
-// ─────────────────────────────────── This test verifies the fix:
-// genParams.width/height are auto-set from the decoded init_image, so no
-// explicit width/height is required.
+// ── Real headshot: no explicit width/height supplied ────────────────────────
+// Verifies that C++ correctly uses whatever dimensions arrive in paramsJson.
+// The JS layer (index.js) defaults FLUX img2img to 1024x1024 when the caller
+// omits both axes; this test exercises the C++ path with a real image file.
 
-TEST_F(SdImg2ImgTest, Img2Img_Headshot_AutoDetectedDimensions_Succeeds) {
+TEST_F(SdImg2ImgTest, Img2Img_Headshot_NoExplicitDimensions_Succeeds) {
   const auto path = img2img_helpers::headshotPath();
   if (!std::filesystem::exists(path))
     GTEST_SKIP() << "Headshot not found at: " << path;
@@ -255,15 +255,12 @@ TEST_F(SdImg2ImgTest, Img2Img_Headshot_AutoDetectedDimensions_Succeeds) {
 
   const auto [dw, dh] = img2img_helpers::decodeDimensions(initBytes);
   std::cout << "\n[Test] Headshot dimensions: " << dw << "x" << dh << "\n"
-            << "[Test] Passing NO explicit width/height — relying on "
-               "auto-detect fix\n";
+            << "[Test] Passing NO explicit width/height in paramsJson\n";
 
   std::vector<std::vector<uint8_t>> images;
   std::mutex mu;
 
   SdModel::GenerationJob job;
-  // No width/height in params — the fix in SdModel::process() should
-  // auto-detect them from the decoded init_image.
   job.paramsJson = img2img_helpers::makeImg2ImgParams(
       initBytes, /*w=*/0, /*h=*/0, /*steps=*/1);
 
