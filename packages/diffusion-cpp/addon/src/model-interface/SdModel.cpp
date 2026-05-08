@@ -479,11 +479,11 @@ std::any SdModel::process(const std::any& input) {
         refImgs->push_back(decoded);
       }
 
-      // Output dimensions come from the JS shim (addon.js::_fillDimsFromImage,
-      // which falls back to the first reference's size when the caller omits
-      // width/height). C++ callers using the binding directly must supply
-      // both dimensions explicitly. auto_resize_ref_image handles the
-      // remaining refs.
+      // index.js defaults FLUX img2img (fusion and single-ref) to 1024×1024
+      // when the caller omits width/height, so addon.js::_fillDimsFromImage
+      // is a no-op for that path. Direct C++ callers should supply explicit
+      // dimensions; otherwise the SdGenConfig 512×512 default is used.
+      // auto_resize_ref_image handles the remaining refs.
 
       // clang-format off
       // NOTE: Homebrew and apt.llvm.org builds of clang-format-19 disagree on
@@ -540,8 +540,9 @@ std::any SdModel::process(const std::any& input) {
 
       if (isFluxFamily) {
         // genParams.width/height are already assigned from gen earlier in this
-        // function. index.js defaults any missing FLUX img2img axis to 1024,
-        // so direct C++ callers must supply explicit dimensions.
+        // function. index.js defaults any missing FLUX img2img axis to 1024;
+        // direct C++ callers should supply explicit dimensions, otherwise the
+        // SdGenConfig 512×512 default is used.
 
         QLOG_IF(
             qvac_lib_inference_addon_cpp::logger::Priority::INFO,

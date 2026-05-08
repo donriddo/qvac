@@ -54,7 +54,7 @@ struct SdCtxConfig {
   int nThreads = -1; // n_threads:            -1 = auto-detect physical cores
   bool flashAttn = false; // flash_attn:           full-model flash attention
   bool diffusionFlashAttn =
-      false; // diffusion_flash_attn: flash attention on diffusion only
+      true; // diffusion_flash_attn: flash attention on diffusion only (safe default for all model families; backends that don't support it fall back to standard attention)
 
   // -- Memory management -----------------------------------------------------
   bool mmap = false;         // enable_mmap:           memory-map the GGUF file

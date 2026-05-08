@@ -5,7 +5,7 @@
 ### Fixed
 
 - FLUX2 img2img OOM on large input images: `_fillDimsFromImage` in `addon.js` was copying the input image's pixel dimensions as the output resolution for any axis the caller omitted, causing allocations proportional to the input image (e.g. ~288 GB for a 2252×4000 photo). `index.js` now defaults each missing axis to 1024 for both single-ref (`init_image`) and fusion (`init_images`) FLUX img2img paths.
-- FLUX2 img2img OOM during diffusion: `diffusion_fa` was not set in `img2img-flux2.js` and `img2img-flux2-f16.js`, causing FLUX2 to materialise the full Q·KᵀT joint-attention matrix in VRAM without flash attention. Both examples now set `diffusion_fa: true`.
+- FLUX2 img2img OOM during diffusion: `SdCtxConfig::diffusionFlashAttn` (JS: `diffusion_fa`) now defaults to `true`. Without flash attention, FLUX2 materialises the full Q·Kᵀ joint-attention matrix in VRAM — ~288 GB for a 1024×1024 output on Vulkan. The flag is safe to leave enabled for all model families: `ggml_ext_attention_ext` falls back to standard attention on backends that don't support `ggml_flash_attn_ext`. Callers who need to opt out can pass `diffusion_fa: false` in the config. The two `img2img-flux2*.js` examples and the `generate-image-flux2-i2i.test.js` integration test now also set the flag explicitly for clarity.
 - `img2img-flux2.js` and `img2img-flux2-f16.js`: add explicit `width: 1024, height: 1024` to `run()` params so examples work with any input image regardless of its dimensions.
 - Remove dead 512×512 dimension override in `SdModel.cpp`: the `if (gen.width == 512 && gen.height == 512)` block was unreachable because `addon.js::_fillDimsFromImage` always fills width/height before the JSON reaches C++.
 
