@@ -90,34 +90,35 @@ Bash script for testing img2img via stable-diffusion.cpp CLI:
 ```javascript
 const ImgStableDiffusion = require('@qvac/diffusion-cpp')
 const fs = require('bare-fs')
+const path = require('bare-path')
 
-const model = new ImgStableDiffusion(
-  {
-    loader: myLoader,
-    diskPath: './models',
-    modelName: 'flux-2-klein-4b-Q8_0.gguf',
-    llmModel: 'Qwen3-4B-Q4_K_M.gguf',
-    vaeModel: 'flux2-vae.safetensors'
+const modelsDir = path.join(__dirname, 'models')
+
+const model = new ImgStableDiffusion({
+  files: {
+    model: path.join(modelsDir, 'flux-2-klein-4b-Q8_0.gguf'),
+    llm: path.join(modelsDir, 'Qwen3-4B-Q4_K_M.gguf'),
+    vae: path.join(modelsDir, 'flux2-vae.safetensors')
   },
-  {
+  config: {
     threads: 4,
     device: 'gpu',
     prediction: 'flux2_flow'
   }
-)
+})
 
 await model.load()
 
 const initImage = fs.readFileSync('input.jpg')
 
-const response = await model.img2img({
+const response = await model.run({
+  init_image: initImage,
   prompt: 'professional headshot, studio lighting',
   negative_prompt: 'blurry, low quality',
-  init_image: initImage,
-  strength: 0.5,      // 0 = keep original, 1 = full redraw
+  strength: 0.5,
   steps: 20,
   // width/height omitted → JS defaults to 1024x1024 for FLUX img2img
-  guidance: 3.5,      // FLUX2 distilled guidance
+  guidance: 3.5,
   seed: 42
 })
 

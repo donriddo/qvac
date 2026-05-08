@@ -203,6 +203,7 @@ TEST(
     SdCtxHandlers_ComputeAndCompatFlags,
     DiffusionFaConvAndSdxlFlagsMapAndInvalidThrow) {
   EXPECT_TRUE(applyOne("diffusion_fa", "true").diffusionFlashAttn);
+  EXPECT_FALSE(applyOne("diffusion_fa", "false").diffusionFlashAttn);
   EXPECT_TRUE(applyOne("diffusion_conv_direct", "1").diffusionConvDirect);
   EXPECT_FALSE(applyOne("vae_conv_direct", "0").vaeConvDirect);
   EXPECT_TRUE(

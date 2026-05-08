@@ -36,6 +36,17 @@ function normalizeUpscaleRepeats (options) {
   return repeats
 }
 
+function applyFluxImg2ImgDimDefaults (params, pred, hasInitImages) {
+  const isFluxImg2Img = (params.init_image || hasInitImages) &&
+    (pred === 'flux2_flow' || pred === 'flux_flow')
+  if (!isFluxImg2Img) return params
+  const defaultDim = 1024
+  if (!params.width && !params.height) return { ...params, width: defaultDim, height: defaultDim }
+  if (!params.width) return { ...params, width: defaultDim }
+  if (!params.height) return { ...params, height: defaultDim }
+  return params
+}
+
 /**
  * Text-to-image and image-to-image generation using stable-diffusion.cpp.
  * Supports SD1.x, SD2.x, SDXL, SD3, and FLUX.2 [klein].
@@ -426,25 +437,7 @@ class ImgStableDiffusion {
       throw new Error(RUN_BUSY_ERROR_MESSAGE)
     }
 
-    // FLUX img2img: output dimensions are independent of the reference image.
-    // addon.js::_fillDimsFromImage copies the input image's pixel size as the
-    // output size for any axis the caller omits, which OOMs on large photos
-    // because FLUX2 generates at the full input resolution. Default any missing
-    // axis to 1024 — the standard FLUX2 resolution that fits in 32 GB.
-    // This covers both single-ref (init_image) and fusion (init_images) paths.
-    let runParams = params
-    const isFluxImg2Img = (params.init_image || hasInitImages) &&
-      (pred === 'flux2_flow' || pred === 'flux_flow')
-    if (isFluxImg2Img) {
-      const defaultDim = 1024
-      if (!runParams.width && !runParams.height) {
-        runParams = { ...runParams, width: defaultDim, height: defaultDim }
-      } else if (!runParams.width) {
-        runParams = { ...runParams, width: defaultDim }
-      } else if (!runParams.height) {
-        runParams = { ...runParams, height: defaultDim }
-      }
-    }
+    const runParams = applyFluxImg2ImgDimDefaults(params, pred, hasInitImages)
 
     const response = this._job.start()
 
@@ -689,3 +682,4 @@ class EsrganUpscaler {
 module.exports = ImgStableDiffusion
 module.exports.ImgStableDiffusion = ImgStableDiffusion
 module.exports.EsrganUpscaler = EsrganUpscaler
+module.exports.applyFluxImg2ImgDimDefaults = applyFluxImg2ImgDimDefaults
