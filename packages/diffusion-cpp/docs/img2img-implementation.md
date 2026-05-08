@@ -205,12 +205,12 @@ bare examples/img2img-flux2.js
 
 On MacBook Air M1 (2020, 16 GB RAM):
 - Model load: ~30-60s
-- Generation (20 steps, 800x800): ~60-90s
+- Generation (20 steps, 1024x1024): ~60-90s
 - Memory usage: ~8-10 GB
 
 ## Files Modified
 
-1. ✅ `addon.js` - Added init_image serialization
+1. ✅ `addon.js` - Added `initImageBuffer` / `initImageBuffers` binary bridge
 2. ✅ `scripts/download-model-i2i.sh` - New download script
 3. ✅ `scripts/headshot.sh` - CLI test script
 4. ✅ `test/integration/generate-image-flux2-i2i.test.js` - Integration test
@@ -219,7 +219,7 @@ On MacBook Air M1 (2020, 16 GB RAM):
 
 ## Files Already Supporting img2img
 
-1. ✅ `index.js` - JavaScript API (`img2img()` method)
+1. ✅ `index.js` - JavaScript API (`run(params)` — mode auto-selected by presence of `init_image`)
 2. ✅ `addon/src/model-interface/SdModel.cpp` - C++ implementation
 3. ✅ `addon/src/model-interface/SdModel.hpp` - C++ headers
 4. ✅ `addon/src/handlers/SdGenHandlers.cpp` - Parameter handlers
@@ -227,4 +227,4 @@ On MacBook Air M1 (2020, 16 GB RAM):
 
 ## Conclusion
 
-The img2img feature is now fully operational for FLUX2-klein. The only missing piece was the `Uint8Array` to array conversion in `addon.js`, which has been added. All other components (C++ addon, JavaScript API, parameter handling) were already in place and working correctly.
+The img2img feature is fully operational for FLUX2-klein. `addon.js` passes image buffers directly to the C++ binding via `initImageBuffer` / `initImageBuffers` (binary, not JSON-serialised). `index.js` exposes a single `run(params)` entry point; img2img mode is selected automatically when `init_image` or `init_images` is present.
