@@ -5,8 +5,8 @@
  *   <tool_call><function=NAME><parameter=KEY>VALUE</parameter></function></tool_call>
  *
  * The dialect is auto-detected from the model name/path when the model file
- * contains "qwen3.5" or "qwen3-5". Pass toolDialect: "qwen35" explicitly to
- * completion() if auto-detection does not pick it up for a given file name.
+ * contains "qwen3.5", "qwen3-5", "qwen3.6", or "qwen3-6". Pass
+ * toolDialect: "qwen35" explicitly if auto-detection does not pick it up.
  *
  * Usage:
  *   bun run bare:example dist/examples/tools/llamacpp-tools-qwen35.js <model-url>
