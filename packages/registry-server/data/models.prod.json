@@ -10695,7 +10695,7 @@
     "description": "Gemma 4 E2B instruct multimodal model",
     "quantization": "q4_k_m",
     "params": "2B",
-    "licenseId": "gemma",
+    "licenseId": "Apache-2.0",
     "tags": [
       "generation",
       "multimodal",
@@ -10711,7 +10711,7 @@
     "description": "Gemma 4 E2B instruct multimodal model",
     "quantization": "q6_k",
     "params": "2B",
-    "licenseId": "gemma",
+    "licenseId": "Apache-2.0",
     "tags": [
       "generation",
       "multimodal",
@@ -10727,7 +10727,7 @@
     "description": "Vision projector (mmproj) for Gemma 4 E2B",
     "quantization": "bf16",
     "params": "2B",
-    "licenseId": "gemma",
+    "licenseId": "Apache-2.0",
     "tags": [
       "generation",
       "multimodal",
@@ -10743,7 +10743,7 @@
     "description": "Vision projector (mmproj) for Gemma 4 E2B",
     "quantization": "f16",
     "params": "2B",
-    "licenseId": "gemma",
+    "licenseId": "Apache-2.0",
     "tags": [
       "generation",
       "multimodal",
@@ -10759,7 +10759,7 @@
     "description": "Gemma 4 E4B instruct multimodal model",
     "quantization": "q4_k_m",
     "params": "4B",
-    "licenseId": "gemma",
+    "licenseId": "Apache-2.0",
     "tags": [
       "generation",
       "multimodal",
@@ -10775,7 +10775,7 @@
     "description": "Gemma 4 E4B instruct multimodal model",
     "quantization": "q6_k",
     "params": "4B",
-    "licenseId": "gemma",
+    "licenseId": "Apache-2.0",
     "tags": [
       "generation",
       "multimodal",
@@ -10791,7 +10791,7 @@
     "description": "Vision projector (mmproj) for Gemma 4 E4B",
     "quantization": "bf16",
     "params": "4B",
-    "licenseId": "gemma",
+    "licenseId": "Apache-2.0",
     "tags": [
       "generation",
       "multimodal",
@@ -10807,7 +10807,7 @@
     "description": "Vision projector (mmproj) for Gemma 4 E4B",
     "quantization": "f16",
     "params": "4B",
-    "licenseId": "gemma",
+    "licenseId": "Apache-2.0",
     "tags": [
       "generation",
       "multimodal",
@@ -10823,7 +10823,7 @@
     "description": "Gemma 4 31B instruct multimodal model",
     "quantization": "q4_k_m",
     "params": "31B",
-    "licenseId": "gemma",
+    "licenseId": "Apache-2.0",
     "tags": [
       "generation",
       "multimodal",
@@ -10839,7 +10839,7 @@
     "description": "Gemma 4 31B instruct multimodal model",
     "quantization": "q6_k",
     "params": "31B",
-    "licenseId": "gemma",
+    "licenseId": "Apache-2.0",
     "tags": [
       "generation",
       "multimodal",
@@ -10855,7 +10855,7 @@
     "description": "Vision projector (mmproj) for Gemma 4 31B",
     "quantization": "f16",
     "params": "31B",
-    "licenseId": "gemma",
+    "licenseId": "Apache-2.0",
     "tags": [
       "generation",
       "multimodal",
@@ -10871,7 +10871,7 @@
     "description": "Vision projector (mmproj) for Gemma 4 31B",
     "quantization": "bf16",
     "params": "31B",
-    "licenseId": "gemma",
+    "licenseId": "Apache-2.0",
     "tags": [
       "generation",
       "multimodal",
