@@ -279,6 +279,9 @@ test("detectToolDialectFromName: non-LFM models default to hermes", (t) => {
     // Qwen3 50B must not be mistaken for Qwen3.5 (digit after 5, not a letter)
     [undefined, "/cache/abc_Qwen3-50B-Instruct-Q4_K_M.gguf"],
     ["QWEN3_50B_INST", "/Users/x/.qvac/models/abc_qwen3-50b-instruct.gguf"],
+    // Qwen3 60B must not be mistaken for Qwen3.6 (digit after 6, not a letter)
+    [undefined, "/cache/abc_Qwen3-60B-Instruct-Q4_K_M.gguf"],
+    ["QWEN3_60B_INST", "/Users/x/.qvac/models/abc_qwen3-60b-instruct.gguf"],
     // Gemma-4 billion params (generation 3, 4B size) must not be mistaken for Gemma 4 generation
     [undefined, "/cache/abc_gemma-40b-Q4_K_M.gguf"],
   ];
@@ -620,6 +623,9 @@ test("detectToolDialectFromName: Qwen3.5 variants → qwen35", (t) => {
     [undefined, "/cache/abc_Qwen3.5-7B-Instruct-Q4_K_M.gguf"],
     ["QWEN3_5_7B_INST_Q4", "/Users/x/.qvac/models/abc_qwen3.5-7b-instruct.gguf"],
     [undefined, "/cache/abc_qwen3-5-7b.gguf"],
+    // Qwen3.6 shares the same Pythonic-XML tool-call format as Qwen3.5
+    [undefined, "/cache/abc_Qwen3.6-7B-Instruct-Q4_K_M.gguf"],
+    ["QWEN3_6_7B_INST", "/Users/x/.qvac/models/abc_qwen3.6-7b-instruct.gguf"],
   ];
 
   for (const [name, path] of cases) {
@@ -692,6 +698,15 @@ test("parseGemma4NativeFormat: no open marker → matched=false", (t) => {
   const result = parseGemma4NativeFormat("No gemma call here.", pythonicTools);
   t.is(result.matched, false);
   t.is(result.toolCalls.length, 0);
+});
+
+test("parseGemma4NativeFormat: multiline string value is parsed correctly", (t) => {
+  const text = `<|tool_call>call:get_weather{city:<|"|>line1\nline2<|"|>}<tool_call|>`;
+  const result = parseGemma4NativeFormat(text, pythonicTools);
+  t.is(result.matched, true);
+  t.is(result.errors.length, 0);
+  t.is(result.toolCalls.length, 1);
+  t.is(result.toolCalls[0]?.arguments?.city, "line1\nline2");
 });
 
 test("parseToolCalls(dialect=gemma4): parses Gemma4 native format", (t) => {

@@ -18,7 +18,7 @@ function gemmaArgsToJson(argsRaw: string): string {
     .map((part, i) =>
       i % 2 === 0
         ? part.replace(/([{,]\s*)([A-Za-z_]\w*)\s*:/g, '$1"$2":')
-        : '"' + part.replace(/\\/g, "\\\\").replace(/"/g, '\\"') + '"',
+        : '"' + part.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n").replace(/\r/g, "\\r") + '"',
     )
     .join("");
 }
