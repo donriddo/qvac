@@ -11,6 +11,8 @@ import {
 import { parseHermesFormat } from "@/server/utils/tools/parsers/hermes";
 import { parsePythonicFormat } from "@/server/utils/tools/parsers/pythonic";
 import { parseHarmonyFormat } from "@/server/utils/tools/parsers/harmony";
+import { parseQwen35Format } from "@/server/utils/tools/parsers/qwen35";
+import { parseGemma4NativeFormat } from "@/server/utils/tools/parsers/gemma4native";
 
 function pickFormatParsers(
   dialect: ToolDialect | undefined,
@@ -26,12 +28,18 @@ function pickFormatParsers(
       return [parseGemmaFormat, parseLlamacppFormat];
     case "harmony":
       return [parseHarmonyFormat];
+    case "qwen35":
+      return [parseQwen35Format, parseHermesFormat];
+    case "gemma4":
+      return [parseGemma4NativeFormat];
     default:
       // Harmony first: `to=functions.` is uniquely Harmony and can't
       // false-match other dialects.
+      // Gemma4 next: `<|tool_call>` is distinctive and won't false-match.
       // Pythonic last: its bare `[name(...)]` form can match payloads that
       // look like other dialects.
       return [
+        parseGemma4NativeFormat,
         parseHarmonyFormat,
         parseHermesFormat,
         parseGemmaFormat,

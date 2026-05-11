@@ -11,6 +11,7 @@ export interface SDKGenerationParams {
   frequency_penalty?: number
   presence_penalty?: number
   repeat_penalty?: number
+  reasoning_budget?: -1 | 0
 }
 
 export type SDKResponseFormat =

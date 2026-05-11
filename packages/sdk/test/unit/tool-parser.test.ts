@@ -6,6 +6,8 @@ import {
   detectToolDialectFromName,
 } from "@/server/utils/tools";
 import { parseHarmonyFormat } from "@/server/utils/tools/parsers/harmony";
+import { parseQwen35Format } from "@/server/utils/tools/parsers/qwen35";
+import { parseGemma4NativeFormat } from "@/server/utils/tools/parsers/gemma4native";
 const weatherTool: Tool = {
   type: "function",
   name: "weather",
@@ -268,6 +270,12 @@ test("detectToolDialectFromName: non-LFM models default to hermes", (t) => {
     [undefined, "/cache/abc_Llama-3.3-70B-Instruct-Tool-Calling.gguf"],
     [undefined, ""],
     ["", ""],
+    // Gemma3 with Q4 quantization suffix must not be mistaken for Gemma4 model generation
+    [undefined, "/cache/abc_gemma3-Q4_K_M.gguf"],
+    ["GEMMA3_Q4", "/Users/x/.qvac/models/abc_gemma-3-4b-q4_k_m.gguf"],
+    // Qwen3 5B (5 billion params) must not be mistaken for Qwen3.5 (model version 3.5)
+    [undefined, "/cache/abc_Qwen3-5B-Instruct-Q4_K_M.gguf"],
+    ["QWEN3_5B_INST", "/Users/x/.qvac/models/abc_qwen3-5b-instruct.gguf"],
   ];
 
   for (const [name, path] of cases) {
@@ -600,4 +608,92 @@ test("detectToolDialectFromName: GPT-OSS variants → harmony", (t) => {
   for (const [name, path] of cases) {
     t.is(detectToolDialectFromName(name, path), "harmony", `name=${name} path=${path}`);
   }
+});
+
+test("detectToolDialectFromName: Qwen3.5 variants → qwen35", (t) => {
+  const cases: Array<[string | undefined, string]> = [
+    [undefined, "/cache/abc_Qwen3.5-7B-Instruct-Q4_K_M.gguf"],
+    ["QWEN3_5_7B_INST_Q4", "/Users/x/.qvac/models/abc_qwen3.5-7b-instruct.gguf"],
+    [undefined, "/cache/abc_qwen3-5-7b.gguf"],
+  ];
+
+  for (const [name, path] of cases) {
+    t.is(detectToolDialectFromName(name, path), "qwen35", `name=${name} path=${path}`);
+  }
+});
+
+test("detectToolDialectFromName: Gemma 4 variants → gemma4", (t) => {
+  const cases: Array<[string | undefined, string]> = [
+    [undefined, "/cache/abc_gemma4-9b-it-Q4_K_M.gguf"],
+    ["GEMMA4_27B_IT_Q4", "/Users/x/.qvac/models/abc_gemma-4-27b-it.gguf"],
+    [undefined, "/cache/abc_gemma4-27b.gguf"],
+  ];
+
+  for (const [name, path] of cases) {
+    t.is(detectToolDialectFromName(name, path), "gemma4", `name=${name} path=${path}`);
+  }
+});
+
+test("parseQwen35Format: single function call with parameters", (t) => {
+  const text = `<tool_call>
+<function=get_weather>
+<parameter=city>Paris</parameter>
+<parameter=unit>celsius</parameter>
+</function>
+</tool_call>`;
+  const result = parseQwen35Format(text, pythonicTools);
+  t.is(result.matched, true);
+  t.is(result.toolCalls.length, 1);
+  t.is(result.toolCalls[0]?.name, "get_weather");
+  t.alike(result.toolCalls[0]?.arguments, { city: "Paris", unit: "celsius" });
+  t.is(result.errors.length, 0);
+});
+
+test("parseQwen35Format: no tool_call markers → matched=false", (t) => {
+  const result = parseQwen35Format("No tool call here.", pythonicTools);
+  t.is(result.matched, false);
+  t.is(result.toolCalls.length, 0);
+});
+
+test("parseQwen35Format: missing function tag → PARSE_ERROR", (t) => {
+  const text = `<tool_call>some plain content</tool_call>`;
+  const result = parseQwen35Format(text, pythonicTools);
+  t.is(result.matched, true);
+  t.is(result.toolCalls.length, 0);
+  t.is(result.errors.length, 1);
+  t.is(result.errors[0]?.code, "PARSE_ERROR");
+});
+
+test("parseToolCalls(dialect=qwen35): parses Qwen3.5 XML format", (t) => {
+  const text = `<tool_call><function=get_weather><parameter=city>Tokyo</parameter></function></tool_call>`;
+  const { toolCalls, errors } = parseToolCalls(text, pythonicTools, "qwen35");
+  t.is(errors.length, 0);
+  t.is(toolCalls.length, 1);
+  t.is(toolCalls[0]?.name, "get_weather");
+  t.alike(toolCalls[0]?.arguments, { city: "Tokyo" });
+});
+
+test("parseGemma4NativeFormat: single call with string values", (t) => {
+  const text = `<|tool_call>call:get_weather{city:<|"|>Paris<|"|>,country:<|"|>FR<|"|>}<tool_call|>`;
+  const result = parseGemma4NativeFormat(text, pythonicTools);
+  t.is(result.matched, true);
+  t.is(result.toolCalls.length, 1);
+  t.is(result.toolCalls[0]?.name, "get_weather");
+  t.alike(result.toolCalls[0]?.arguments, { city: "Paris", country: "FR" });
+  t.is(result.errors.length, 0);
+});
+
+test("parseGemma4NativeFormat: no open marker → matched=false", (t) => {
+  const result = parseGemma4NativeFormat("No gemma call here.", pythonicTools);
+  t.is(result.matched, false);
+  t.is(result.toolCalls.length, 0);
+});
+
+test("parseToolCalls(dialect=gemma4): parses Gemma4 native format", (t) => {
+  const text = `<|tool_call>call:get_weather{city:<|"|>Berlin<|"|>}<tool_call|>`;
+  const { toolCalls, errors } = parseToolCalls(text, pythonicTools, "gemma4");
+  t.is(errors.length, 0);
+  t.is(toolCalls.length, 1);
+  t.is(toolCalls[0]?.name, "get_weather");
+  t.alike(toolCalls[0]?.arguments, { city: "Berlin" });
 });

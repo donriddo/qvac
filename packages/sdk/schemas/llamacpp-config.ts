@@ -60,6 +60,10 @@ export const llmConfigBaseSchema = z.object({
    * for fast GPU startup.
    */
   openclCacheDir: z.string().optional(),
+  /**
+   * Reasoning channel token budget. `-1` = unrestricted, `0` = disabled.
+   */
+  reasoning_budget: z.union([z.literal(-1), z.literal(0)]).optional(),
   projectionModelSrc: modelSrcInputSchema.optional(),
 });
 
