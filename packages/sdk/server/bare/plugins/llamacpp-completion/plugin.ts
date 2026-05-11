@@ -12,7 +12,6 @@ import {
   ModelType,
   llmConfigBaseSchema,
   ADDON_LLM,
-  TOOLS_MODE,
   type CompletionEvent,
   type CreateModelParams,
   type PluginCapabilities,
@@ -26,49 +25,12 @@ import { expandGGUFIntoShards } from "@/server/utils";
 import { completion } from "@/server/bare/plugins/llamacpp-completion/ops/completion-stream";
 import { finetune } from "@/server/bare/plugins/llamacpp-completion/ops/finetune";
 import { translate } from "@/server/bare/ops/translate";
+import { transformLlmConfig } from "@/server/bare/plugins/llamacpp-completion/transform";
 import { attachModelExecutionMs } from "@/profiling/model-execution";
 import { getModelConfig } from "@/server/bare/registry/model-registry";
 import { createCompletionNormalizer } from "@/server/utils/completion-normalizer";
 import { detectToolDialect } from "@/server/utils/tool-integration";
 
-function transformLlmConfig(llmConfig: LlmConfig) {
-  const transformed = JSON.parse(
-    JSON.stringify(llmConfig, (key: string, v: unknown) =>
-      key === "modelType" || key === "system_prompt"
-        ? undefined
-        : key === "stop_sequences"
-          ? Array.isArray(v)
-            ? v.join(", ")
-            : v
-          : typeof v === "number" || typeof v === "boolean"
-            ? String(v)
-            : v,
-    ).replace(
-      /"([a-z][A-Za-z]*)":/g,
-      (_, key: string) =>
-        `"${key.replace(/[A-Z]/g, (l: string) => `_${l.toLowerCase()}`)}":`,
-    ),
-  ) as Record<string, string>;
-
-  if ("stop_sequences" in transformed) {
-    transformed["reverse_prompt"] = transformed["stop_sequences"];
-    delete transformed["stop_sequences"];
-  }
-
-  if ("opencl_cache_dir" in transformed) {
-    transformed["openclCacheDir"] = transformed["opencl_cache_dir"];
-    delete transformed["opencl_cache_dir"];
-  }
-
-  if ("tools_mode" in transformed) {
-    if (transformed["tools_mode"] === TOOLS_MODE.dynamic) {
-      transformed["tools_compact"] = "true";
-    }
-    delete transformed["tools_mode"];
-  }
-
-  return transformed;
-}
 
 function createLlmModel(
   modelId: string,

@@ -276,6 +276,11 @@ test("detectToolDialectFromName: non-LFM models default to hermes", (t) => {
     // Qwen3 5B (5 billion params) must not be mistaken for Qwen3.5 (model version 3.5)
     [undefined, "/cache/abc_Qwen3-5B-Instruct-Q4_K_M.gguf"],
     ["QWEN3_5B_INST", "/Users/x/.qvac/models/abc_qwen3-5b-instruct.gguf"],
+    // Qwen3 50B must not be mistaken for Qwen3.5 (digit after 5, not a letter)
+    [undefined, "/cache/abc_Qwen3-50B-Instruct-Q4_K_M.gguf"],
+    ["QWEN3_50B_INST", "/Users/x/.qvac/models/abc_qwen3-50b-instruct.gguf"],
+    // Gemma-4 billion params (generation 3, 4B size) must not be mistaken for Gemma 4 generation
+    [undefined, "/cache/abc_gemma-40b-Q4_K_M.gguf"],
   ];
 
   for (const [name, path] of cases) {

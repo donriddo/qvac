@@ -29,13 +29,17 @@ function pickFormatParsers(
     case "harmony":
       return [parseHarmonyFormat];
     case "qwen35":
+      // Hermes fallback: Qwen3.5 templates sometimes emit OpenAI-style JSON
+      // when the native XML format fails; Hermes chain recovers those.
       return [parseQwen35Format, parseHermesFormat];
     case "gemma4":
+      // No JSON fallback: Gemma4 emits only its native channel-thought dialect
+      // and never falls back to JSON-envelope formats.
       return [parseGemma4NativeFormat];
     default:
-      // Harmony first: `to=functions.` is uniquely Harmony and can't
+      // Gemma4 first: `<|tool_call>` is uniquely distinctive and can't
       // false-match other dialects.
-      // Gemma4 next: `<|tool_call>` is distinctive and won't false-match.
+      // Harmony next: `to=functions.` is also uniquely Harmony.
       // Pythonic last: its bare `[name(...)]` form can match payloads that
       // look like other dialects.
       return [
