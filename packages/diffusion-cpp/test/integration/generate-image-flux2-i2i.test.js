@@ -125,9 +125,6 @@ test('FLUX2-klein img2img — transforms an input image', { timeout: 1800000, sk
       steps: STEPS,
       guidance: GUIDANCE,
       seed: SEED,
-      // 624×624 matches the fusion tests and fits within the T4 CI runner's
-      // 16 GB VRAM budget. JS defaulting to 1024×1024 is proven by the unit
-      // tests in test/unit/flux-img2img-dim-defaults.test.js.
       width: 624,
       height: 624
     })
