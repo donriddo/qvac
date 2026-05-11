@@ -34,7 +34,7 @@ import { detectToolDialect } from "@/server/utils/tool-integration";
 function transformLlmConfig(llmConfig: LlmConfig) {
   const transformed = JSON.parse(
     JSON.stringify(llmConfig, (key: string, v: unknown) =>
-      key === "modelType"
+      key === "modelType" || key === "system_prompt"
         ? undefined
         : key === "stop_sequences"
           ? Array.isArray(v)
