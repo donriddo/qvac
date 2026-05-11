@@ -10699,8 +10699,8 @@
     "tags": [
       "generation",
       "multimodal",
-      "instruct",
-      "gemma4"
+      "gemma4",
+      "instruct"
     ],
     "notes": "",
     "link": "https://huggingface.co/bartowski/google_gemma-4-E2B-it-GGUF"
@@ -10715,8 +10715,8 @@
     "tags": [
       "generation",
       "multimodal",
-      "instruct",
-      "gemma4"
+      "gemma4",
+      "instruct"
     ],
     "notes": "",
     "link": "https://huggingface.co/bartowski/google_gemma-4-E2B-it-GGUF"
@@ -10731,8 +10731,8 @@
     "tags": [
       "generation",
       "multimodal",
-      "instruct",
-      "gemma4"
+      "gemma4",
+      "instruct"
     ],
     "notes": "",
     "link": "https://huggingface.co/bartowski/google_gemma-4-E2B-it-GGUF"
@@ -10747,8 +10747,8 @@
     "tags": [
       "generation",
       "multimodal",
-      "instruct",
-      "gemma4"
+      "gemma4",
+      "instruct"
     ],
     "notes": "",
     "link": "https://huggingface.co/bartowski/google_gemma-4-E2B-it-GGUF"
@@ -10763,8 +10763,8 @@
     "tags": [
       "generation",
       "multimodal",
-      "instruct",
-      "gemma4"
+      "gemma4",
+      "instruct"
     ],
     "notes": "",
     "link": "https://huggingface.co/bartowski/google_gemma-4-E4B-it-GGUF"
@@ -10779,8 +10779,8 @@
     "tags": [
       "generation",
       "multimodal",
-      "instruct",
-      "gemma4"
+      "gemma4",
+      "instruct"
     ],
     "notes": "",
     "link": "https://huggingface.co/bartowski/google_gemma-4-E4B-it-GGUF"
@@ -10795,8 +10795,8 @@
     "tags": [
       "generation",
       "multimodal",
-      "instruct",
-      "gemma4"
+      "gemma4",
+      "instruct"
     ],
     "notes": "",
     "link": "https://huggingface.co/bartowski/google_gemma-4-E4B-it-GGUF"
@@ -10811,8 +10811,8 @@
     "tags": [
       "generation",
       "multimodal",
-      "instruct",
-      "gemma4"
+      "gemma4",
+      "instruct"
     ],
     "notes": "",
     "link": "https://huggingface.co/bartowski/google_gemma-4-E4B-it-GGUF"
@@ -10827,8 +10827,8 @@
     "tags": [
       "generation",
       "multimodal",
-      "instruct",
-      "gemma4"
+      "gemma4",
+      "instruct"
     ],
     "notes": "",
     "link": "https://huggingface.co/bartowski/google_gemma-4-31B-it-GGUF"
@@ -10843,8 +10843,8 @@
     "tags": [
       "generation",
       "multimodal",
-      "instruct",
-      "gemma4"
+      "gemma4",
+      "instruct"
     ],
     "notes": "",
     "link": "https://huggingface.co/bartowski/google_gemma-4-31B-it-GGUF"
@@ -10859,8 +10859,8 @@
     "tags": [
       "generation",
       "multimodal",
-      "instruct",
-      "gemma4"
+      "gemma4",
+      "instruct"
     ],
     "notes": "",
     "link": "https://huggingface.co/bartowski/google_gemma-4-31B-it-GGUF"
@@ -10875,8 +10875,8 @@
     "tags": [
       "generation",
       "multimodal",
-      "instruct",
-      "gemma4"
+      "gemma4",
+      "instruct"
     ],
     "notes": "",
     "link": "https://huggingface.co/bartowski/google_gemma-4-31B-it-GGUF"
@@ -10891,8 +10891,8 @@
     "tags": [
       "generation",
       "multimodal",
-      "instruct",
-      "qwen3.5"
+      "qwen3.5",
+      "instruct"
     ],
     "notes": "",
     "link": "https://huggingface.co/unsloth/Qwen3.5-0.8B-GGUF"
@@ -10907,8 +10907,8 @@
     "tags": [
       "generation",
       "multimodal",
-      "instruct",
-      "qwen3.5"
+      "qwen3.5",
+      "instruct"
     ],
     "notes": "",
     "link": "https://huggingface.co/unsloth/Qwen3.5-0.8B-GGUF"
@@ -10923,8 +10923,8 @@
     "tags": [
       "generation",
       "multimodal",
-      "instruct",
-      "qwen3.5"
+      "qwen3.5",
+      "instruct"
     ],
     "notes": "",
     "link": "https://huggingface.co/unsloth/Qwen3.5-0.8B-GGUF"
@@ -10939,8 +10939,8 @@
     "tags": [
       "generation",
       "multimodal",
-      "instruct",
-      "qwen3.5"
+      "qwen3.5",
+      "instruct"
     ],
     "notes": "",
     "link": "https://huggingface.co/unsloth/Qwen3.5-0.8B-GGUF"
@@ -10955,8 +10955,8 @@
     "tags": [
       "generation",
       "multimodal",
-      "instruct",
-      "qwen3.5"
+      "qwen3.5",
+      "instruct"
     ],
     "notes": "",
     "link": "https://huggingface.co/unsloth/Qwen3.5-2B-GGUF"
@@ -10971,8 +10971,8 @@
     "tags": [
       "generation",
       "multimodal",
-      "instruct",
-      "qwen3.5"
+      "qwen3.5",
+      "instruct"
     ],
     "notes": "",
     "link": "https://huggingface.co/unsloth/Qwen3.5-2B-GGUF"
@@ -10987,8 +10987,8 @@
     "tags": [
       "generation",
       "multimodal",
-      "instruct",
-      "qwen3.5"
+      "qwen3.5",
+      "instruct"
     ],
     "notes": "",
     "link": "https://huggingface.co/unsloth/Qwen3.5-2B-GGUF"
@@ -11003,8 +11003,8 @@
     "tags": [
       "generation",
       "multimodal",
-      "instruct",
-      "qwen3.5"
+      "qwen3.5",
+      "instruct"
     ],
     "notes": "",
     "link": "https://huggingface.co/unsloth/Qwen3.5-2B-GGUF"
@@ -11019,8 +11019,8 @@
     "tags": [
       "generation",
       "multimodal",
-      "instruct",
-      "qwen3.5"
+      "qwen3.5",
+      "instruct"
     ],
     "notes": "",
     "link": "https://huggingface.co/unsloth/Qwen3.5-4B-GGUF"
@@ -11035,8 +11035,8 @@
     "tags": [
       "generation",
       "multimodal",
-      "instruct",
-      "qwen3.5"
+      "qwen3.5",
+      "instruct"
     ],
     "notes": "",
     "link": "https://huggingface.co/unsloth/Qwen3.5-4B-GGUF"
@@ -11051,8 +11051,8 @@
     "tags": [
       "generation",
       "multimodal",
-      "instruct",
-      "qwen3.5"
+      "qwen3.5",
+      "instruct"
     ],
     "notes": "",
     "link": "https://huggingface.co/unsloth/Qwen3.5-4B-GGUF"
@@ -11067,8 +11067,8 @@
     "tags": [
       "generation",
       "multimodal",
-      "instruct",
-      "qwen3.5"
+      "qwen3.5",
+      "instruct"
     ],
     "notes": "",
     "link": "https://huggingface.co/unsloth/Qwen3.5-4B-GGUF"
@@ -11083,8 +11083,8 @@
     "tags": [
       "generation",
       "multimodal",
-      "instruct",
-      "qwen3.5"
+      "qwen3.5",
+      "instruct"
     ],
     "notes": "",
     "link": "https://huggingface.co/unsloth/Qwen3.5-9B-GGUF"
@@ -11099,8 +11099,8 @@
     "tags": [
       "generation",
       "multimodal",
-      "instruct",
-      "qwen3.5"
+      "qwen3.5",
+      "instruct"
     ],
     "notes": "",
     "link": "https://huggingface.co/unsloth/Qwen3.5-9B-GGUF"
@@ -11115,8 +11115,8 @@
     "tags": [
       "generation",
       "multimodal",
-      "instruct",
-      "qwen3.5"
+      "qwen3.5",
+      "instruct"
     ],
     "notes": "",
     "link": "https://huggingface.co/unsloth/Qwen3.5-9B-GGUF"
@@ -11131,8 +11131,8 @@
     "tags": [
       "generation",
       "multimodal",
-      "instruct",
-      "qwen3.5"
+      "qwen3.5",
+      "instruct"
     ],
     "notes": "",
     "link": "https://huggingface.co/unsloth/Qwen3.5-9B-GGUF"
@@ -11147,8 +11147,8 @@
     "tags": [
       "generation",
       "multimodal",
-      "instruct",
-      "qwen3.6"
+      "qwen3.6",
+      "instruct"
     ],
     "notes": "",
     "link": "https://huggingface.co/unsloth/Qwen3.6-27B-GGUF"
@@ -11163,8 +11163,8 @@
     "tags": [
       "generation",
       "multimodal",
-      "instruct",
-      "qwen3.6"
+      "qwen3.6",
+      "instruct"
     ],
     "notes": "",
     "link": "https://huggingface.co/unsloth/Qwen3.6-27B-GGUF"
@@ -11179,8 +11179,8 @@
     "tags": [
       "generation",
       "multimodal",
-      "instruct",
-      "qwen3.6"
+      "qwen3.6",
+      "instruct"
     ],
     "notes": "",
     "link": "https://huggingface.co/unsloth/Qwen3.6-27B-GGUF"
@@ -11195,8 +11195,8 @@
     "tags": [
       "generation",
       "multimodal",
-      "instruct",
-      "qwen3.6"
+      "qwen3.6",
+      "instruct"
     ],
     "notes": "",
     "link": "https://huggingface.co/unsloth/Qwen3.6-27B-GGUF"
@@ -11206,13 +11206,13 @@
     "engine": "@qvac/llm-llamacpp",
     "description": "Qwen 3.6 35B-A3B multimodal model",
     "quantization": "q4_k_m",
-    "params": "35B",
+    "params": "35B-A3B",
     "licenseId": "Apache-2.0",
     "tags": [
       "generation",
       "multimodal",
-      "instruct",
-      "qwen3.6"
+      "qwen3.6",
+      "instruct"
     ],
     "notes": "",
     "link": "https://huggingface.co/unsloth/Qwen3.6-35B-A3B-GGUF"
@@ -11222,13 +11222,13 @@
     "engine": "@qvac/llm-llamacpp",
     "description": "Qwen 3.6 35B-A3B multimodal model",
     "quantization": "q6_k_xl",
-    "params": "35B",
+    "params": "35B-A3B",
     "licenseId": "Apache-2.0",
     "tags": [
       "generation",
       "multimodal",
-      "instruct",
-      "qwen3.6"
+      "qwen3.6",
+      "instruct"
     ],
     "notes": "",
     "link": "https://huggingface.co/unsloth/Qwen3.6-35B-A3B-GGUF"
@@ -11238,13 +11238,13 @@
     "engine": "@qvac/llm-llamacpp",
     "description": "Vision projector (mmproj) for Qwen 3.6 35B-A3B",
     "quantization": "bf16",
-    "params": "35B",
+    "params": "35B-A3B",
     "licenseId": "Apache-2.0",
     "tags": [
       "generation",
       "multimodal",
-      "instruct",
-      "qwen3.6"
+      "qwen3.6",
+      "instruct"
     ],
     "notes": "",
     "link": "https://huggingface.co/unsloth/Qwen3.6-35B-A3B-GGUF"
@@ -11254,13 +11254,13 @@
     "engine": "@qvac/llm-llamacpp",
     "description": "Vision projector (mmproj) for Qwen 3.6 35B-A3B",
     "quantization": "f16",
-    "params": "35B",
+    "params": "35B-A3B",
     "licenseId": "Apache-2.0",
     "tags": [
       "generation",
       "multimodal",
-      "instruct",
-      "qwen3.6"
+      "qwen3.6",
+      "instruct"
     ],
     "notes": "",
     "link": "https://huggingface.co/unsloth/Qwen3.6-35B-A3B-GGUF"
