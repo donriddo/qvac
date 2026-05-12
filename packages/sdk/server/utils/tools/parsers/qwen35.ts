@@ -97,20 +97,19 @@ export function parseQwen35Format(text: string, tools: Tool[]): ParserResult {
     const schemaProperties = tool?.parameters?.properties ?? {};
 
     const args: Record<string, unknown> = {};
-    const paramRegex = /<parameter=([^>\s]+)\s*>([\s\S]*?)<\/parameter>/gi;
-    let pm: RegExpExecArray | null;
-    let coercionError: string | undefined;
-    while ((pm = paramRegex.exec(paramsBlock)) !== null) {
-      const paramName = pm[1]!.trim();
-      try {
+    let parseError: string | undefined;
+    try {
+      const paramRegex = /<parameter=([^>\s]+)\s*>([\s\S]*?)<\/parameter>/gi;
+      let pm: RegExpExecArray | null;
+      while ((pm = paramRegex.exec(paramsBlock)) !== null) {
+        const paramName = pm[1]!.trim();
         args[paramName] = coerceParamValue(pm[2]!, schemaProperties[paramName]);
-      } catch (err) {
-        coercionError = err instanceof Error ? err.message : String(err);
-        break;
       }
+    } catch (err) {
+      parseError = err instanceof Error ? err.message : String(err);
     }
-    if (coercionError !== undefined) {
-      errors.push({ code: "PARSE_ERROR", message: coercionError, raw: inner });
+    if (parseError !== undefined) {
+      errors.push({ code: "PARSE_ERROR", message: parseError, raw: inner });
       continue;
     }
 
