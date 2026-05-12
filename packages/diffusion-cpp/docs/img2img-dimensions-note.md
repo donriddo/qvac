@@ -9,6 +9,8 @@ Output dimensions are **independent of the input image size**. When `width`/`hei
 await model.run({
   prompt: 'professional headshot',
   init_image: imageBuffer,
+  cfg_scale: 1.0,
+  guidance: 5.0,
   steps: 20
 })
 
@@ -18,6 +20,8 @@ await model.run({
   init_image: imageBuffer,
   width: 768,
   height: 1024,
+  cfg_scale: 1.0,
+  guidance: 5.0,
   steps: 20
 })
 ```
@@ -31,6 +35,7 @@ When `width`/`height` are omitted, output dimensions are taken from the input im
 await model.run({
   prompt: 'professional headshot',
   init_image: imageBuffer,   // e.g. 512×512 image
+  cfg_scale: 7.0,
   strength: 0.5,
   steps: 20
   // width/height omitted → taken from input image

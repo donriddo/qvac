@@ -47,6 +47,8 @@ const inputImage = fs.readFileSync('input.jpg')
 const response = await model.run({
   prompt: 'professional portrait, studio lighting',
   init_image: inputImage,
+  cfg_scale: 1.0,
+  guidance: 5.0,
   steps: 20
   // width/height omitted → JS defaults to 1024x1024 for FLUX img2img
 })
@@ -90,7 +92,8 @@ await model.unload()
 await model.run({
   prompt: 'same photo, cinematic color grading',
   init_image: photo,
-  strength: 0.35,
+  cfg_scale: 1.0,
+  guidance: 5.0,
   steps: 20
   // width/height omitted → 1024x1024 output for FLUX img2img
 })
@@ -103,7 +106,8 @@ await model.run({
   prompt: 'professional headshot, studio lighting, sharp focus',
   negative_prompt: 'blurry, low quality, distorted',
   init_image: photo,
-  strength: 0.5,
+  cfg_scale: 1.0,
+  guidance: 5.0,
   steps: 25
   // width/height omitted → 1024x1024 output for FLUX img2img
 })
@@ -115,7 +119,8 @@ await model.run({
 await model.run({
   prompt: 'oil painting, impressionist style, vibrant colors',
   init_image: photo,
-  strength: 0.75,
+  cfg_scale: 1.0,
+  guidance: 5.0,
   steps: 30
   // width/height omitted → 1024x1024 output for FLUX img2img
 })

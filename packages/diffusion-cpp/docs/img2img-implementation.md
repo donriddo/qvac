@@ -118,10 +118,10 @@ const response = await model.run({
   init_image: initImage,
   prompt: 'professional headshot, studio lighting',
   negative_prompt: 'blurry, low quality',
-  strength: 0.5,
+  cfg_scale: 1.0,
+  guidance: 5.0,
   steps: 20,
   // width/height omitted → JS defaults to 1024x1024 for FLUX img2img
-  guidance: 3.5,
   seed: 42
 })
 
