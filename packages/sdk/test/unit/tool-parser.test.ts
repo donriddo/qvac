@@ -1038,3 +1038,70 @@ test("parseGemma4NativeFormat: malformed args (trailing comma) surface PARSE_ERR
   t.is(result.errors.length, 1);
   t.is(result.errors[0]?.code, "PARSE_ERROR");
 });
+
+test("parseQwen35Format: empty integer param surfaces PARSE_ERROR (not 0)", (t) => {
+  const typedTool: Tool = {
+    type: "function",
+    name: "typed",
+    description: "typed",
+    parameters: {
+      type: "object",
+      properties: { count: { type: "integer" } },
+      required: ["count"],
+    },
+  };
+  const text = `<tool_call><function=typed><parameter=count></parameter></function></tool_call>`;
+  const result = parseQwen35Format(text, [typedTool]);
+  t.is(result.matched, true);
+  t.is(result.toolCalls.length, 0);
+  t.is(result.errors.length, 1);
+  t.is(result.errors[0]?.code, "PARSE_ERROR");
+});
+
+test("parseQwen35Format: whitespace-only number param surfaces PARSE_ERROR (not 0)", (t) => {
+  const typedTool: Tool = {
+    type: "function",
+    name: "typed",
+    description: "typed",
+    parameters: {
+      type: "object",
+      properties: { score: { type: "number" } },
+      required: ["score"],
+    },
+  };
+  const text = `<tool_call><function=typed><parameter=score>   </parameter></function></tool_call>`;
+  const result = parseQwen35Format(text, [typedTool]);
+  t.is(result.matched, true);
+  t.is(result.toolCalls.length, 0);
+  t.is(result.errors.length, 1);
+  t.is(result.errors[0]?.code, "PARSE_ERROR");
+});
+
+test("parseGemma4NativeFormat: hyphenated tool name parses correctly", (t) => {
+  const hyphenTool: Tool = {
+    type: "function",
+    name: "get-weather",
+    description: "Get current weather",
+    parameters: {
+      type: "object",
+      properties: { city: { type: "string" } },
+      required: ["city"],
+    },
+  };
+  const text = `<|tool_call>call:get-weather{city:<|"|>Tokyo<|"|>}<tool_call|>`;
+  const result = parseGemma4NativeFormat(text, [hyphenTool]);
+  t.is(result.matched, true);
+  t.is(result.errors.length, 0);
+  t.is(result.toolCalls.length, 1);
+  t.is(result.toolCalls[0]?.name, "get-weather");
+  t.alike(result.toolCalls[0]?.arguments, { city: "Tokyo" });
+});
+
+test("parseToolCalls(default): Qwen3.5 XML format is recovered without explicit dialect", (t) => {
+  const text = `<tool_call><function=get_weather><parameter=city>Berlin</parameter></function></tool_call>`;
+  const { toolCalls, errors } = parseToolCalls(text, pythonicTools);
+  t.is(errors.length, 0);
+  t.is(toolCalls.length, 1);
+  t.is(toolCalls[0]?.name, "get_weather");
+  t.alike(toolCalls[0]?.arguments, { city: "Berlin" });
+});

@@ -15,11 +15,13 @@ function coerceParamValue(
   if (!schema?.type) return trimmed;
   switch (schema.type) {
     case "number": {
+      if (trimmed.length === 0) throw new Error(`invalid numeric value: ""`);
       const n = Number(trimmed);
       if (Number.isNaN(n)) throw new Error(`invalid numeric value: "${trimmed}"`);
       return n;
     }
     case "integer": {
+      if (trimmed.length === 0) throw new Error(`invalid integer value: ""`);
       const n = Number(trimmed);
       if (Number.isNaN(n) || !Number.isInteger(n)) throw new Error(`invalid integer value: "${trimmed}"`);
       return n;

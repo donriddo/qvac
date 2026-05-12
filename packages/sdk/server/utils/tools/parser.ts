@@ -40,11 +40,14 @@ function pickFormatParsers(
       // Gemma4 first: `<|tool_call>` is uniquely distinctive and can't
       // false-match other dialects.
       // Harmony next: `to=functions.` is also uniquely Harmony.
+      // Qwen35 before Hermes: defers to Hermes when JSON is inside <tool_call>,
+      // so the XML path is recovered without breaking Hermes-JSON payloads.
       // Pythonic last: its bare `[name(...)]` form can match payloads that
       // look like other dialects.
       return [
         parseGemma4NativeFormat,
         parseHarmonyFormat,
+        parseQwen35Format,
         parseHermesFormat,
         parseGemmaFormat,
         parseLlamacppFormat,

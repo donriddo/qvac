@@ -17,7 +17,7 @@ function gemmaArgsToJson(argsRaw: string): string {
   return parts
     .map((part, i) =>
       i % 2 === 0
-        ? part.replace(/([{,]\s*)([A-Za-z_]\w*)\s*:/g, '$1"$2":')
+        ? part.replace(/([{,]\s*)([A-Za-z_][\w-]*)\s*:/g, '$1"$2":')
         : '"' + part.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/[\x00-\x1f]/g, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`) + '"',
     )
     .join("");
@@ -36,7 +36,7 @@ export function parseGemma4NativeFormat(text: string, tools: Tool[]): ParserResu
     return { matched: false, toolCalls, errors };
   }
 
-  const callRegex = /<\|tool_call>call:([A-Za-z_]\w*)\{([\s\S]*?)\}<tool_call\|>/g;
+  const callRegex = /<\|tool_call>call:([A-Za-z_][\w-]*)\{([\s\S]*?)\}<tool_call\|>/g;
   const matches = Array.from(text.matchAll(callRegex));
 
   if (matches.length === 0) return { matched: false, toolCalls, errors };
