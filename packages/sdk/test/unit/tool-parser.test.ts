@@ -276,10 +276,8 @@ test("detectToolDialectFromName: non-LFM models default to hermes", (t) => {
     // Qwen3 5B (5 billion params) must not be mistaken for Qwen3.5 (model version 3.5)
     [undefined, "/cache/abc_Qwen3-5B-Instruct-Q4_K_M.gguf"],
     ["QWEN3_5B_INST", "/Users/x/.qvac/models/abc_qwen3-5b-instruct.gguf"],
-    // Qwen3 50B must not be mistaken for Qwen3.5 (digit after 5, not a letter)
     [undefined, "/cache/abc_Qwen3-50B-Instruct-Q4_K_M.gguf"],
     ["QWEN3_50B_INST", "/Users/x/.qvac/models/abc_qwen3-50b-instruct.gguf"],
-    // Qwen3 60B must not be mistaken for Qwen3.6 (digit after 6, not a letter)
     [undefined, "/cache/abc_Qwen3-60B-Instruct-Q4_K_M.gguf"],
     ["QWEN3_60B_INST", "/Users/x/.qvac/models/abc_qwen3-60b-instruct.gguf"],
     // gemma-40b contains 'gemma-4' as a substring but the trailing '0' (digit) blocks the gemma4 lookahead
