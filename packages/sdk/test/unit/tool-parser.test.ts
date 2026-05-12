@@ -270,7 +270,7 @@ test("detectToolDialectFromName: non-LFM models default to hermes", (t) => {
     [undefined, "/cache/abc_Llama-3.3-70B-Instruct-Tool-Calling.gguf"],
     [undefined, ""],
     ["", ""],
-    // Gemma3 with Q4 quantization suffix must not be mistaken for Gemma4 model generation
+    // Gemma 3 models (including 4B size variant) must not be detected as Gemma 4
     [undefined, "/cache/abc_gemma3-Q4_K_M.gguf"],
     ["GEMMA3_Q4", "/Users/x/.qvac/models/abc_gemma-3-4b-q4_k_m.gguf"],
     // Qwen3 5B (5 billion params) must not be mistaken for Qwen3.5 (model version 3.5)
@@ -282,7 +282,7 @@ test("detectToolDialectFromName: non-LFM models default to hermes", (t) => {
     // Qwen3 60B must not be mistaken for Qwen3.6 (digit after 6, not a letter)
     [undefined, "/cache/abc_Qwen3-60B-Instruct-Q4_K_M.gguf"],
     ["QWEN3_60B_INST", "/Users/x/.qvac/models/abc_qwen3-60b-instruct.gguf"],
-    // Gemma-4 billion params (generation 3, 4B size) must not be mistaken for Gemma 4 generation
+    // gemma-40b contains 'gemma-4' as a substring but the trailing '0' (digit) blocks the gemma4 lookahead
     [undefined, "/cache/abc_gemma-40b-Q4_K_M.gguf"],
   ];
 
