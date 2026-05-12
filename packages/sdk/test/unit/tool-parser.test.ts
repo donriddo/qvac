@@ -812,6 +812,63 @@ test("parseQwen35Format: integer param 'not-a-number' surfaces PARSE_ERROR", (t)
   t.is(result.errors[0]?.code, "PARSE_ERROR");
 });
 
+test("parseQwen35Format: integer param '1.5' (non-integer) surfaces PARSE_ERROR", (t) => {
+  const typedTool: Tool = {
+    type: "function",
+    name: "typed",
+    description: "typed",
+    parameters: {
+      type: "object",
+      properties: { count: { type: "integer" } },
+      required: ["count"],
+    },
+  };
+  const text = `<tool_call><function=typed><parameter=count>1.5</parameter></function></tool_call>`;
+  const result = parseQwen35Format(text, [typedTool]);
+  t.is(result.matched, true);
+  t.is(result.toolCalls.length, 0);
+  t.is(result.errors.length, 1);
+  t.is(result.errors[0]?.code, "PARSE_ERROR");
+});
+
+test("parseQwen35Format: malformed array param surfaces PARSE_ERROR (no raw-string fallback)", (t) => {
+  const typedTool: Tool = {
+    type: "function",
+    name: "typed",
+    description: "typed",
+    parameters: {
+      type: "object",
+      properties: { count: { type: "integer" }, tags: { type: "array" } },
+      required: ["count"],
+    },
+  };
+  const text = `<tool_call><function=typed><parameter=count>1</parameter><parameter=tags>[1,2</parameter></function></tool_call>`;
+  const result = parseQwen35Format(text, [typedTool]);
+  t.is(result.matched, true);
+  t.is(result.toolCalls.length, 0);
+  t.is(result.errors.length, 1);
+  t.is(result.errors[0]?.code, "PARSE_ERROR");
+});
+
+test("parseQwen35Format: malformed object param surfaces PARSE_ERROR (no raw-string fallback)", (t) => {
+  const typedTool: Tool = {
+    type: "function",
+    name: "typed",
+    description: "typed",
+    parameters: {
+      type: "object",
+      properties: { count: { type: "integer" }, meta: { type: "object" } },
+      required: ["count"],
+    },
+  };
+  const text = `<tool_call><function=typed><parameter=count>1</parameter><parameter=meta>{bad json</parameter></function></tool_call>`;
+  const result = parseQwen35Format(text, [typedTool]);
+  t.is(result.matched, true);
+  t.is(result.toolCalls.length, 0);
+  t.is(result.errors.length, 1);
+  t.is(result.errors[0]?.code, "PARSE_ERROR");
+});
+
 test("parseQwen35Format: array param is parsed from JSON", (t) => {
   const typedTool: Tool = {
     type: "function",

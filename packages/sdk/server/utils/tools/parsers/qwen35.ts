@@ -14,10 +14,14 @@ function coerceParamValue(
   const trimmed = raw.trim();
   if (!schema?.type) return trimmed;
   switch (schema.type) {
-    case "number":
-    case "integer": {
+    case "number": {
       const n = Number(trimmed);
       if (Number.isNaN(n)) throw new Error(`invalid numeric value: "${trimmed}"`);
+      return n;
+    }
+    case "integer": {
+      const n = Number(trimmed);
+      if (Number.isNaN(n) || !Number.isInteger(n)) throw new Error(`invalid integer value: "${trimmed}"`);
       return n;
     }
     case "boolean":
@@ -26,11 +30,7 @@ function coerceParamValue(
       throw new Error(`invalid boolean value: "${trimmed}"`);
     case "array":
     case "object":
-      try {
-        return JSON.parse(trimmed);
-      } catch {
-        return trimmed;
-      }
+      return JSON.parse(trimmed);
     default:
       return trimmed;
   }
