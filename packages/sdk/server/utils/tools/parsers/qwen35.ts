@@ -15,10 +15,15 @@ function coerceParamValue(
   if (!schema?.type) return trimmed;
   switch (schema.type) {
     case "number":
-    case "integer":
-      return Number(trimmed);
+    case "integer": {
+      const n = Number(trimmed);
+      if (Number.isNaN(n)) throw new Error(`invalid numeric value: "${trimmed}"`);
+      return n;
+    }
     case "boolean":
-      return trimmed === "true";
+      if (trimmed === "true") return true;
+      if (trimmed === "false") return false;
+      throw new Error(`invalid boolean value: "${trimmed}"`);
     case "array":
     case "object":
       try {
@@ -94,9 +99,19 @@ export function parseQwen35Format(text: string, tools: Tool[]): ParserResult {
     const args: Record<string, unknown> = {};
     const paramRegex = /<parameter=([^>\s]+)\s*>([\s\S]*?)<\/parameter>/gi;
     let pm: RegExpExecArray | null;
+    let coercionError: string | undefined;
     while ((pm = paramRegex.exec(paramsBlock)) !== null) {
       const paramName = pm[1]!.trim();
-      args[paramName] = coerceParamValue(pm[2]!, schemaProperties[paramName]);
+      try {
+        args[paramName] = coerceParamValue(pm[2]!, schemaProperties[paramName]);
+      } catch (err) {
+        coercionError = err instanceof Error ? err.message : String(err);
+        break;
+      }
+    }
+    if (coercionError !== undefined) {
+      errors.push({ code: "PARSE_ERROR", message: coercionError, raw: inner });
+      continue;
     }
 
     const validation = validateToolArguments(name, args, tools);

@@ -717,3 +717,269 @@ test("parseToolCalls(dialect=gemma4): parses Gemma4 native format", (t) => {
   t.is(toolCalls[0]?.name, "get_weather");
   t.alike(toolCalls[0]?.arguments, { city: "Berlin" });
 });
+
+// --- qwen35 coercion and error-surface tests ---
+
+test("parseQwen35Format: integer param is coerced to number", (t) => {
+  const typedTool: Tool = {
+    type: "function",
+    name: "typed",
+    description: "typed",
+    parameters: {
+      type: "object",
+      properties: { count: { type: "integer" }, label: { type: "string" } },
+      required: ["count"],
+    },
+  };
+  const text = `<tool_call><function=typed><parameter=count>42</parameter><parameter=label>hello</parameter></function></tool_call>`;
+  const result = parseQwen35Format(text, [typedTool]);
+  t.is(result.matched, true);
+  t.is(result.errors.length, 0);
+  t.is(result.toolCalls.length, 1);
+  t.is(result.toolCalls[0]?.arguments?.count, 42);
+  t.is(result.toolCalls[0]?.arguments?.label, "hello");
+});
+
+test("parseQwen35Format: boolean param 'true' coerces to true", (t) => {
+  const typedTool: Tool = {
+    type: "function",
+    name: "typed",
+    description: "typed",
+    parameters: {
+      type: "object",
+      properties: { count: { type: "integer" }, flag: { type: "boolean" } },
+      required: ["count"],
+    },
+  };
+  const text = `<tool_call><function=typed><parameter=count>1</parameter><parameter=flag>true</parameter></function></tool_call>`;
+  const result = parseQwen35Format(text, [typedTool]);
+  t.is(result.matched, true);
+  t.is(result.errors.length, 0);
+  t.is(result.toolCalls[0]?.arguments?.flag, true);
+});
+
+test("parseQwen35Format: boolean param 'false' coerces to false", (t) => {
+  const typedTool: Tool = {
+    type: "function",
+    name: "typed",
+    description: "typed",
+    parameters: {
+      type: "object",
+      properties: { count: { type: "integer" }, flag: { type: "boolean" } },
+      required: ["count"],
+    },
+  };
+  const text = `<tool_call><function=typed><parameter=count>1</parameter><parameter=flag>false</parameter></function></tool_call>`;
+  const result = parseQwen35Format(text, [typedTool]);
+  t.is(result.matched, true);
+  t.is(result.errors.length, 0);
+  t.is(result.toolCalls[0]?.arguments?.flag, false);
+});
+
+test("parseQwen35Format: boolean param 'True' (uppercase) surfaces PARSE_ERROR", (t) => {
+  const typedTool: Tool = {
+    type: "function",
+    name: "typed",
+    description: "typed",
+    parameters: {
+      type: "object",
+      properties: { count: { type: "integer" }, flag: { type: "boolean" } },
+      required: ["count"],
+    },
+  };
+  const text = `<tool_call><function=typed><parameter=count>1</parameter><parameter=flag>True</parameter></function></tool_call>`;
+  const result = parseQwen35Format(text, [typedTool]);
+  t.is(result.matched, true);
+  t.is(result.toolCalls.length, 0);
+  t.is(result.errors.length, 1);
+  t.is(result.errors[0]?.code, "PARSE_ERROR");
+});
+
+test("parseQwen35Format: integer param 'not-a-number' surfaces PARSE_ERROR", (t) => {
+  const typedTool: Tool = {
+    type: "function",
+    name: "typed",
+    description: "typed",
+    parameters: {
+      type: "object",
+      properties: { count: { type: "integer" } },
+      required: ["count"],
+    },
+  };
+  const text = `<tool_call><function=typed><parameter=count>not-a-number</parameter></function></tool_call>`;
+  const result = parseQwen35Format(text, [typedTool]);
+  t.is(result.matched, true);
+  t.is(result.toolCalls.length, 0);
+  t.is(result.errors.length, 1);
+  t.is(result.errors[0]?.code, "PARSE_ERROR");
+});
+
+test("parseQwen35Format: array param is parsed from JSON", (t) => {
+  const typedTool: Tool = {
+    type: "function",
+    name: "typed",
+    description: "typed",
+    parameters: {
+      type: "object",
+      properties: { count: { type: "integer" }, tags: { type: "array" } },
+      required: ["count"],
+    },
+  };
+  const text = `<tool_call><function=typed><parameter=count>1</parameter><parameter=tags>["a","b","c"]</parameter></function></tool_call>`;
+  const result = parseQwen35Format(text, [typedTool]);
+  t.is(result.matched, true);
+  t.is(result.errors.length, 0);
+  t.alike(result.toolCalls[0]?.arguments?.tags, ["a", "b", "c"]);
+});
+
+test("parseQwen35Format: multiple tool calls are all parsed", (t) => {
+  const text = `<tool_call><function=get_weather><parameter=city>Paris</parameter></function></tool_call>
+<tool_call><function=get_horoscope><parameter=sign>Aries</parameter></function></tool_call>`;
+  const result = parseQwen35Format(text, pythonicTools);
+  t.is(result.matched, true);
+  t.is(result.errors.length, 0);
+  t.is(result.toolCalls.length, 2);
+  t.is(result.toolCalls[0]?.name, "get_weather");
+  t.is(result.toolCalls[1]?.name, "get_horoscope");
+});
+
+test("parseQwen35Format: unknown tool name surfaces UNKNOWN_TOOL", (t) => {
+  const text = `<tool_call><function=unknown_fn><parameter=x>1</parameter></function></tool_call>`;
+  const result = parseQwen35Format(text, pythonicTools);
+  t.is(result.matched, true);
+  t.is(result.toolCalls.length, 0);
+  t.is(result.errors.length, 1);
+  t.is(result.errors[0]?.code, "UNKNOWN_TOOL");
+});
+
+test("parseQwen35Format: missing required param surfaces VALIDATION_ERROR", (t) => {
+  const text = `<tool_call><function=get_weather><parameter=country>FR</parameter></function></tool_call>`;
+  const result = parseQwen35Format(text, pythonicTools);
+  t.is(result.matched, true);
+  t.is(result.toolCalls.length, 0);
+  t.is(result.errors.length, 1);
+  t.is(result.errors[0]?.code, "VALIDATION_ERROR");
+});
+
+test("parseToolCalls(dialect=qwen35): JSON inside tool_call falls through to hermes parser", (t) => {
+  const text = `<tool_call>
+{"name": "get_weather", "arguments": {"city": "Seoul"}}
+</tool_call>`;
+  const { toolCalls, errors } = parseToolCalls(text, pythonicTools, "qwen35");
+  t.is(errors.length, 0);
+  t.is(toolCalls.length, 1);
+  t.is(toolCalls[0]?.name, "get_weather");
+  t.alike(toolCalls[0]?.arguments, { city: "Seoul" });
+});
+
+// --- gemma4 structural and error-surface tests ---
+
+test("parseGemma4NativeFormat: bare numeric arg is parsed as number", (t) => {
+  const numTool: Tool = {
+    type: "function",
+    name: "typed",
+    description: "typed",
+    parameters: { type: "object", properties: { count: { type: "integer" } }, required: ["count"] },
+  };
+  const text = `<|tool_call>call:typed{count:7}<tool_call|>`;
+  const result = parseGemma4NativeFormat(text, [numTool]);
+  t.is(result.matched, true);
+  t.is(result.errors.length, 0);
+  t.is(result.toolCalls[0]?.arguments?.count, 7);
+});
+
+test("parseGemma4NativeFormat: bare boolean arg is parsed as boolean", (t) => {
+  const boolTool: Tool = {
+    type: "function",
+    name: "toggle",
+    description: "toggle",
+    parameters: { type: "object", properties: { enabled: { type: "boolean" } }, required: ["enabled"] },
+  };
+  const text = `<|tool_call>call:toggle{enabled:true}<tool_call|>`;
+  const result = parseGemma4NativeFormat(text, [boolTool]);
+  t.is(result.matched, true);
+  t.is(result.errors.length, 0);
+  t.is(result.toolCalls[0]?.arguments?.enabled, true);
+});
+
+test("parseGemma4NativeFormat: nested object arg is parsed correctly", (t) => {
+  const searchTool: Tool = {
+    type: "function",
+    name: "search",
+    description: "search",
+    parameters: {
+      type: "object",
+      properties: { query: { type: "string" }, filters: { type: "object" } },
+      required: ["query"],
+    },
+  };
+  const text = `<|tool_call>call:search{query:<|"|>test<|"|>,filters:{active:true,limit:10}}<tool_call|>`;
+  const result = parseGemma4NativeFormat(text, [searchTool]);
+  t.is(result.matched, true);
+  t.is(result.errors.length, 0);
+  t.alike(result.toolCalls[0]?.arguments?.filters, { active: true, limit: 10 });
+  t.is(result.toolCalls[0]?.arguments?.query, "test");
+});
+
+test("parseGemma4NativeFormat: nested array arg is parsed correctly", (t) => {
+  const arrayTool: Tool = {
+    type: "function",
+    name: "get_weather",
+    description: "weather",
+    parameters: {
+      type: "object",
+      properties: { city: { type: "string" }, ids: { type: "array" } },
+      required: ["city"],
+    },
+  };
+  const text = `<|tool_call>call:get_weather{city:<|"|>Paris<|"|>,ids:[1,2,3]}<tool_call|>`;
+  const result = parseGemma4NativeFormat(text, [arrayTool]);
+  t.is(result.matched, true);
+  t.is(result.errors.length, 0);
+  t.alike(result.toolCalls[0]?.arguments?.ids, [1, 2, 3]);
+});
+
+test("parseGemma4NativeFormat: tab char in string value round-trips correctly", (t) => {
+  const text = `<|tool_call>call:get_weather{city:<|"|>col1\tcol2<|"|>}<tool_call|>`;
+  const result = parseGemma4NativeFormat(text, pythonicTools);
+  t.is(result.matched, true);
+  t.is(result.errors.length, 0);
+  t.is(result.toolCalls[0]?.arguments?.city, "col1\tcol2");
+});
+
+test("parseGemma4NativeFormat: CR char in string value round-trips correctly", (t) => {
+  const text = `<|tool_call>call:get_weather{city:<|"|>line1\rline2<|"|>}<tool_call|>`;
+  const result = parseGemma4NativeFormat(text, pythonicTools);
+  t.is(result.matched, true);
+  t.is(result.errors.length, 0);
+  t.is(result.toolCalls[0]?.arguments?.city, "line1\rline2");
+});
+
+test("parseGemma4NativeFormat: multiple tool calls are all parsed", (t) => {
+  const text = `<|tool_call>call:get_weather{city:<|"|>London<|"|>}<tool_call|>
+<|tool_call>call:get_horoscope{sign:<|"|>Leo<|"|>}<tool_call|>`;
+  const result = parseGemma4NativeFormat(text, pythonicTools);
+  t.is(result.matched, true);
+  t.is(result.errors.length, 0);
+  t.is(result.toolCalls.length, 2);
+  t.is(result.toolCalls[0]?.name, "get_weather");
+  t.is(result.toolCalls[1]?.name, "get_horoscope");
+});
+
+test("parseGemma4NativeFormat: unknown tool name surfaces UNKNOWN_TOOL", (t) => {
+  const text = `<|tool_call>call:unknown_fn{x:<|"|>y<|"|>}<tool_call|>`;
+  const result = parseGemma4NativeFormat(text, pythonicTools);
+  t.is(result.matched, true);
+  t.is(result.toolCalls.length, 0);
+  t.is(result.errors.length, 1);
+  t.is(result.errors[0]?.code, "UNKNOWN_TOOL");
+});
+
+test("parseGemma4NativeFormat: malformed args (trailing comma) surface PARSE_ERROR", (t) => {
+  const text = `<|tool_call>call:get_weather{city:<|"|>Paris<|"|>,}<tool_call|>`;
+  const result = parseGemma4NativeFormat(text, pythonicTools);
+  t.is(result.matched, true);
+  t.is(result.toolCalls.length, 0);
+  t.is(result.errors.length, 1);
+  t.is(result.errors[0]?.code, "PARSE_ERROR");
+});
