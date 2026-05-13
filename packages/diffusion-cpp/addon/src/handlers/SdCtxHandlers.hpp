@@ -54,9 +54,10 @@ struct SdCtxConfig {
   int nThreads = -1; // n_threads:            -1 = auto-detect physical cores
   bool flashAttn = false; // flash_attn:           full-model flash attention
   // diffusion_flash_attn: flash attention on diffusion model only.
-  // Defaults to true — safe for all supported families (SD2.x, SDXL, SD3,
-  // FLUX.2); backends that don't support ggml_flash_attn_ext fall back to
-  // standard attention silently.
+  // Defaults to true — safe for all model families; backends that don't
+  // support ggml_flash_attn_ext fall back to standard attention silently.
+  // Exception: Chroma checkpoints (flux_flow prediction) emit LOG_WARN and
+  // may produce corrupted output; pass diffusion_fa: false as a workaround.
   bool diffusionFlashAttn = true;
 
   // -- Memory management -----------------------------------------------------
