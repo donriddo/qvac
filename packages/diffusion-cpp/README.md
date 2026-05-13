@@ -1,6 +1,6 @@
 # diffusion-cpp
 
-Native C++ addon for text-to-image generation using [qvac-ext-stable-diffusion.cpp](https://github.com/tetherto/qvac-ext-stable-diffusion.cpp), built for the Bare Runtime. Supports **Stable Diffusion 1.x / 2.x / XL / 3** and **FLUX.2 [klein]**.
+Native C++ addon for text-to-image generation using [qvac-ext-stable-diffusion.cpp](https://github.com/tetherto/qvac-ext-stable-diffusion.cpp), built for the Bare Runtime. Supports **Stable Diffusion 2.x / XL / 3** and **FLUX.2 [klein]**.
 
 ## Table of Contents
 
@@ -29,7 +29,7 @@ Native C++ addon for text-to-image generation using [qvac-ext-stable-diffusion.c
   - [Standalone ESRGAN Upscaler](#standalone-esrgan-upscaler)
   - [Model File Reference](#model-file-reference)
     - [FLUX.2 \[klein\] 4B (recommended for 16 GB machines)](#flux2-klein-4b-recommended-for-16-gb-machines)
-    - [Stable Diffusion 1.x / 2.x](#stable-diffusion-1x--2x)
+    - [Stable Diffusion 2.x / SDXL / SD3](#stable-diffusion-2x--sdxl--sd3)
   - [FLUX.2 Implementation Notes](#flux2-implementation-notes)
     - [1. Metal GPU backend not activated (macOS)](#1-metal-gpu-backend-not-activated-macos)
     - [2. Noise output instead of image — wrong prediction type default](#2-noise-output-instead-of-image--wrong-prediction-type-default)
@@ -514,7 +514,7 @@ For a complete runnable example, see [`examples/standalone-esrgan-upscale.js`](.
 | Text encoder | `Qwen3-4B-Q4_K_M.gguf` | [unsloth/Qwen3-4B-GGUF](https://huggingface.co/unsloth/Qwen3-4B-GGUF) |
 | VAE | `flux2-vae.safetensors` | [black-forest-labs/FLUX.2-klein-4B](https://huggingface.co/black-forest-labs/FLUX.2-klein-4B) |
 
-### Stable Diffusion 1.x / 2.x
+### Stable Diffusion 2.x / SDXL / SD3
 
 Pass an all-in-one checkpoint absolute path as `files.model`. No separate encoders needed.
 

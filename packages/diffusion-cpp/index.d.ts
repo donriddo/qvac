@@ -62,7 +62,7 @@ export type ScheduleType =
   | 'bong_tangent'
 
 /** Supported noise prediction types */
-export type PredictionType = 'auto' | 'eps' | 'v' | 'edm_v' | 'flow' | 'flux_flow' | 'flux2_flow'
+export type PredictionType = 'auto' | 'eps' | 'v' | 'edm_v' | 'flow' | 'flux2_flow'
 
 /** LoRA application mode */
 export type LoraApplyMode = 'auto' | 'immediately' | 'at_runtime'
@@ -212,7 +212,7 @@ export interface GenerationParams {
   /** Output height (multiple of 8). FLUX img2img defaults to 1024 when omitted. */
   height?: number
   steps?: number
-  /** CFG scale (SD1/SD2/SDXL/SD3) */
+  /** CFG scale (SD2/SDXL/SD3) */
   cfg_scale?: number
   /** Distilled guidance (FLUX.2) */
   guidance?: number
@@ -240,12 +240,12 @@ export interface GenerationParams {
   eta?: number
   /** Image CFG scale for img2img/inpaint (-1 = use cfg_scale) */
   img_cfg_scale?: number
-  /** Skip last N CLIP encoder layers (SD1.x/SD2.x) */
+  /** Skip last N CLIP encoder layers (SD2.x) */
   clip_skip?: number
   /**
    * Input image as PNG/JPEG bytes for img2img.
    *   - FLUX.2 → in-context conditioning (single `ref_image`). `strength` is ignored.
-   *   - SD1.x / SD2.x / SDXL / SD3 → SDEdit (noised init + `strength`-controlled denoise).
+   *   - SD2.x / SDXL / SD3 → SDEdit (noised init + `strength`-controlled denoise).
    *
    * Mutually exclusive with `init_images`.
    */
@@ -288,7 +288,7 @@ export interface GenerationParams {
   auto_resize_ref_image?: boolean
   /**
    * img2img denoising strength (0.0 to 1.0). 0 = keep source, 1 = ignore source.
-   * SD1.x/SD2.x/SDXL/SD3 only. FLUX.2 ignores `strength` and routes `init_image`
+   * SD2.x/SDXL/SD3 only. FLUX.2 ignores `strength` and routes `init_image`
    * (or `init_images`) through in-context conditioning instead.
    */
   strength?: number
