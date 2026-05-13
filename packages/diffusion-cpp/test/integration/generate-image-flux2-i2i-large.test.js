@@ -146,6 +146,7 @@ test('FLUX2-klein img2img — generates 1024×1024 output on GPU without OOM', {
     t.is(progressTicks[progressTicks.length - 1].total, STEPS, `Final progress tick reports ${STEPS} total steps`)
 
     t.is(images.length, 1, 'Received exactly 1 image')
+    if (images.length === 0) return
 
     const img = images[0]
     t.ok(img instanceof Uint8Array, 'Image is a Uint8Array')
