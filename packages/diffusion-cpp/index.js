@@ -38,7 +38,7 @@ function normalizeUpscaleRepeats (options) {
 
 function applyFluxImg2ImgDimDefaults (params, pred, hasInitImages) {
   const isFluxImg2Img = (params.init_image || hasInitImages) &&
-    (pred === 'flux2_flow' || pred === 'flux_flow')
+    (pred === 'flux2_flow')
   if (!isFluxImg2Img) return params
   const defaultDim = 1024
   if (!params.width && !params.height) return { ...params, width: defaultDim, height: defaultDim }
@@ -106,8 +106,7 @@ class ImgStableDiffusion {
     // Route the primary model file to the correct stable-diffusion.cpp param:
     //   path              — all-in-one checkpoints (SD1.x, SD2.x, SDXL, SD3 all-in-one GGUF)
     //   diffusionModelPath — standalone diffusion weights requiring separate encoders
-    //                        (FLUX.2 klein → llm, SD3 pure GGUF → t5Xxl + clipL + clipG,
-    //                         FLUX.1 → t5Xxl + clipL, etc.)
+    //                        (FLUX.2 klein → llm, SD3 pure GGUF → t5Xxl + clipL + clipG)
     // Any caller-supplied separate encoder implies the primary file is the standalone
     // diffusion model, not an all-in-one checkpoint.
     const isSplitLayout = !!this._files.llm || !!this._files.t5Xxl ||
@@ -416,7 +415,7 @@ class ImgStableDiffusion {
     // config_.prediction is FLUX_FLOW_PRED or FLUX2_FLOW_PRED. Without
     // an explicit value the addon silently falls back to SDEdit.
     if (params.init_image && this._files.llm) {
-      if (pred !== 'flux2_flow' && pred !== 'flux_flow') {
+      if (pred !== 'flux2_flow') {
         throw new Error(
           'FLUX img2img requires an explicit prediction type in config. ' +
           "Set prediction: 'flux2_flow' (FLUX.2). " +

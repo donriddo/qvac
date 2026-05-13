@@ -134,7 +134,7 @@ A second `load()` call on an already-loaded instance is now a silent no-op inste
 
 #### Broader split-layout detection
 
-`isSplitLayout` now also triggers when only `clipL` or `clipG` is supplied. This closes a footgun where a FLUX.1 caller passing `{ model, clipL, clipG, vae }` (without `t5Xxl`) would silently mis-route the diffusion model into the all-in-one `path` parameter and fail to load.
+`isSplitLayout` now also triggers when only `clipL` or `clipG` is supplied. This closes a footgun where a caller passing `{ model, clipL, clipG, vae }` (without `t5Xxl`) would silently mis-route the diffusion model into the all-in-one `path` parameter and fail to load.
 
 ### Bug Fixes
 
@@ -180,7 +180,7 @@ If `addon.activate()` throws during `_load()` (for example a native init failure
 
 ### Changed
 
-- README, `index.d.ts`, and `index.js` JSDoc no longer claim FLUX.1 support for `clipLModel` and `t5XxlModel`. The addon exposes SDXL, SD3, and FLUX.2-klein only — FLUX.1 was never wired through the JS layer. The example model name in the constructor JSDoc is also corrected to `flux-2-klein-4b-Q8_0.gguf`.
+- README, `index.d.ts`, and `index.js` JSDoc corrected to reflect supported model families: SDXL, SD3, and FLUX.2-klein. The example model name in the constructor JSDoc is also corrected to `flux-2-klein-4b-Q8_0.gguf`.
 
 ## [0.1.2] - 2026-04-03
 
