@@ -2,6 +2,7 @@
 
 const fs = require('bare-fs')
 const path = require('bare-path')
+const subprocess = require('bare-subprocess')
 const ImgStableDiffusion = require('../index')
 
 /**
@@ -10,6 +11,44 @@ const ImgStableDiffusion = require('../index')
  * Full precision (F16) version for comparison with Q8_0 quantized model.
  * This should have much less quantization bias.
  */
+
+function makeBar (step, total, width) {
+  const filled = Math.round((step / total) * width)
+  const complete = step >= total
+  const inner = complete
+    ? '='.repeat(width)
+    : '='.repeat(Math.max(0, filled - 1)) + '>' + ' '.repeat(Math.max(0, width - filled))
+  return '[' + inner + ']'
+}
+
+async function gpuMemory () {
+  return new Promise((resolve) => {
+    let out = ''
+    let proc
+    try {
+      proc = subprocess.spawn('nvidia-smi', [
+        '--query-gpu=index,memory.used,memory.total',
+        '--format=csv,noheader,nounits'
+      ], { stdio: ['ignore', 'pipe', 'ignore'] })
+    } catch (_) {
+      resolve([])
+      return
+    }
+    proc.stdout.on('data', (chunk) => { out += chunk.toString() })
+    proc.on('close', () => {
+      const gpus = out.trim().split('\n').filter(Boolean).map((line) => {
+        const parts = line.split(',').map(s => parseInt(s.trim(), 10))
+        return { idx: parts[0], used: parts[1], total: parts[2] }
+      })
+      resolve(gpus)
+    })
+    proc.on('error', () => resolve([]))
+  })
+}
+
+function fmtGpus (gpus) {
+  return gpus.map(g => `GPU${g.idx}: ${g.used}/${g.total} MB`).join('  ')
+}
 
 async function main () {
   const modelDir = path.join(__dirname, '../models')
@@ -21,11 +60,8 @@ async function main () {
     return
   }
 
-  // Ensure output directory exists
   const outputDir = path.dirname(outputImagePath)
-  if (!fs.existsSync(outputDir)) {
-    fs.mkdirSync(outputDir, { recursive: true })
-  }
+  if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true })
 
   console.log('Loading FLUX2-klein F16 model (full precision)...')
 
@@ -45,26 +81,27 @@ async function main () {
   })
 
   try {
-    // Load model weights
     await model.load()
     console.log('Model loaded!')
 
-    // Read input image
     const initImage = fs.readFileSync(inputImagePath)
     console.log(`Input image: ${initImage.length} bytes`)
 
-    const STEPS = 20
-    const STRENGTH = 1.0 // CRITICAL: Default is 0.75! Must be 1.0 for full denoising
-    const GUIDANCE = 9.0 // Match Iris exactly
-    const SEED = -1 // Match Iris exactly
+    const gpusPre = await gpuMemory()
 
-    console.log('\n=== F16 Full Precision Model (Iris-matched settings) ===')
+    const STEPS = 20
+    const STRENGTH = 1.0
+    const GUIDANCE = 9.0
+    const SEED = -1
+
+    console.log('\n=== F16 Full Precision Model ===')
     console.log('  Model    : flux-2-klein-4b-F16.gguf (16-bit)')
     console.log('  Steps    : ' + STEPS)
-    console.log('  Strength : ' + STRENGTH + ' (EXPLICIT - addon defaults to 0.75!)')
-    console.log('  Effective: ' + Math.round(STEPS * STRENGTH) + " steps (matches Iris's 20 full steps)")
+    console.log('  Strength : ' + STRENGTH)
     console.log('  Guidance : ' + GUIDANCE)
-    console.log('  Seed     : ' + SEED + '\n')
+    console.log('  Seed     : ' + SEED)
+    if (gpusPre.length) console.log('  GPU pre  : ' + fmtGpus(gpusPre))
+    console.log('  Note     : VAE encode runs first (no progress tick) — please wait...\n')
 
     const tGenStart = Date.now()
     let lastStepTime = tGenStart
@@ -86,9 +123,12 @@ async function main () {
       .onUpdate((data) => {
         if (data instanceof Uint8Array) {
           const totalMs = Date.now() - tGenStart
-          console.log(`\n✓ Image generated in ${(totalMs / 1000).toFixed(1)}s`)
+          console.log(`\n✓ Image generated in ${(totalMs / 1000).toFixed(1)}s (includes VAE encode/decode)`)
           fs.writeFileSync(outputImagePath, data)
           console.log(`✓ Saved to: ${outputImagePath}`)
+          gpuMemory().then((gpusPost) => {
+            if (gpusPost.length) console.log('  GPU post : ' + fmtGpus(gpusPost))
+          })
           console.log('\nFor comparison, run the Q8 version:')
           console.log('  bare examples/img2img-flux2.js')
         } else if (typeof data === 'string') {
@@ -99,9 +139,8 @@ async function main () {
               const stepMs = now - lastStepTime
               lastStepTime = now
               const wallMs = now - tGenStart
-              process.stdout.write(
-                `\r  step ${tick.step}/${tick.total} | step took ${(stepMs / 1000).toFixed(1)}s | wall ${(wallMs / 1000).toFixed(1)}s elapsed  `
-              )
+              const bar = makeBar(tick.step, tick.total, 30)
+              console.log(`  ${bar} ${String(tick.step).padStart(2)}/${tick.total} | ${(stepMs / 1000).toFixed(2)}s/step | wall ${(wallMs / 1000).toFixed(1)}s`)
             }
           } catch (_) {}
         }
