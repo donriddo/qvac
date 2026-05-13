@@ -135,7 +135,7 @@ For **FLUX.2 img2img** (`prediction: 'flux2_flow'`):
 - When `width`/`height` are omitted, the addon defaults to 1024×1024.
 - You can pass any explicit multiple-of-8 values — the reference image is auto-resized inside `generate_image()`.
 
-For **SDEdit models** (SD1.x / SD2.x / SDXL / SD3):
+For **SDEdit models** (SD2.x / SDXL / SD3):
 - When `width`/`height` are omitted, output dimensions are taken from the input image (rounded up to the next multiple of 8).
 - Input images should be multiples of 8 for best results.
 

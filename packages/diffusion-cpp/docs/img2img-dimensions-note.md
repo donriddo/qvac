@@ -26,7 +26,7 @@ await model.run({
 })
 ```
 
-## SDEdit img2img (SD1.x / SD2.x / SDXL / SD3)
+## SDEdit img2img (SD2.x / SDXL / SD3)
 
 When `width`/`height` are omitted, output dimensions are taken from the input image (rounded up to the next multiple of 8). Supplying explicit values that differ from the input image dimensions will cause a tensor-shape mismatch error in stable-diffusion.cpp, so omit them or match them to the input.
 
@@ -68,9 +68,9 @@ artefacts; lower values produce more natural but less prompt-faithful results.
 
 | Model family | Parameter | Default | Recommended range | Notes |
 |---|---|---|---|---|
-| SD1.x / SD2.x | `cfg_scale` | 7.0 | 5.0 - 12.0 | Classic Classifier-Free Guidance (CFG). Trained with DDPM noise schedule. 7.0-9.0 is the sweet spot for most prompts. |
-| SDXL | `cfg_scale` | 7.0 | 5.0 - 9.0 | Same CFG mechanism as SD1/SD2, but lower values (5-7) tend to produce cleaner results at 1024x1024. |
-| SD3 Medium | `cfg_scale` | 7.0 (library default, too high) | 3.5 - 5.0 | SD3 uses a rectified flow-matching objective (not DDPM). The library default of 7.0 is tuned for SD1/SD2 and is too high for SD3 -- it causes over-saturation and distorted faces. Use 4.5 as a starting point (the value stable-diffusion.cpp recommends for SD3). |
+| SD2.x | `cfg_scale` | 7.0 | 5.0 - 12.0 | Classic Classifier-Free Guidance (CFG). Trained with DDPM noise schedule. 7.0-9.0 is the sweet spot for most prompts. |
+| SDXL | `cfg_scale` | 7.0 | 5.0 - 9.0 | Same CFG mechanism as SD2, but lower values (5-7) tend to produce cleaner results at 1024x1024. |
+| SD3 Medium | `cfg_scale` | 7.0 (library default, too high) | 3.5 - 5.0 | SD3 uses a rectified flow-matching objective (not DDPM). The library default of 7.0 is tuned for SD2/SDXL and is too high for SD3 -- it causes over-saturation and distorted faces. Use 4.5 as a starting point (the value stable-diffusion.cpp recommends for SD3). |
 | FLUX.2 | `guidance` | 3.5 | 2.5 - 5.0 | FLUX.2 uses **distilled guidance**, a separate mechanism from CFG. The `guidance` value is embedded directly into the model's timestep conditioning rather than being applied as a post-hoc interpolation. Set `cfg_scale: 1.0` (effectively disabling CFG) and control prompt strength exclusively through `guidance`. |
 
 ### FLUX.2 vs SD3: why the parameter is different
@@ -80,7 +80,7 @@ differently at the architecture level:
 
 - **SD3** uses standard Classifier-Free Guidance. The model runs two forward
   passes per step (conditional and unconditional) and the outputs are
-  interpolated using `cfg_scale`. This is the same mechanism as SD1/SD2, just
+  interpolated using `cfg_scale`. This is the same mechanism as SD2, just
   with a different noise schedule that requires lower scale values.
 
 - **FLUX.2** bakes guidance into the model via distillation. During training
@@ -101,7 +101,7 @@ the value of `cfg_scale`. In practice:
   CFG-based image conditioning.
 - **SD3 img2img**: `cfg_scale: 3.5-5.0`, no `guidance` parameter. Standard
   CFG applies to both text and image conditioning.
-- **SD1/SD2 img2img**: `cfg_scale: 5.0-9.0`. Higher values push further from
+- **SD2/SDXL img2img**: `cfg_scale: 5.0-9.0`. Higher values push further from
   the input image toward the prompt.
 
 ### Quick reference for img2img calls
@@ -121,7 +121,7 @@ await model.run({
 await model.run({
   prompt: 'anime portrait, comic-book style',
   init_image: imageBuffer,
-  cfg_scale: 3.5,        // flow-matching CFG (lower than SD1/SD2)
+  cfg_scale: 3.5,        // flow-matching CFG (lower than SD2/SDXL)
   strength: 0.65,
   steps: 28,
   sampling_method: 'euler'

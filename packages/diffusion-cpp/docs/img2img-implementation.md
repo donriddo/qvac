@@ -144,7 +144,7 @@ await response.onUpdate((data) => {
 | `guidance` | number | FLUX2 distilled guidance (default: 3.5) |
 | `seed` | number | Random seed, -1 for random (default: -1) |
 
-**FLUX.2 img2img:** `width`/`height` default to 1024 each when omitted. You can pass any explicit multiple-of-8 values. **SDEdit (SD1.x/SD2.x/SDXL/SD3) img2img:** omit `width`/`height` or match the input image dimensions — mismatched values cause a tensor-shape error.
+**FLUX.2 img2img:** `width`/`height` default to 1024 each when omitted. You can pass any explicit multiple-of-8 values. **SDEdit (SD2.x/SDXL/SD3) img2img:** omit `width`/`height` or match the input image dimensions — mismatched values cause a tensor-shape error.
 
 ## Technical Details
 

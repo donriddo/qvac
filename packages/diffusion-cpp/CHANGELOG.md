@@ -5,7 +5,7 @@
 ### Fixed
 
 - FLUX2 img2img OOM on large input images: `_fillDimsFromImage` in `addon.js` was copying the input image's pixel dimensions as the output resolution for any axis the caller omitted, causing allocations proportional to the input image (e.g. ~288 GB for a 2252×4000 photo). `index.js` now defaults each missing axis to 1024 for both single-ref (`init_image`) and fusion (`init_images`) FLUX img2img paths.
-- FLUX2 img2img OOM during diffusion: `SdCtxConfig::diffusionFlashAttn` (JS: `diffusion_fa`) now defaults to `true`. Without flash attention, FLUX2 materialises the full Q·Kᵀ joint-attention matrix in VRAM (~288 GB for a 1024×1024 output on Vulkan). The default is safe for all model families: `ggml_ext_attention_ext` falls back to standard attention via `ggml_backend_supports_op` on backends that don't support `ggml_flash_attn_ext`, so SD1.x/SD2.x/SDXL/SD3 callers are unaffected. Callers who need to opt out can pass `diffusion_fa: false` in the config.
+- FLUX2 img2img OOM during diffusion: `SdCtxConfig::diffusionFlashAttn` (JS: `diffusion_fa`) now defaults to `true`. Without flash attention, FLUX2 materialises the full Q·Kᵀ joint-attention matrix in VRAM (~288 GB for a 1024×1024 output on Vulkan). The default is safe for all model families: `ggml_ext_attention_ext` falls back to standard attention via `ggml_backend_supports_op` on backends that don't support `ggml_flash_attn_ext`, so SD2.x/SDXL/SD3 callers are unaffected. Callers who need to opt out can pass `diffusion_fa: false` in the config.
 - `img2img-flux2.js` and `img2img-flux2-f16.js`: add explicit `diffusion_fa: true` (now the addon default, kept for clarity) and `width: 1024, height: 1024` to `run()` params so examples work with any input image regardless of its dimensions. `generate-image-flux2-i2i.test.js` gains the same `diffusion_fa: true` flag to prevent OOM on GPU runners.
 - Remove `if (gen.width == 512 && gen.height == 512)` block from `SdModel.cpp`. This block overrode output dimensions with the input image's pixel size whenever both axes equalled 512. JS callers relying on the 1024-pixel JS-side defaults were unaffected, but JS callers explicitly requesting `width: 512, height: 512` — and **direct C++ callers** that relied on this block for dimension auto-detection — now receive a fixed 512×512 output instead of one scaled to the input image.
 
@@ -212,7 +212,7 @@ If `addon.activate()` throws during `_load()` (for example a native init failure
 
 #### Stable Diffusion inference addon
 
-Initial release of the `@qvac/diffusion-cpp` native addon for image generation, supporting SD1.x, SD2.x, SDXL, SD3, and FLUX model families.
+Initial release of the `@qvac/diffusion-cpp` native addon for image generation, supporting SD2.x, SDXL, SD3, and FLUX model families.
 
 #### GPU acceleration
 

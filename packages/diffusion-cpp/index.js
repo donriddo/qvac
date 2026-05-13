@@ -49,7 +49,7 @@ function applyFluxImg2ImgDimDefaults (params, pred, hasInitImages) {
 
 /**
  * Text-to-image and image-to-image generation using stable-diffusion.cpp.
- * Supports SD1.x, SD2.x, SDXL, SD3, and FLUX.2 [klein].
+ * Supports SD2.x, SDXL, SD3, and FLUX.2 [klein].
  */
 class ImgStableDiffusion {
   /**
@@ -104,7 +104,7 @@ class ImgStableDiffusion {
     this.logger.info('Starting stable-diffusion model load')
 
     // Route the primary model file to the correct stable-diffusion.cpp param:
-    //   path              — all-in-one checkpoints (SD1.x, SD2.x, SDXL, SD3 all-in-one GGUF)
+    //   path              — all-in-one checkpoints (SD2.x, SDXL, SD3 all-in-one GGUF)
     //   diffusionModelPath — standalone diffusion weights requiring separate encoders
     //                        (FLUX.2 klein → llm, SD3 pure GGUF → t5Xxl + clipL + clipG)
     // Any caller-supplied separate encoder implies the primary file is the standalone
@@ -196,7 +196,7 @@ class ImgStableDiffusion {
    *     attention with distinct RoPE positions. The target starts from pure noise,
    *     preserving features (skin tone, structure, etc.).
    *
-   *   SD1.x / SD2.x / SDXL / SD3 (all other prediction types):
+   *   SD2.x / SDXL / SD3 (all other prediction types):
    *     Uses traditional SDEdit (init_image). The input image is noised to the
    *     level set by `strength`, then denoised for the remaining steps. Lower
    *     strength = closer to the original image.
@@ -212,7 +212,7 @@ class ImgStableDiffusion {
    * @param {number} [params.width]                 - Output width (multiple of 8). FLUX img2img defaults to 1024 when omitted.
    * @param {number} [params.height]                - Output height (multiple of 8). FLUX img2img defaults to 1024 when omitted.
    * @param {number} [params.guidance=3.5]          - Distilled guidance (FLUX.2)
-   * @param {number} [params.cfg_scale=7.0]         - CFG scale (SD1/SD2)
+   * @param {number} [params.cfg_scale=7.0]         - CFG scale (SD2/SDXL/SD3)
    * @param {string} [params.sampling_method]       - Sampler name
    * @param {string} [params.scheduler]             - Scheduler name
    * @param {number} [params.seed=-1]               - RNG seed; -1 = random
@@ -321,7 +321,7 @@ class ImgStableDiffusion {
         throw new Error(
           'init_images (multi-reference fusion) requires a FLUX.2 model. ' +
           "Load a FLUX.2 [klein] checkpoint with files.llm set and pass config.prediction: 'flux2_flow'. " +
-          'Other architectures (SD1.x, SD2.x, SDXL, SD3, single-image FLUX.2) do not support ' +
+          'Other architectures (SD2.x, SDXL, SD3, single-image FLUX.2) do not support ' +
           '@image1/@imageN in-context references.'
         )
       }
