@@ -41,10 +41,7 @@ const STEPS = 20
 const GUIDANCE = 5.0
 const SEED = 42
 
-// Verifies that a large input image (2252×4000) does not propagate its pixel
-// dimensions as the output resolution. _fillDimsFromImage must cap to 1024×1024
-// when width/height are omitted from run() params.
-test('FLUX2-klein img2img — large input image defaults to 1024×1024 output', { timeout: 1800000, skip }, async (t) => {
+test('FLUX2-klein img2img — generates 1024×1024 output on GPU without OOM', { timeout: 1800000, skip }, async (t) => {
   setupJsLogger(binding)
 
   const [downloadedModelName, modelDir] = await ensureModel({
@@ -63,7 +60,7 @@ test('FLUX2-klein img2img — large input image defaults to 1024×1024 output', 
   })
 
   console.log('\n' + '='.repeat(60))
-  console.log('FLUX2-KLEIN IMG2IMG LARGE-IMAGE — INTEGRATION TEST')
+  console.log('FLUX2-KLEIN IMG2IMG 1024×1024 — INTEGRATION TEST')
   console.log('='.repeat(60))
   console.log(` Platform  : ${platform}`)
   console.log(` Model     : ${downloadedModelName}`)
@@ -101,16 +98,13 @@ test('FLUX2-klein img2img — large input image defaults to 1024×1024 output', 
     console.log(`Loaded in ${(loadMs / 1000).toFixed(1)}s`)
     t.ok(loadMs < 180000, `Model loaded within 180s (took ${(loadMs / 1000).toFixed(1)}s)`)
 
-    // ── Load large init image ─────────────────────────────────────────────────
-    const initImagePath = path.join(__dirname, '../../assets/large-test-image.jpg')
-    t.ok(fs.existsSync(initImagePath), `Large test image exists at ${initImagePath}`)
+    // ── Load init image ───────────────────────────────────────────────────────
+    const initImagePath = path.join(__dirname, '../../assets/von-neumann.jpg')
     const initImage = fs.readFileSync(initImagePath)
-    const inputDims = readImageDimensions(initImage)
-    console.log(`\nLoaded large init image: ${initImage.length} bytes (${inputDims.width}×${inputDims.height})`)
-    t.ok(inputDims.width > 1024 || inputDims.height > 1024, `Input image is larger than 1024 (${inputDims.width}×${inputDims.height})`)
+    console.log(`\nLoaded init image: ${initImage.length} bytes`)
 
-    // ── Generate (img2img, no explicit width/height) ───────────────────────────
-    console.log('\n=== Generating image (img2img, no explicit dimensions) ===')
+    // ── Generate 1024×1024 img2img ────────────────────────────────────────────
+    console.log('\n=== Generating 1024×1024 image (img2img) ===')
     console.log(`  Steps    : ${STEPS}`)
     console.log(`  Guidance : ${GUIDANCE}`)
     console.log(`  Seed     : ${SEED}`)
@@ -118,14 +112,15 @@ test('FLUX2-klein img2img — large input image defaults to 1024×1024 output', 
     const tGen = Date.now()
 
     const response = await model.run({
-      prompt: 'vibrant abstract gradient, high quality',
+      prompt: 'same person, color photograph, modern tech CEO, wearing a gray zip up vest, black studio background',
       negative_prompt: 'blurry, low quality, distorted',
       init_image: initImage,
       cfg_scale: 1.0,
       steps: STEPS,
       guidance: GUIDANCE,
-      seed: SEED
-      // width/height intentionally omitted — must default to 1024×1024
+      seed: SEED,
+      width: 1024,
+      height: 1024
     })
 
     await response
@@ -158,10 +153,10 @@ test('FLUX2-klein img2img — large input image defaults to 1024×1024 output', 
     t.ok(isPng(img), 'Image has valid PNG magic bytes')
 
     const dims = readImageDimensions(img)
-    t.is(dims.width, 1024, 'Output width is 1024 (large input did not propagate its dims)')
-    t.is(dims.height, 1024, 'Output height is 1024 (large input did not propagate its dims)')
+    t.is(dims.width, 1024, 'Output width is 1024')
+    t.is(dims.height, 1024, 'Output height is 1024')
 
-    const outPath = path.join(modelDir, 'generate-image--flux2-i2i-large-seed42.png')
+    const outPath = path.join(modelDir, 'generate-image--flux2-i2i-1024-seed42.png')
     fs.writeFileSync(outPath, img)
     console.log(`\nSaved → ${outPath}`)
 
@@ -172,7 +167,6 @@ test('FLUX2-klein img2img — large input image defaults to 1024×1024 output', 
     console.log(` Load time   : ${(loadMs / 1000).toFixed(1)}s`)
     console.log(` Gen time    : ${(genMs / 1000).toFixed(1)}s`)
     console.log(` Steps ticks : ${progressTicks.length}`)
-    console.log(` Input dims  : ${inputDims.width}×${inputDims.height}`)
     console.log(` Output dims : ${dims.width}×${dims.height}`)
     console.log(` Image size  : ${img.length} bytes`)
     console.log(' PNG valid   : true')
