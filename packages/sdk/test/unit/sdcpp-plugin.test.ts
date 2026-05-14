@@ -51,6 +51,7 @@ test("sdcppConfigSchema: accepts valid full config", (t) => {
     vae_on_cpu: false,
     vae_tiling: true,
     flash_attn: true,
+    diffusion_fa: true,
     upscaler: {
       type: "esrgan",
       tile_size: 128,
