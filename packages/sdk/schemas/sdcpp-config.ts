@@ -20,7 +20,7 @@ export const sdcppConfigSchema = z
     threads: z.number().optional(),
     device: z.enum(["gpu", "cpu"]).optional(),
     prediction: z
-      .enum(["auto", "eps", "v", "edm_v", "flow", "flux_flow", "flux2_flow"])
+      .enum(["auto", "eps", "v", "edm_v", "flow", "flux2_flow"])
       .optional()
       .describe("Prediction type; auto-detected from model when omitted"),
     type: z
