@@ -37,6 +37,7 @@ export const sdcppConfigSchema = z
     vae_on_cpu: z.boolean().optional().describe("Force VAE decoder to run on CPU"),
     vae_tiling: z.boolean().optional().describe("Enable VAE tiling for large images on limited VRAM"),
     flash_attn: z.boolean().optional().describe("Enable flash attention to reduce memory usage"),
+    diffusion_fa: z.boolean().optional().describe("Enable flash attention for the diffusion transformer only. Enabled by default on the addon side — required for FLUX.2 to avoid materialising the full Q·Kᵀ matrix; safe for all model families."),
     lora_apply_mode: z.enum(["auto", "immediately", "at_runtime"]).optional()
       .describe(
         "How LoRA adapters passed via diffusion({ lora }) are applied. " +
