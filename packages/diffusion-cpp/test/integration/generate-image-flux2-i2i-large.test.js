@@ -143,8 +143,9 @@ test('FLUX2-klein img2img — generates 1024×1024 output on GPU without OOM', {
     console.log(`\nGenerated in ${(genMs / 1000).toFixed(1)}s`)
 
     // ── Assertions ────────────────────────────────────────────────────────────
-    t.ok(progressTicks.length > 0, `Received progress ticks (got ${progressTicks.length})`)
-    t.is(progressTicks[progressTicks.length - 1].total, STEPS, `Final progress tick reports ${STEPS} total steps`)
+    const diffusionTicks = progressTicks.filter(tick => tick.total === STEPS)
+    t.ok(diffusionTicks.length > 0, `Received diffusion progress ticks (got ${diffusionTicks.length})`)
+    t.is(diffusionTicks[diffusionTicks.length - 1].step, STEPS, `Final diffusion tick is step ${STEPS}`)
 
     t.is(images.length, 1, 'Received exactly 1 image')
     if (images.length === 0) return
