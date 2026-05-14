@@ -129,38 +129,39 @@ const SdCtxHandlersMap SD_CTX_HANDLERS = {
 
     {"type",
      [](SdCtxConfig& cfg, const std::string& val) {
-       if (val.empty() || val == "auto")
+       if (val.empty() || val == "auto") {
          cfg.wtype = SD_TYPE_COUNT;
-       else if (val == "f32")
+       } else if (val == "f32") {
          cfg.wtype = SD_TYPE_F32;
-       else if (val == "f16")
+       } else if (val == "f16") {
          cfg.wtype = SD_TYPE_F16;
-       else if (val == "bf16")
+       } else if (val == "bf16") {
          cfg.wtype = SD_TYPE_BF16;
-       else if (val == "q4_0")
+       } else if (val == "q4_0") {
          cfg.wtype = SD_TYPE_Q4_0;
-       else if (val == "q4_1")
+       } else if (val == "q4_1") {
          cfg.wtype = SD_TYPE_Q4_1;
-       else if (val == "q4_k")
+       } else if (val == "q4_k") {
          cfg.wtype = SD_TYPE_Q4_K;
-       else if (val == "q5_0")
+       } else if (val == "q5_0") {
          cfg.wtype = SD_TYPE_Q5_0;
-       else if (val == "q5_1")
+       } else if (val == "q5_1") {
          cfg.wtype = SD_TYPE_Q5_1;
-       else if (val == "q5_k")
+       } else if (val == "q5_k") {
          cfg.wtype = SD_TYPE_Q5_K;
-       else if (val == "q6_k")
+       } else if (val == "q6_k") {
          cfg.wtype = SD_TYPE_Q6_K;
-       else if (val == "q8_0")
+       } else if (val == "q8_0") {
          cfg.wtype = SD_TYPE_Q8_0;
-       else if (val == "q2_k")
+       } else if (val == "q2_k") {
          cfg.wtype = SD_TYPE_Q2_K;
-       else if (val == "q3_k")
+       } else if (val == "q3_k") {
          cfg.wtype = SD_TYPE_Q3_K;
-       else
+       } else {
          throw StatusError(
              general_error::InvalidArgument,
              "type: unknown weight type '" + val + "'");
+       }
      }},
 
     {"tensor_type_rules",
@@ -173,31 +174,33 @@ const SdCtxHandlersMap SD_CTX_HANDLERS = {
 
     {"rng",
      [](SdCtxConfig& cfg, const std::string& val) {
-       if (val == "cpu")
+       if (val == "cpu") {
          cfg.rngType = CPU_RNG;
-       else if (val == "cuda")
+       } else if (val == "cuda") {
          cfg.rngType = CUDA_RNG;
-       else if (val == "std_default")
+       } else if (val == "std_default") {
          cfg.rngType = STD_DEFAULT_RNG;
-       else
+       } else {
          throw StatusError(
              general_error::InvalidArgument,
              "rng must be 'cpu', 'cuda', or 'std_default', got: '" + val + "'");
+       }
      }},
 
     {"sampler_rng",
      [](SdCtxConfig& cfg, const std::string& val) {
-       if (val == "cpu")
+       if (val == "cpu") {
          cfg.samplerRngType = CPU_RNG;
-       else if (val == "cuda")
+       } else if (val == "cuda") {
          cfg.samplerRngType = CUDA_RNG;
-       else if (val == "std_default")
+       } else if (val == "std_default") {
          cfg.samplerRngType = STD_DEFAULT_RNG;
-       else
+       } else {
          throw StatusError(
              general_error::InvalidArgument,
              "sampler_rng must be 'cpu', 'cuda', or 'std_default', got: '" +
                  val + "'");
+       }
      }},
 
     // -- Prediction type
@@ -210,22 +213,23 @@ const SdCtxHandlersMap SD_CTX_HANDLERS = {
 
     {"prediction",
      [](SdCtxConfig& cfg, const std::string& val) {
-       if (val.empty() || val == "auto")
+       if (val.empty() || val == "auto") {
          cfg.prediction = PREDICTION_COUNT; // sentinel: auto-detect
-       else if (val == "eps")
+       } else if (val == "eps") {
          cfg.prediction = EPS_PRED;
-       else if (val == "v")
+       } else if (val == "v") {
          cfg.prediction = V_PRED;
-       else if (val == "edm_v")
+       } else if (val == "edm_v") {
          cfg.prediction = EDM_V_PRED;
-       else if (val == "flow")
+       } else if (val == "flow") {
          cfg.prediction = FLOW_PRED;
-       else if (val == "flux2_flow")
+       } else if (val == "flux2_flow") {
          cfg.prediction = FLUX2_FLOW_PRED;
-       else
+       } else {
          throw StatusError(
              general_error::InvalidArgument,
              "prediction must be one of: eps, v, edm_v, flow, flux2_flow");
+       }
      }},
 
     // -- LoRA apply mode
@@ -233,16 +237,17 @@ const SdCtxHandlersMap SD_CTX_HANDLERS = {
 
     {"lora_apply_mode",
      [](SdCtxConfig& cfg, const std::string& val) {
-       if (val == "auto")
+       if (val == "auto") {
          cfg.loraApplyMode = LORA_APPLY_AUTO;
-       else if (val == "immediately")
+       } else if (val == "immediately") {
          cfg.loraApplyMode = LORA_APPLY_IMMEDIATELY;
-       else if (val == "at_runtime")
+       } else if (val == "at_runtime") {
          cfg.loraApplyMode = LORA_APPLY_AT_RUNTIME;
-       else
+       } else {
          throw StatusError(
              general_error::InvalidArgument,
              "lora_apply_mode must be 'auto', 'immediately', or 'at_runtime'");
+       }
      }},
 
     // -- Flow matching (FLUX)
