@@ -104,6 +104,7 @@ struct SdCtxConfig {
   bool forceSDXLVaeConvScale = false; // force SDXL VAE conv scale (compat fix)
 
   // -- ESRGAN upscaler -------------------------------------------------------
+  // NOLINTNEXTLINE(readability-magic-numbers,cppcoreguidelines-avoid-magic-numbers)
   int upscalerTileSize = 128;
   bool upscalerDirect = false;
   bool upscalerOffloadParamsToCpu = false;

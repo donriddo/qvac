@@ -328,8 +328,8 @@ void applySdCtxHandlers(
     SdCtxConfig& config,
     const std::unordered_map<std::string, std::string>& configMap) {
   for (const auto& [key, value] : configMap) {
-    if (auto it = SD_CTX_HANDLERS.find(key); it != SD_CTX_HANDLERS.end()) {
-      it->second(config, value);
+    if (auto found = SD_CTX_HANDLERS.find(key); found != SD_CTX_HANDLERS.end()) {
+      found->second(config, value);
     }
     // Unknown keys are silently ignored for forward compatibility.
   }
