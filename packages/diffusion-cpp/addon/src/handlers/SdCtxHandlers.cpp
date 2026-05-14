@@ -13,32 +13,34 @@ using namespace qvac_errors;
 // -- Parse helpers
 // -------------------------------------------------------------
 
-static bool parseBool(const std::string& v, const std::string& key) {
-  if (v == "true" || v == "1")
+static bool parseBool(const std::string& val, const std::string& key) {
+  if (val == "true" || val == "1") {
     return true;
-  if (v == "false" || v == "0")
+  }
+  if (val == "false" || val == "0") {
     return false;
+  }
   throw StatusError(
       general_error::InvalidArgument,
-      key + " must be 'true'/'1' or 'false'/'0', got: '" + v + "'");
+      key + " must be 'true'/'1' or 'false'/'0', got: '" + val + "'");
 }
 
-static int parseInt(const std::string& v, const std::string& key) {
+static int parseInt(const std::string& val, const std::string& key) {
   try {
-    return std::stoi(v);
+    return std::stoi(val);
   } catch (...) {
     throw StatusError(
         general_error::InvalidArgument,
-        key + " must be an integer, got: '" + v + "'");
+        key + " must be an integer, got: '" + val + "'");
   }
 }
 
-static int parsePositiveInt(const std::string& v, const std::string& key) {
-  const int parsed = parseInt(v, key);
+static int parsePositiveInt(const std::string& val, const std::string& key) {
+  const int parsed = parseInt(val, key);
   if (parsed <= 0) {
     throw StatusError(
         general_error::InvalidArgument,
-        key + " must be a positive integer, got: '" + v + "'");
+        key + " must be a positive integer, got: '" + val + "'");
   }
   return parsed;
 }
@@ -62,13 +64,13 @@ parseAutoOrPositiveInt(const std::string& value, const std::string& key) {
       key + " must be -1 (auto) or a positive integer, got: '" + value + "'");
 }
 
-static float parseFloat(const std::string& v, const std::string& key) {
+static float parseFloat(const std::string& val, const std::string& key) {
   try {
-    return std::stof(v);
+    return std::stof(val);
   } catch (...) {
     throw StatusError(
         general_error::InvalidArgument,
-        key + " must be a float, got: '" + v + "'");
+        key + " must be a float, got: '" + val + "'");
   }
 }
 
