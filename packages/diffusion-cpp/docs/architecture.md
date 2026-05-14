@@ -482,7 +482,7 @@ Use stable-diffusion.cpp as the core inference engine instead of Python diffuser
   - SD1.x, SD2.x, SD-Turbo
   - SDXL, SDXL-Turbo
   - SD3/SD3.5
-  - FLUX.1-dev/schnell, FLUX.2-dev/klein
+  - FLUX.2-dev/klein
   - Wan2.1/Wan2.2 (video generation)
   - Qwen Image, Z-Image
 - LoRA, ControlNet support
