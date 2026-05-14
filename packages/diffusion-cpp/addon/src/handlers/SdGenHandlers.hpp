@@ -46,8 +46,7 @@ struct SdGenConfig {
 
   // -- Guidance -------------------------------------------------------------
   // NOLINTNEXTLINE(readability-magic-numbers,cppcoreguidelines-avoid-magic-numbers)
-  float cfgScale =
-      7.0F; // txt_cfg  -- CFG (Classifier-Free Guidance) for SD1/SD2
+  float cfgScale = 7.0F; // txt_cfg  -- CFG (Classifier-Free Guidance) for SD1/SD2
   // NOLINTNEXTLINE(readability-magic-numbers,cppcoreguidelines-avoid-magic-numbers)
   float guidance = 3.5F; // distilled_guidance -- FLUX.2 flow-matching scale
   float imgCfgScale =
