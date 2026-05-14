@@ -409,11 +409,11 @@ class ImgStableDiffusion {
       throw new Error('ESRGAN upscale requested but files.esrgan was not provided')
     }
 
-    // FLUX models require an explicit prediction type for img2img (single ref).
+    // FLUX.2 requires an explicit prediction type for img2img (single ref).
     // The C++ addon auto-detects the model family at load time, but
     // SdModel::process() only enters the FLUX ref_images path when
-    // config_.prediction is FLUX_FLOW_PRED or FLUX2_FLOW_PRED. Without
-    // an explicit value the addon silently falls back to SDEdit.
+    // config_.prediction is FLUX2_FLOW_PRED. Without an explicit value
+    // the addon silently falls back to SDEdit.
     if (params.init_image && this._files.llm) {
       if (pred !== 'flux2_flow') {
         throw new Error(

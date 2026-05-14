@@ -403,11 +403,7 @@ std::any SdModel::process(const std::any& input) {
   //     a fully new image. N>=2 is "fusion" mode -- addressable in the prompt
   //     as @image1, @image2, ...
   //
-  //   FLUX (FLUX_FLOW_PRED) with a single reference image:
-  //     Same ref_images path as FLUX2, just a single ref. Multi-image is
-  //     rejected here because only FLUX2 defines the @imageN placeholders.
-  //
-  //   All other models (SD1.x, SD2.x, SDXL, SD3):
+  //   All other models (SD2.x, SDXL, SD3):
   //     Uses init_image -- traditional SDEdit. The input image is noised to
   //     the level specified by `strength`, then denoised for the remaining
   //     steps. Lower strength = closer to the original image. Multi-image
@@ -434,8 +430,7 @@ std::any SdModel::process(const std::any& input) {
       new std::vector<sd_image_t>(), refImgsDeleter);
 
   if (gen.mode == "img2img") {
-    const bool isFluxFamily = config_.prediction == FLUX2_FLOW_PRED ||
-                              config_.prediction == FLUX_FLOW_PRED;
+    const bool isFluxFamily = config_.prediction == FLUX2_FLOW_PRED;
     const bool isFlux2 = config_.prediction == FLUX2_FLOW_PRED;
     const size_t nMulti = job.initImagesBytes.size();
 

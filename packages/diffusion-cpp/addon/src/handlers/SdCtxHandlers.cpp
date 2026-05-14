@@ -197,7 +197,6 @@ const SdCtxHandlersMap SD_CTX_HANDLERS = {
 
     // -- Prediction type
     // --------------------------------------------------------
-    // SD1.x  -> "eps"         (epsilon prediction)
     // SD2.x  -> "v"           (v-prediction)
     // SD3    -> "flow"        (flow matching)
     // FLUX.2 -> "flux2_flow"  (FLUX.2 flow matching)
@@ -216,15 +215,12 @@ const SdCtxHandlersMap SD_CTX_HANDLERS = {
          c.prediction = EDM_V_PRED;
        else if (v == "flow")
          c.prediction = FLOW_PRED;
-       else if (v == "flux_flow")
-         c.prediction = FLUX_FLOW_PRED;
        else if (v == "flux2_flow")
          c.prediction = FLUX2_FLOW_PRED;
        else
          throw StatusError(
              general_error::InvalidArgument,
-             "prediction must be one of: eps, v, edm_v, flow, flux_flow, "
-             "flux2_flow");
+             "prediction must be one of: eps, v, edm_v, flow, flux2_flow");
      }},
 
     // -- LoRA apply mode

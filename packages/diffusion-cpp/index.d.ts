@@ -402,3 +402,9 @@ export class EsrganUpscaler {
 }
 
 export { QvacResponse, RuntimeStats, EsrganRuntimeStats }
+
+export function applyFluxImg2ImgDimDefaults(
+  params: GenerationParams,
+  pred: string,
+  hasInitImages: boolean
+): GenerationParams
