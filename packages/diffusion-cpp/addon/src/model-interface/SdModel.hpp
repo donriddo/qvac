@@ -121,7 +121,7 @@ private:
   std::unique_ptr<sd_ctx_t, decltype(&free_sd_ctx)> sdCtx_;
   qvac_lib_inference_addon_sd::EsrganUpscaler upscaler_;
   mutable std::atomic<bool> cancelRequested_{false};
-  mutable qvac_lib_inference_addon_cpp::RuntimeStats lastStats_{};
+  mutable qvac_lib_inference_addon_cpp::RuntimeStats lastStats_;
 
   // -- Cumulative stats ------------------------------------------------------
   struct CumulativeStats {

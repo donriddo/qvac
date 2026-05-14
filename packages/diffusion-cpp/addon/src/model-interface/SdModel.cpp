@@ -331,6 +331,8 @@ std::any SdModel::process(const std::any& input) {
   };
   struct CallbackGuard {
     std::function<void()> fn;
+    explicit CallbackGuard(std::function<void()> callback) noexcept
+        : fn(std::move(callback)) {}
     CallbackGuard(const CallbackGuard&) = delete;
     CallbackGuard& operator=(const CallbackGuard&) = delete;
     CallbackGuard(CallbackGuard&&) = delete;
@@ -338,10 +340,10 @@ std::any SdModel::process(const std::any& input) {
     ~CallbackGuard() noexcept {
       try {
         fn();
-      } catch (...) {
+      } catch (...) { // NOLINT(bugprone-empty-catch)
       }
     }
-  } guard{clearCallbacks};
+  } guard(clearCallbacks);
 
   // -- Parse JSON params -----------------------------------------------------
   picojson::value jsonRoot;
@@ -552,8 +554,8 @@ std::any SdModel::process(const std::any& input) {
                  initImgBytesIt->second.is<picojson::array>()) {
         const auto& arr = initImgBytesIt->second.get<picojson::array>();
         initPng.reserve(arr.size());
-        for (const auto& el : arr) {
-          initPng.push_back(static_cast<uint8_t>(el.get<double>()));
+        for (const auto& elem : arr) {
+          initPng.push_back(static_cast<uint8_t>(elem.get<double>()));
         }
       }
       if (!initPng.empty()) {
@@ -648,7 +650,9 @@ std::any SdModel::process(const std::any& input) {
                     " bytes for SDEdit mask (" + std::to_string(alignedW) +
                     "x" + std::to_string(alignedH) + ")");
           }
+          // NOLINTNEXTLINE(readability-magic-numbers,cppcoreguidelines-avoid-magic-numbers)
           memset(maskData, 255, maskSize);
+          // NOLINTNEXTLINE(modernize-use-designated-initializers)
           genParams.mask_image = {
               static_cast<uint32_t>(alignedW),
               static_cast<uint32_t>(alignedH),
@@ -660,7 +664,7 @@ std::any SdModel::process(const std::any& input) {
   } // end gen.mode == "img2img"
 
   // -- Generate --------------------------------------------------------------
-  const auto t0 = std::chrono::steady_clock::now();
+  const auto genStart = std::chrono::steady_clock::now();
 
   SdImageBatch results(
       generate_image(sdCtx_.get(), &genParams), gen.batchCount);
@@ -740,11 +744,11 @@ std::any SdModel::process(const std::any& input) {
         "(out of device memory). Try enabling vae_tiling in run() params.");
   }
 
-  const auto t1 = std::chrono::steady_clock::now();
+  const auto genEnd = std::chrono::steady_clock::now();
 
   // -- Accumulate cumulative counters -----------------------------------------
   const int64_t genMsI = static_cast<int64_t>(
-      std::chrono::duration<double, std::milli>(t1 - t0).count());
+      std::chrono::duration<double, std::milli>(genEnd - genStart).count());
   stats_.totalGenerationMs += genMsI;
   stats_.totalWallMs += genMsI;
   stats_.totalSteps += gen.steps;
