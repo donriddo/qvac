@@ -687,6 +687,13 @@ std::any SdModel::process(const std::any& input) {
     throw std::runtime_error("Job cancelled");
   }
 
+  if (outputCount == 0) {
+    throw StatusError(
+        general_error::InternalError,
+        "Image generation produced no output. The VAE decode likely failed "
+        "(out of device memory). Try enabling vae_tiling in run() params.");
+  }
+
   const auto t1 = std::chrono::steady_clock::now();
 
   // -- Accumulate cumulative counters -----------------------------------------
