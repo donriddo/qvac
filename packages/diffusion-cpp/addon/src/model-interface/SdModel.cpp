@@ -461,7 +461,7 @@ std::any SdModel::process(const std::any& input) {
     delete ptr;
   };
   std::unique_ptr<std::vector<sd_image_t>, decltype(refImgsDeleter)> refImgs(
-      new std::vector<sd_image_t>(), refImgsDeleter); // NOLINT(cppcoreguidelines-owning-memory)
+      new std::vector<sd_image_t>(), refImgsDeleter); // NOLINT
 
   if (gen.mode == "img2img") {
     const bool isFluxFamily = config_.prediction == FLUX2_FLOW_PRED;
@@ -549,13 +549,16 @@ std::any SdModel::process(const std::any& input) {
       // -- Single-image path (existing behaviour) --------------------------
       if (!job.initImageBytes.empty()) {
         initPng = job.initImageBytes;
-      } else if (auto initImgBytesIt = jsonRoot.get<picojson::object>().find("init_image_bytes");
-                 initImgBytesIt != jsonRoot.get<picojson::object>().end() &&
-                 initImgBytesIt->second.is<picojson::array>()) {
-        const auto& arr = initImgBytesIt->second.get<picojson::array>();
-        initPng.reserve(arr.size());
-        for (const auto& elem : arr) {
-          initPng.push_back(static_cast<uint8_t>(elem.get<double>()));
+      } else {
+        const auto& jsonObj = jsonRoot.get<picojson::object>();
+        auto initBytesIt = jsonObj.find("init_image_bytes");
+        if (initBytesIt != jsonObj.end() &&
+            initBytesIt->second.is<picojson::array>()) {
+          const auto& arr = initBytesIt->second.get<picojson::array>();
+          initPng.reserve(arr.size());
+          for (const auto& elem : arr) {
+            initPng.push_back(static_cast<uint8_t>(elem.get<double>()));
+          }
         }
       }
       if (!initPng.empty()) {
