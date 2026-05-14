@@ -572,7 +572,7 @@ Require all model files to be present on disk before `load()` is called. The con
 **Split-model support:**
 - Diffusion models may have multiple components (diffusion GGUF, CLIP-L, CLIP-G, T5-XXL, LLM encoder, VAE, optional ESRGAN upscaler)
 - The caller supplies each component as an absolute path on `files`
-- Split vs all-in-one layout is detected via heuristic in `_load()` (`isSplitLayout = !!this._files.llm || !!this._files.t5Xxl || !!this._files.clipL || !!this._files.clipG`). Any caller-supplied separate encoder implies the primary file is the standalone diffusion model rather than an all-in-one checkpoint, so FLUX.1 (`{ model, clipL, clipG, vae }` without `t5Xxl`) is also routed correctly.
+- Split vs all-in-one layout is detected via heuristic in `_load()` (`isSplitLayout = !!this._files.llm || !!this._files.t5Xxl || !!this._files.clipL || !!this._files.clipG`). Any caller-supplied separate encoder implies the primary file is the standalone diffusion model rather than an all-in-one checkpoint.
 
 ### Trade-offs
 - ✅ Simple, no abstraction overhead
