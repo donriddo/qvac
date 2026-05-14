@@ -120,7 +120,8 @@ test('FLUX2-klein img2img — generates 1024×1024 output on GPU without OOM', {
       guidance: GUIDANCE,
       seed: SEED,
       width: 1024,
-      height: 1024
+      height: 1024,
+      vae_tiling: true
     })
 
     await response
