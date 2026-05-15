@@ -213,7 +213,7 @@ export const diffusionStatsPresent = createDiffusionTest(
 // ---- diffusion_fa config flag ----
 
 export const diffusionFaAccepted = createDiffusionTest(
-  "diffusion-fa-accepted",
+  "diffusion-fa-loads-and-runs",
   {
     prompt: "a solid blue circle on white background",
     width: 256,

@@ -335,7 +335,6 @@ resources.define("diffusion", {
 resources.define("diffusion-fa", {
   constant: FLUX_2_KLEIN_4B_Q4_0,
   type: "diffusion",
-  preLoadUnload: true,
   config: {
     device: "gpu",
     threads: 4,

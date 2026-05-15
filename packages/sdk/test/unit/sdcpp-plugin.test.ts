@@ -80,6 +80,16 @@ test("sdcppConfigSchema: rejects invalid prediction type", (t) => {
   t.is(result.success, false);
 });
 
+test("sdcppConfigSchema: rejects removed flux_flow prediction value", (t) => {
+  const result = sdcppConfigSchema.safeParse({ prediction: "flux_flow" });
+  t.is(result.success, false);
+});
+
+test("sdcppConfigSchema: rejects non-boolean diffusion_fa", (t) => {
+  const result = sdcppConfigSchema.safeParse({ diffusion_fa: "yes" });
+  t.is(result.success, false);
+});
+
 test("sdcppConfigSchema: rejects invalid type", (t) => {
   const result = sdcppConfigSchema.safeParse({ type: "q3_0" });
   t.is(result.success, false);

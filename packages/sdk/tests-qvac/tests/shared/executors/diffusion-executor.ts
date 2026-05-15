@@ -35,7 +35,7 @@ export class DiffusionExecutor extends AbstractModelExecutor<typeof diffusionTes
     if (testId === "diffusion-stats-present") {
       return await this.statsPresent(params, expectation);
     }
-    if (testId === "diffusion-fa-accepted") {
+    if (testId === "diffusion-fa-loads-and-runs") {
       return await this.diffusionFaAccepted(params, expectation);
     }
     if (testId === "diffusion-fusion-flux2-basic") {
