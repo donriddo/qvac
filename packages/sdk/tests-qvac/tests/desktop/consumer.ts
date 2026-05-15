@@ -332,7 +332,6 @@ resources.define("diffusion", {
   },
 });
 
-// Isolated from "diffusion" so diffusion_fa load failures don't affect the rest of the suite.
 resources.define("diffusion-fa", {
   constant: FLUX_2_KLEIN_4B_Q4_0,
   type: "diffusion",
