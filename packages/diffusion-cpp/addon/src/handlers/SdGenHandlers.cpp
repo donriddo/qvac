@@ -123,8 +123,8 @@ static std::pair<int, int> parseVaeTileSize(const picojson::value& val) {
   if (xPos == std::string_view::npos) {
     throw StatusError(
         general_error::InvalidArgument,
-        "vae_tile_size string must be 'WxH', got: '" +
-            std::string(tileStr) + "'");
+        "vae_tile_size string must be 'WxH', got: '" + std::string(tileStr) +
+            "'");
   }
 
   int tileW{};
@@ -239,8 +239,7 @@ const SdGenHandlersMap SD_GEN_HANDLERS = {
      [](SdGenConfig& cfg, const picojson::value& val) {
        int steps = static_cast<int>(requireNum(val, "steps"));
        if (steps <= 0) {
-         throw StatusError(
-             general_error::InvalidArgument, "steps must be > 0");
+         throw StatusError(general_error::InvalidArgument, "steps must be > 0");
        }
        cfg.steps = steps;
      }},
@@ -384,8 +383,7 @@ const SdGenHandlersMap SD_GEN_HANDLERS = {
 
     {"vae_tile_overlap",
      [](SdGenConfig& cfg, const picojson::value& val) {
-       float overlap =
-           static_cast<float>(requireNum(val, "vae_tile_overlap"));
+       float overlap = static_cast<float>(requireNum(val, "vae_tile_overlap"));
        if (overlap < 0.0F || overlap >= 1.0F) {
          throw StatusError(
              general_error::InvalidArgument,

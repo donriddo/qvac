@@ -20,8 +20,8 @@ namespace qvac_lib_inference_addon_sd {
  * Consumed once in SdModel::load() where new_sd_ctx() is called.
  *
  * Supported models:
- *   SD2.x        -- uses modelPath (all-in-one .ckpt / .safetensors / GGUF), add prediction="v"
- *   SDXL         -- uses modelPath (all-in-one GGUF); set
+ *   SD2.x        -- uses modelPath (all-in-one .ckpt / .safetensors / GGUF),
+ * add prediction="v" SDXL         -- uses modelPath (all-in-one GGUF); set
  * force_sdxl_vae_conv_scale if needed SD3 Medium   -- all-in-one GGUF via
  * modelPath (CLIP-L, CLIP-G, T5-XXL baked in) OR split layout:
  * diffusionModelPath + clipLPath + clipGPath + t5XxlPath FLUX.2 [klein] -- uses
@@ -31,8 +31,8 @@ struct SdCtxConfig {
   // -- Model file paths -------------------------------------------------------
   // All paths are absolute; empty string = not used.
 
-  std::string modelPath; // model_path            -- SD2.x/SDXL/SD3
-                         // all-in-one checkpoint
+  std::string modelPath;          // model_path            -- SD2.x/SDXL/SD3
+                                  // all-in-one checkpoint
   std::string diffusionModelPath; // diffusion_model_path  -- FLUX.2 [klein] or
                                   // SD3 pure diffusion GGUF
   std::string clipLPath; // clip_l_path           -- CLIP-L text encoder (SD3

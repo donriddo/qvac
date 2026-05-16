@@ -61,8 +61,7 @@ struct SdGenConfig {
   // -- img2img / inpaint -----------------------------------------------------
   // NOLINTNEXTLINE(readability-magic-numbers,cppcoreguidelines-avoid-magic-numbers)
   float strength = 0.75F; // denoising strength: 0 = keep init, 1 = ignore it
-  int clipSkip =
-      -1; // skip last N CLIP encoder layers (SD2.x); -1 = auto
+  int clipSkip = -1;      // skip last N CLIP encoder layers (SD2.x); -1 = auto
 
   // -- Multi-reference (FLUX/FLUX2 "fusion") --------------------------------
   // Maps to sd_img_gen_params_t.increase_ref_index. This default matches the
