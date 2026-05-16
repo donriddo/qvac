@@ -305,8 +305,8 @@ const SdGenHandlersMap SD_GEN_HANDLERS = {
        c.strength = s;
      }},
 
-    // clip_skip -- skip last N CLIP layers. Used by SD1.x / SD2.x fine-tunes.
-    // -1 = auto (1 for SD1, 2 for SD2). Ignored for FLUX.
+    // clip_skip -- skip last N CLIP layers. Used by SD2.x fine-tunes.
+    // -1 = auto (SD2 default is 2). Ignored for FLUX.
     {"clip_skip",
      [](SdGenConfig& c, const picojson::value& v) {
        c.clipSkip = static_cast<int>(requireNum(v, "clip_skip"));

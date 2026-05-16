@@ -119,8 +119,6 @@ test('FLUX2-klein img2img — generates 1024×1024 output on GPU without OOM', {
       steps: STEPS,
       guidance: GUIDANCE,
       seed: SEED,
-      width: 1024,
-      height: 1024,
       vae_tiling: true
     })
 
@@ -145,6 +143,7 @@ test('FLUX2-klein img2img — generates 1024×1024 output on GPU without OOM', {
     // ── Assertions ────────────────────────────────────────────────────────────
     const diffusionTicks = progressTicks.filter(tick => tick.total === STEPS)
     t.ok(diffusionTicks.length > 0, `Received diffusion progress ticks (got ${diffusionTicks.length})`)
+    if (diffusionTicks.length === 0) return
     t.is(diffusionTicks[diffusionTicks.length - 1].step, STEPS, `Final diffusion tick is step ${STEPS}`)
 
     t.is(images.length, 1, 'Received exactly 1 image')

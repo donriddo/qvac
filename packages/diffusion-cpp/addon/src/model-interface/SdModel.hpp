@@ -19,8 +19,7 @@
  * Core stable-diffusion.cpp model wrapper.
  *
  * Supported model families:
- *   SD1.x  -- all-in-one .ckpt / .safetensors via modelPath
- *   SD2.x  -- same as SD1; set prediction="v" in context config
+ *   SD2.x  -- all-in-one .ckpt / .safetensors via modelPath; set prediction="v"
  *   SDXL   -- all-in-one + optional split CLIP-G; set force_sdxl_vae_conv_scale
  * if needed FLUX.2 [klein] -- split: diffusionModelPath + llmPath (Qwen3) +
  * vaeModel

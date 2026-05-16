@@ -37,7 +37,7 @@ struct SdGenConfig {
   // -- Sampling --------------------------------------------------------------
   // SAMPLE_METHOD_COUNT / SCHEDULER_COUNT = "auto" -- stable-diffusion.cpp
   // selects the correct default for each model family at runtime:
-  //   DiT / FLUX -> euler + karras   SD1/SD2 -> euler_a + discrete
+  //   DiT / FLUX -> euler + karras   SD2/SDXL -> euler_a + discrete
   // NOLINTNEXTLINE(readability-magic-numbers,cppcoreguidelines-avoid-magic-numbers)
   int steps = 20;
   sample_method_t sampleMethod = SAMPLE_METHOD_COUNT; // auto
@@ -46,7 +46,7 @@ struct SdGenConfig {
 
   // -- Guidance -------------------------------------------------------------
   // NOLINTNEXTLINE(readability-magic-numbers,cppcoreguidelines-avoid-magic-numbers)
-  float cfgScale = 7.0F; // txt_cfg -- CFG (Classifier-Free Guidance) SD1/SD2
+  float cfgScale = 7.0F; // txt_cfg -- CFG (Classifier-Free Guidance) SD2/SDXL
   // NOLINTNEXTLINE(readability-magic-numbers,cppcoreguidelines-avoid-magic-numbers)
   float guidance = 3.5F; // distilled_guidance -- FLUX.2 flow-matching scale
   float imgCfgScale =
@@ -62,7 +62,7 @@ struct SdGenConfig {
   // NOLINTNEXTLINE(readability-magic-numbers,cppcoreguidelines-avoid-magic-numbers)
   float strength = 0.75F; // denoising strength: 0 = keep init, 1 = ignore it
   int clipSkip =
-      -1; // skip last N CLIP encoder layers (SD1.x / SD2.x); -1 = auto
+      -1; // skip last N CLIP encoder layers (SD2.x); -1 = auto
 
   // -- Multi-reference (FLUX/FLUX2 "fusion") --------------------------------
   // Maps to sd_img_gen_params_t.increase_ref_index. This default matches the

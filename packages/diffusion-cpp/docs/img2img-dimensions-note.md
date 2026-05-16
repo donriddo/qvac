@@ -113,7 +113,6 @@ await model.run({
   init_image: imageBuffer,
   cfg_scale: 1.0,       // disable classic CFG
   guidance: 5.0,         // distilled guidance (FLUX-specific)
-  strength: 0.5,
   steps: 10
 })
 

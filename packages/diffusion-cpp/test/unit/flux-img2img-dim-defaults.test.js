@@ -4,7 +4,7 @@ const test = require('brittle')
 const { applyFluxImg2ImgDimDefaults } = require('../../index.js')
 
 const FLUX_PRED = 'flux2_flow'
-const SD_PRED = 'euler'
+const SD_PRED = 'v'
 const BASE_PARAMS = { prompt: 'test', init_image: new Uint8Array([1, 2, 3]) }
 
 test('both axes omitted — defaults to 1024x1024 for FLUX img2img', function (t) {

@@ -196,7 +196,7 @@ void SdModel::load() {
   // -- Model paths ------------------------------------------------------------
   // For FLUX.2 [klein] the GGUF contains only diffusion weights with no SD
   // version metadata KV pairs, so we must use diffusion_model_path.
-  // Classic all-in-one SD1.x / SDXL checkpoints use model_path.
+  // Classic all-in-one SD2.x / SDXL checkpoints use model_path.
   auto optPath = [](const std::string& str) -> const char* {
     return str.empty() ? nullptr : str.c_str();
   };

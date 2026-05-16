@@ -53,7 +53,7 @@
 - **Progress tracking**: Step-by-step generation progress callbacks
 - **GPU acceleration**: Metal, Vulkan, OpenCL
 - **Quantized models**: GGUF, safetensors, checkpoint formats
-- **Diffusion models**: SD1.x, SD2.x, SDXL, SD3, FLUX.2 [klein]
+- **Diffusion models**: SD2.x, SDXL, SD3, FLUX.2 [klein]
 - **Generation modes**: txt2img, img2img
 
 ## Target Platforms
@@ -608,7 +608,7 @@ Pass absolute file paths directly to stable-diffusion.cpp rather than using buff
 - No JavaScript reference lifecycle concerns
 
 **Split-model routing:**
-- All-in-one checkpoints (SD1.x, SD2.x, SDXL) → `model_path`
+- All-in-one checkpoints (SD2.x, SDXL) → `model_path`
 - Standalone diffusion GGUFs (FLUX.2, SD3 split) → `diffusion_model_path`
 - Separate encoders → `clipLPath`, `clipGPath`, `t5XxlPath`, `llmPath`
 - VAE → `vaePath`
