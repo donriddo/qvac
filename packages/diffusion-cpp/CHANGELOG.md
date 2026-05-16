@@ -5,7 +5,7 @@
 ### Removed
 
 - `'flux_flow'` prediction type removed from the public API (`PredictionType`, JS validator, C++ handler, error messages, and C++ unit tests). Use `'flux2_flow'` for FLUX.2 models. Callers passing `'flux_flow'` will now receive an `InvalidArgument` error from the C++ layer.
-- SD1.x references removed from public-facing documentation (README and `index.d.ts` JSDoc) and internal C++ comments. SD1.x models are not supported; the references were misleading. Supported families remain SD2.x, SDXL, SD3, and FLUX.2 [klein].
+- SD1.x references removed across all documentation (README, `index.d.ts` JSDoc, `docs/architecture.md`) and internal C++ source (`SdCtxHandlers.hpp`, `SdGenHandlers.hpp`, `SdGenHandlers.cpp`, `SdModel.hpp`, `SdModel.cpp`, `AddonJs.hpp`). SD1.x models are not supported; the references were misleading. Supported families remain SD2.x, SDXL, SD3, and FLUX.2 [klein].
 
 ### Fixed
 

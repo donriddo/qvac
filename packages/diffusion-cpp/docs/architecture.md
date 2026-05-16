@@ -460,7 +460,7 @@ sequenceDiagram
 ### Context
 
 Need high-performance, cross-platform diffusion model inference for resource-constrained environments (laptops, mobile devices) with support for:
-- Various model architectures (SD1.x, SD2.x, SDXL, SD3, FLUX, Wan, etc.)
+- Various model architectures (SD2.x, SDXL, SD3, FLUX, Wan, etc.)
 - Quantization for reduced memory footprint
 - GPU acceleration on diverse hardware
 - Both image and video generation
@@ -479,7 +479,7 @@ Use stable-diffusion.cpp as the core inference engine instead of Python diffuser
 
 **Model Support:**
 - Comprehensive support for diffusion models:
-  - SD1.x, SD2.x, SD-Turbo
+  - SD2.x, SD-Turbo
   - SDXL, SDXL-Turbo
   - SD3/SD3.5
   - FLUX.2-dev/klein
@@ -670,7 +670,7 @@ interface GenerationParams {
   width?: number;             // default: 512
   height?: number;            // default: 512
   steps?: number;             // default: 20
-  cfg_scale?: number;         // CFG scale (SD1/SD2/SDXL/SD3)
+  cfg_scale?: number;         // CFG scale (SD2/SDXL/SD3)
   guidance?: number;          // Distilled guidance (FLUX.2)
   sampling_method?: string;   // 'euler' | 'euler_a' | 'dpm++_2m' | etc.
   scheduler?: string;         // 'default' | 'karras' | 'exponential' | etc.
