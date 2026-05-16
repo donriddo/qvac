@@ -10,6 +10,7 @@
 
 namespace qvac_lib_inference_addon_sd {
 
+// clang-format off
 /**
  * All load-time configuration for the stable-diffusion context.
  *
@@ -20,13 +21,13 @@ namespace qvac_lib_inference_addon_sd {
  * Consumed once in SdModel::load() where new_sd_ctx() is called.
  *
  * Supported models:
- *   SD2.x        -- uses modelPath (all-in-one .ckpt / .safetensors / GGUF),
- * add prediction="v" SDXL         -- uses modelPath (all-in-one GGUF); set
- * force_sdxl_vae_conv_scale if needed SD3 Medium   -- all-in-one GGUF via
- * modelPath (CLIP-L, CLIP-G, T5-XXL baked in) OR split layout:
- * diffusionModelPath + clipLPath + clipGPath + t5XxlPath FLUX.2 [klein] -- uses
- * diffusionModelPath + llmPath (Qwen3) + vaePath
+ *   SD2.x          -- uses modelPath (all-in-one .ckpt / .safetensors / GGUF), add prediction="v"
+ *   SDXL           -- uses modelPath (all-in-one GGUF); set force_sdxl_vae_conv_scale if needed
+ *   SD3 Medium     -- all-in-one GGUF via modelPath (CLIP-L, CLIP-G, T5-XXL baked in)
+ *                     OR split layout: diffusionModelPath + clipLPath + clipGPath + t5XxlPath
+ *   FLUX.2 [klein] -- uses diffusionModelPath + llmPath (Qwen3) + vaePath
  */
+// clang-format on
 struct SdCtxConfig {
   // -- Model file paths -------------------------------------------------------
   // All paths are absolute; empty string = not used.

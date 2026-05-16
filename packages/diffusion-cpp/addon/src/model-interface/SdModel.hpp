@@ -15,14 +15,14 @@
 #include "handlers/SdGenHandlers.hpp"
 #include "utils/EsrganUpscaler.hpp"
 
+// clang-format off
 /**
  * Core stable-diffusion.cpp model wrapper.
  *
  * Supported model families:
- *   SD2.x  -- all-in-one .ckpt / .safetensors via modelPath; set prediction="v"
- *   SDXL   -- all-in-one + optional split CLIP-G; set force_sdxl_vae_conv_scale
- * if needed FLUX.2 [klein] -- split: diffusionModelPath + llmPath (Qwen3) +
- * vaeModel
+ *   SD2.x          -- all-in-one .ckpt / .safetensors via modelPath; set prediction="v"
+ *   SDXL           -- all-in-one + optional split CLIP-G; set force_sdxl_vae_conv_scale if needed
+ *   FLUX.2 [klein] -- split: diffusionModelPath + llmPath (Qwen3) + vaePath
  *
  * Video generation (txt2vid) is intentionally unsupported.
  *
@@ -33,6 +33,7 @@
  *   4. Destroy    -- destructor calls free_sd_ctx() and releases all GPU/CPU
  *                   memory; to unload simply let the object go out of scope
  */
+// clang-format on
 class SdModel : public qvac_lib_inference_addon_cpp::model::IModel,
                 public qvac_lib_inference_addon_cpp::model::IModelCancel {
 public:
