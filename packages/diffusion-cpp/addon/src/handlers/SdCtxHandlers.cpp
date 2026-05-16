@@ -77,6 +77,7 @@ static float parseFloat(const std::string& val, const std::string& key) {
 // -- Handler map
 // ---------------------------------------------------------------
 
+// NOLINTNEXTLINE(bugprone-throwing-static-initialization)
 const SdCtxHandlersMap SD_CTX_HANDLERS = {
 
     // -- Compute

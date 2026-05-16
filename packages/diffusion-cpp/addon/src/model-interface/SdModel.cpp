@@ -31,13 +31,13 @@ struct ProgressCtx {
   std::chrono::steady_clock::time_point startTime;
 };
 
-// NOLINTBEGIN(cppcoreguidelines-avoid-non-const-global-variables)
+// NOLINTBEGIN(cppcoreguidelines-avoid-non-const-global-variables,bugprone-throwing-static-initialization)
 thread_local ProgressCtx g_progressCtx;
 // Thread-local model pointer for abort callback routing -- same pattern as
 // g_progressCtx for progress.  Avoids relying on the process-global
 // sd_abort_cb_data when multiple SdModel instances could coexist.
 thread_local const SdModel* g_abortModel = nullptr;
-// NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables)
+// NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables,bugprone-throwing-static-initialization)
 
 std::string preferredBackendToString(enum sd_backend_preference_t pref) {
   switch (pref) {
@@ -249,7 +249,7 @@ void SdModel::load() {
           preferredBackendToString(params.preferred_gpu_backend) + " (" +
           std::to_string(static_cast<int>(params.preferred_gpu_backend)) + ")");
 
-#if defined(__APPLE__)
+#ifdef __APPLE__
   // The ggml Metal backend does not fully support GGML_OP_NORM for
   // non-contiguous tensors (the CLIP text encoder hits this path).
   // Force CLIP to CPU on Apple to avoid a Metal encoder abort.
@@ -493,6 +493,7 @@ std::any SdModel::process(const std::any& input) {
     if (nMulti > 0) {
       refImgs->reserve(nMulti);
       for (size_t idx = 0; idx < nMulti; ++idx) {
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
         if (job.initImagesBytes[idx].empty()) {
           throw StatusError(
               general_error::InvalidArgument,
@@ -501,6 +502,7 @@ std::any SdModel::process(const std::any& input) {
                   "PNG/JPEG buffer.");
         }
 
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
         sd_image_t decoded = image_codec::decodeImage(job.initImagesBytes[idx]);
         if (decoded.data == nullptr) {
           throw StatusError(
@@ -694,11 +696,14 @@ std::any SdModel::process(const std::any& input) {
       break;
     }
 
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
     if (results[idx].data != nullptr) {
+      // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
       sd_image_t imageForOutput = results[idx];
       std::unique_ptr<uint8_t, image_codec::FreeDeleter> upscaledData(nullptr);
 
       if (gen.upscale) {
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
         sd_image_t upscaled = upscaleImage(results[idx], gen.upscaleRepeats);
         imageForOutput = upscaled;
         upscaledData.reset(upscaled.data);
