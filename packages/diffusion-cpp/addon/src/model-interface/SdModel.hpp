@@ -22,6 +22,8 @@
  * Supported model families:
  *   SD2.x          -- all-in-one .ckpt / .safetensors via modelPath; set prediction="v"
  *   SDXL           -- all-in-one + optional split CLIP-G; set force_sdxl_vae_conv_scale if needed
+ *   SD3 Medium     -- all-in-one GGUF via modelPath (CLIP-L, CLIP-G, T5-XXL baked in)
+ *                     OR split layout: diffusionModelPath + clipLPath + clipGPath + t5XxlPath
  *   FLUX.2 [klein] -- split: diffusionModelPath + llmPath (Qwen3) + vaePath
  *
  * Video generation (txt2vid) is intentionally unsupported.
