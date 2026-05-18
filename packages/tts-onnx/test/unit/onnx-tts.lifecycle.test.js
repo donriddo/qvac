@@ -6,7 +6,7 @@ const ONNXTTS = require('../../index.js')
 const { TTSInterface } = require('../../tts.js')
 const MockedBinding = require('../mock/MockedBinding.js')
 const { QvacErrorAddonTTS, ERR_CODES } = require('../../lib/error.js')
-const process = require('process')
+const process = require('bare-process')
 
 global.process = process
 
