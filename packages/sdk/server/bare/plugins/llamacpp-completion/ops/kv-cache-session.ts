@@ -9,10 +9,7 @@ import {
   deleteCache as deleteCacheUtil,
 } from "@/server/bare/ops/kv-cache-utils";
 import type { CacheMessage } from "@/server/utils";
-import {
-  logCacheSaveError,
-  logCacheStatus,
-} from "@/server/bare/plugins/llamacpp-completion/ops/cache-logger";
+import { logCacheStatus } from "@/server/bare/plugins/llamacpp-completion/ops/cache-logger";
 import { getServerLogger } from "@/logging";
 import type { Logger } from "@/logging/types";
 
@@ -268,7 +265,6 @@ export function createKvCacheSession(
 
     if (!exists) {
       await input.primeIfMissing(cachePath);
-      await verifyPrimedFile(cachePath, logger);
       initializedCaches.add(registryKey);
     }
 
@@ -311,7 +307,6 @@ export function createKvCacheSession(
 
     if (!cacheExists) {
       await input.primeIfMissing(cachePath);
-      await verifyPrimedFile(cachePath, logger);
       initializedCaches.add(registryKey);
     }
 
@@ -338,20 +333,7 @@ export function createKvCacheSession(
     if (state.committed || state.rolledBack) return;
 
     if (result.kind === "static") {
-      // Custom-key path: the addon wrote the new cache state inline
-      // at the same path. Verify the file persisted (the addon
-      // currently swallows save errors — see TODO in
-      // `verifySaveAndRecord`) and record the new boundary.
-      const ok = await verifySaveAndRecord(
-        state.cachePath,
-        result.messageCount,
-      );
-      if (!ok) {
-        // The expected save didn't land — treat the turn as a rollback
-        // so the next turn re-primes cleanly.
-        await runRollback(state);
-        return;
-      }
+      cachedMessageCounts.set(state.cachePath, result.messageCount);
       state.committed = true;
       return;
     }
@@ -370,23 +352,7 @@ export function createKvCacheSession(
     // The source path's entry is gone (the file moved). Drop it and
     // record the new count at the rename target.
     cachedMessageCounts.delete(state.cachePath);
-
-    const ok = await verifySaveAndRecord(
-      result.targetCachePath,
-      result.messageCount,
-    );
-    if (!ok) {
-      // Rename succeeded but the file isn't where we expected. Roll
-      // back via the target path instead of the (now-empty) source.
-      state.cachePath = result.targetCachePath;
-      await runRollback(state);
-      return;
-    }
-
-    // Successful auto-rename. The handle's `cachePath` field still
-    // points at the (now-gone) source path — that's fine, the handle
-    // is committed and won't roll back. Future turns compute fresh
-    // paths.
+    cachedMessageCounts.set(result.targetCachePath, result.messageCount);
     state.committed = true;
   }
 
@@ -454,11 +420,11 @@ export function createKvCacheSession(
  * Concurrency with in-flight turns: this delete is wire-async with
  * respect to any turn currently holding a `TurnHandle` for the same
  * cache key. Worst case the on-disk `.bin` is removed while a turn is
- * mid-write; the turn's eventual `commitTurn(...)` then fails the
- * `verifySaveAndRecord` probe (file gone) and rolls back idempotently.
- * No coordination primitive is needed because every layer's mutation
- * is idempotent (`unlink` no-ops if missing, `Map.delete` / `Set.delete`
- * no-op on absent keys).
+ * mid-write; the addon's next save attempt will fail with a thrown
+ * error that bubbles through the prime/commit closure, causing the
+ * turn to reject without committing. No coordination primitive is
+ * needed because every layer's mutation is idempotent (`unlink`
+ * no-ops if missing, `Map.delete` / `Set.delete` no-op on absent keys).
  */
 export async function deleteKvCacheState(
   target: { kvCacheKey: string; modelId?: string } | { all: true },
@@ -495,93 +461,6 @@ export async function deleteKvCacheState(
 
 // ----- private helpers -----
 
-/**
- * Verify that the addon actually persisted a usable cache file after a
- * prime. Mirrors the `verifySaveAndRecord` access-probe used at commit
- * time, applied at prime time so the session doesn't mark a cache
- * `initializedCaches.add(...)` against a path that's missing or empty
- * on disk.
- *
- * Failure modes this catches:
- *
- *   - The addon's `model.run({ saveSessionPath })` was interrupted
- *     before the save call ran (e.g. signal abort during prefill); the
- *     prime closure resolves cleanly because addon save errors are not
- *     propagated, but no file is on disk.
- *   - The addon's `llama_state_save_file` was called but produced an
- *     empty file (out-of-space / fs error swallowed by the addon).
- *
- * Failure modes this does **NOT** catch:
- *
- *   - A partial-but-nonzero file written by the addon (e.g. header +
- *     truncated KV state). Catching this requires either an
- *     addon-side change (have `CacheManager::writeCacheFile` check the
- *     return value of `llama_state_save_file` and throw on failure) or
- *     a structural hash check we can't currently compute from the
- *     SDK. Filed as a follow-up — see `cache-api.md` in the addon
- *     repo / tracking ticket.
- *
- * On failure we best-effort `unlink` an empty leftover file (so the
- * next existence probe doesn't trust it) and throw — the handler in
- * `completion-stream.ts` lets the error propagate up and no
- * `initializedCaches` entry is recorded.
- */
-async function verifyPrimedFile(
-  cachePath: string,
-  logger: Logger,
-): Promise<void> {
-  let stats: { size: number };
-  try {
-    stats = await fsPromises.stat(cachePath);
-  } catch (statError) {
-    // ENOENT is the common case here — addon prime returned without
-    // calling save (most often: signal abort during prefill).
-    throw new Error(
-      `[kv-cache] prime closure resolved but no cache file was written. path=${cachePath} cause=${statError instanceof Error ? statError.message : String(statError)}`,
-    );
-  }
-  if (stats.size === 0) {
-    // Best-effort cleanup so a future probe doesn't trust the empty
-    // file. Unlink failure is non-fatal — we still throw on the
-    // primary "prime didn't persist" condition.
-    try {
-      await fsPromises.unlink(cachePath);
-    } catch (unlinkError) {
-      logger.warn(
-        `[kv-cache] Failed to remove empty primed cache file. path=${cachePath} error=${unlinkError instanceof Error ? unlinkError.message : String(unlinkError)}`,
-      );
-    }
-    throw new Error(
-      `[kv-cache] prime closure resolved but cache file is empty. path=${cachePath}`,
-    );
-  }
-}
-
-/**
- * Verify the addon actually persisted the cache file before recording
- * its message count. The addon currently swallows write errors
- * silently, so a missing file means the next turn must resend the full
- * history rather than slicing against a stale `savedCount`.
- *
- * TODO: once the addon surfaces save failures (e.g. throws
- * `UnableToSaveSessionFile` when `llama_state_save_file` returns
- * false), drop the `access()` probe and wrap the `model.run()` call in
- * a real try/catch that forwards the error.
- */
-async function verifySaveAndRecord(
-  cachePath: string,
-  messageCount: number,
-): Promise<boolean> {
-  try {
-    await fsPromises.access(cachePath);
-    cachedMessageCounts.set(cachePath, messageCount);
-    return true;
-  } catch (err) {
-    cachedMessageCounts.delete(cachePath);
-    logCacheSaveError(cachePath, err);
-    return false;
-  }
-}
 
 function clearCachedMessageCountsByPrefix(prefix: string, sep: string): void {
   if (!prefix) {
