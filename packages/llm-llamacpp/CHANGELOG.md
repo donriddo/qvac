@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.21.1] - 2026-05-20
+
+### Fixed
+
+#### KV-cache file writes are now atomic; save failure throws `UnableToSaveSessionFile`
+
+`CacheManager::writeCacheFile` previously discarded `llama_state_save_file`'s return value, silently leaving a partial or missing `.bin` at the canonical cache path on failure. The SDK worked around this with `fsPromises.access` probes, but those could not detect partial-but-nonzero files.
+
+The write is now atomic: state is saved to `path + ".tmp"` first, then renamed to the canonical path on success. `llama_state_save_file` returning `false`, or a subsequent rename failure, both throw `qvac_errors::StatusError` with the new `UnableToSaveSessionFile` error code (25). The `.tmp` file is removed in both error cases so no partial write can ever reach the canonical path.
+
+## Pull Requests
+
+- [#2131](https://github.com/tetherto/qvac/pull/2131) - fix: throw UnableToSaveSessionFile when llama_state_save_file fails
+
 ## [0.21.0] - 2026-05-13
 
 This release is a pure internal C++ refactor of the addon: the LoRA finetuning pipeline now lives in its own `LlamaFinetuner` class instead of inside `LlamaModel`. There are no JS API changes and no behaviour changes — finetune training, pause/resume, and adapter save go through exactly the same code paths.

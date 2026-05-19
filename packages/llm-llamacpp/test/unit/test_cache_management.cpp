@@ -44,6 +44,10 @@ protected:
       if (fs::exists(session_file)) {
         fs::remove(session_file);
       }
+      std::string tmp = session_file + ".tmp";
+      if (fs::exists(tmp)) {
+        fs::remove(tmp);
+      }
     }
   }
 
@@ -684,6 +688,30 @@ TEST_F(CacheManagementTest, ResetTrueWithDifferentCacheKey) {
   EXPECT_GT(cacheTokens2, 0.0);
   EXPECT_TRUE(fs::exists(session1_path));
   EXPECT_TRUE(fs::exists(session2_path));
+}
+
+TEST_F(CacheManagementTest, AtomicWriteLeavesNoTmpArtifact) {
+  if (!hasValidModel()) {
+    FAIL() << "Test model not found";
+  }
+
+  auto model = createModel();
+  if (!model) {
+    FAIL() << "Model failed to load";
+  }
+
+  EXPECT_NO_THROW({
+    processPromptWithCacheOptions(
+        model,
+        R"([{"role": "user", "content": "What is bitcoin? Answer shortly."}])",
+        session1_path,
+        true);
+  });
+
+  // writeCacheFile writes to session1_path+".tmp" then renames to
+  // session1_path. The canonical file must exist and the tmp must be gone.
+  EXPECT_TRUE(fs::exists(session1_path));
+  EXPECT_FALSE(fs::exists(session1_path + ".tmp"));
 }
 
 TEST_F(CacheManagementTest, PersistToWithNoCacheKeyIsNoOp) {
