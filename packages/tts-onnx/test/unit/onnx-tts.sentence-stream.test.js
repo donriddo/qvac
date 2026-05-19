@@ -23,16 +23,17 @@ function createStubbedModel (opts = {}) {
   return model
 }
 
+const origRunJob = MockedBinding.prototype.runJob
+
 function spyRunJob () {
   let callCount = 0
-  const orig = MockedBinding.prototype.runJob
   MockedBinding.prototype.runJob = function (...args) {
     callCount++
-    return orig.apply(this, args)
+    return origRunJob.apply(this, args)
   }
   return {
     get callCount () { return callCount },
-    restore () { MockedBinding.prototype.runJob = orig }
+    restore () { MockedBinding.prototype.runJob = origRunJob }
   }
 }
 
