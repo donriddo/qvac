@@ -9,8 +9,6 @@ const { WhisperInterface } = require('../../whisper')
 const process = require('bare-process')
 global.process = process
 
-const _origValidateModelFiles = TranscriptionWhispercpp.prototype.validateModelFiles
-
 function createTestModel ({ onOutput = () => { }, binding = undefined } = {}) {
   TranscriptionWhispercpp.prototype.validateModelFiles = () => undefined
 
@@ -81,7 +79,7 @@ test('Reload method updates configuration without VAD', async (t) => {
   await model.addon.reload(newConfig)
 
   t.is(reloadCallCount, 1, 'Reload method should be called once')
-  t.ok(reloadCallArg === newConfig, 'Reload should be called with new configuration')
+  t.is(reloadCallArg, newConfig, 'Reload should be called with new configuration')
 })
 
 test('Reload method handles configuration changes correctly', async (t) => {

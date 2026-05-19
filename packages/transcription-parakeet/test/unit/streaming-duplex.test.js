@@ -37,8 +37,6 @@ const { ParakeetInterface } = require('../../parakeet')
 const process = require('bare-process')
 global.process = process
 
-const _origValidateModelFiles = TranscriptionParakeet.prototype.validateModelFiles
-
 function createMockedModel ({
   onOutput = () => {},
   binding = undefined,

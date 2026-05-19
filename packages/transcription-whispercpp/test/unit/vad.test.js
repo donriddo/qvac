@@ -9,8 +9,6 @@ const { WhisperInterface } = require('../../whisper')
 const process = require('bare-process')
 global.process = process
 
-const _origValidateModelFiles = TranscriptionWhispercpp.prototype.validateModelFiles
-
 function createTestModel ({ onOutput = () => { }, vadModelPath = 'ggml-silero-v5.1.2.bin' } = {}) {
   TranscriptionWhispercpp.prototype.validateModelFiles = () => undefined
 
