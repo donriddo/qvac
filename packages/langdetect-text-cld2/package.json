@@ -18,7 +18,8 @@
   "license": "Apache-2.0",
   "dependencies": {
     "cld": "^2.10.1",
-    "language-tags": "^1.0.9"
+    "language-tags": "^1.0.9",
+    "module": "npm:bare-module"
   },
   "devDependencies": {
     "@types/node": "22.12.0",
