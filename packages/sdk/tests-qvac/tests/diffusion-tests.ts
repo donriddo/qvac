@@ -225,6 +225,19 @@ export const diffusionFaAccepted = createDiffusionTest(
   { dependency: "diffusion-fa" },
 );
 
+export const diffusionFaDisabledAccepted = createDiffusionTest(
+  "diffusion-fa-disabled-loads-and-runs",
+  {
+    prompt: "a solid blue circle on white background",
+    width: 256,
+    height: 256,
+    steps: 4,
+    seed: 42,
+  },
+  { validation: "type", expectedType: "array" },
+  { dependency: "diffusion-fa-disabled" },
+);
+
 // ---- FLUX.2 multi-reference fusion ----
 
 export const diffusionFusionFlux2Basic = createDiffusionTest(
@@ -343,6 +356,7 @@ export const diffusionTests = [
   diffusionStreamingProgress,
   diffusionStatsPresent,
   diffusionFaAccepted,
+  diffusionFaDisabledAccepted,
   diffusionFusionFlux2Basic,
   diffusionEsrganUpscaleX4,
   diffusionStandaloneUpscalerX4,

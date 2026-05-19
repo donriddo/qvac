@@ -90,6 +90,12 @@ test("sdcppConfigSchema: rejects non-boolean diffusion_fa", (t) => {
   t.is(result.success, false);
 });
 
+test("sdcppConfigSchema: preserves diffusion_fa: false through parsing", (t) => {
+  const result = sdcppConfigSchema.safeParse({ diffusion_fa: false });
+  t.is(result.success, true);
+  t.is(result.data?.diffusion_fa, false);
+});
+
 test("sdcppConfigSchema: rejects invalid type", (t) => {
   const result = sdcppConfigSchema.safeParse({ type: "q3_0" });
   t.is(result.success, false);

@@ -345,6 +345,19 @@ resources.define("diffusion-fa", {
   },
 });
 
+resources.define("diffusion-fa-disabled", {
+  constant: FLUX_2_KLEIN_4B_Q4_0,
+  type: "diffusion",
+  config: {
+    device: "gpu",
+    threads: 4,
+    prediction: "flux2_flow",
+    llmModelSrc: QWEN3_4B_Q4_K_M,
+    vaeModelSrc: FLUX_2_KLEIN_4B_VAE,
+    diffusion_fa: false,
+  },
+});
+
 // Isolated from "diffusion" so ESRGAN load failures don't affect the rest of the suite.
 resources.define("diffusion-esrgan", {
   constant: SD_V2_1_1B_Q8_0,
