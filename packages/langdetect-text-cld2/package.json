@@ -17,9 +17,9 @@
   "author": "Tether",
   "license": "Apache-2.0",
   "dependencies": {
+    "bare-module": "^6.2.0",
     "cld": "^2.10.1",
-    "language-tags": "^1.0.9",
-    "module": "npm:bare-module"
+    "language-tags": "^1.0.9"
   },
   "devDependencies": {
     "@types/node": "22.12.0",

@@ -1,7 +1,6 @@
 'use strict'
 
 const test = require('brittle')
-const sinon = require('sinon')
 const TTSGgml = require('../../index.js')
 const { TTSInterface } = require('../../tts.js')
 const MockedBinding = require('../mock/MockedBinding.js')
@@ -18,9 +17,9 @@ function createStubbedModel () {
     },
     config: { language: 'en' }
   })
-  sinon.stub(model, '_createAddon').callsFake((configurationParams, outputCb) => {
+  model._createAddon = (configurationParams, outputCb) => {
     return new TTSInterface(new MockedBinding(), configurationParams, outputCb)
-  })
+  }
   return model
 }
 

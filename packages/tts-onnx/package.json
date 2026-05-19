@@ -90,9 +90,7 @@
     "cmake-vcpkg": "^1.1.0",
     "fflate": "^0.8.2",
     "husky": "^9.1.7",
-    "sinon": "^21.0.0",
-    "standard": "^17.0.0",
-    "util": "npm:bare-utils@^1.5.1"
+    "standard": "^17.0.0"
   },
   "dependencies": {
     "@qvac/error": "^0.1.0",

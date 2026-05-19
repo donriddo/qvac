@@ -7,7 +7,6 @@ const MockedBinding = require('../mock/MockedBinding.js')
 const process = require('bare-process')
 
 global.process = process
-const sinon = require('sinon')
 
 function createMockedModel ({
   onOutput = () => { },
@@ -24,14 +23,14 @@ function createMockedModel ({
     exclusiveRun
   })
 
-  sinon.stub(model, '_createAddon').callsFake((configurationParams, outputCb) => {
+  model._createAddon = (configurationParams, outputCb) => {
     const _binding = binding || new MockedBinding()
     const addon = new TTSInterface(_binding, configurationParams, outputCb)
     if (_binding.setBaseInferenceCallback) {
       _binding.setBaseInferenceCallback(onOutput)
     }
     return addon
-  })
+  }
   return model
 }
 
