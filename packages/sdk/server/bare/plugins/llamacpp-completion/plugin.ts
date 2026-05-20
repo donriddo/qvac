@@ -42,7 +42,7 @@ import {
   parseContextOverflowMessage,
 } from "@/server/bare/plugins/llamacpp-completion/ops/context-overflow";
 import { isMobile } from "@/server/bare/registry/runtime-context-registry";
-import { stripMultiGpuKeys } from "@/server/bare/plugins/utils/multi-gpu-mobile";
+import { stripMultiGpuKeys } from "@/server/utils/multi-gpu-mobile";
 
 
 function createLlmModel(
@@ -55,7 +55,7 @@ function createLlmModel(
   registerAddonLogger(modelId, ModelType.llamacppCompletion, logger);
   const llmConfigStrings = transformLlmConfig(llmConfig);
 
-  // Device patterns can't override user input; multi-GPU causes Adreno OpenCL SIGABRT on mobile.
+  // Mobile is single-GPU; multi-GPU params trigger Adreno OpenCL SIGABRT.
   if (isMobile()) {
     const stripped = stripMultiGpuKeys(llmConfigStrings);
     if (stripped.length > 0) {
