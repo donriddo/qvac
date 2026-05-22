@@ -10,6 +10,15 @@
 
 The write is now atomic: state is saved to `path + ".tmp"` first, then renamed to the canonical path on success. `llama_state_save_file` returning `false`, or a subsequent rename failure, both throw `qvac_errors::StatusError` with the new `UnableToSaveSessionFile` error code (25). The `.tmp` file is removed in both error cases so no partial write can ever reach the canonical path.
 
+`UnableToSaveSessionFile` can now surface from any of the four `saveCache()` call sites:
+
+- **Explicit save** (`LlamaModel.cpp`) — when the caller sets `saveCacheToDisk: true`.
+- **Cache switch** (`CacheManager::handleCache`) — when a new `cacheKey` is passed while a different cache is active; the old cache is flushed before loading the new one.
+- **Cache clear** (`CacheManager::handleCache`) — when `cacheKey` is empty while a cache is active; the active cache is flushed before the state is cleared.
+- **Pre-finetune flush** (`LlamaFinetuner.cpp`) — the active cache is flushed to disk before fine-tuning begins.
+
+In the cache-switch and cache-clear paths, a failed save now calls `invalidate()` before re-throwing, so the `CacheManager` is left in a clean disabled state rather than an inconsistent one with a stale `sessionPath_`.
+
 ## Pull Requests
 
 - [#2131](https://github.com/tetherto/qvac/pull/2131) - fix: throw UnableToSaveSessionFile when llama_state_save_file fails

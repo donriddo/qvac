@@ -714,6 +714,34 @@ TEST_F(CacheManagementTest, AtomicWriteLeavesNoTmpArtifact) {
   EXPECT_FALSE(fs::exists(session1_path + ".tmp"));
 }
 
+TEST_F(CacheManagementTest, SaveFailureThrowsAndRemovesTmp) {
+  if (!hasValidModel()) {
+    FAIL() << "Test model not found";
+  }
+
+  auto model = createModel();
+  if (!model) {
+    FAIL() << "Model failed to load";
+  }
+
+  // A path whose parent directory does not exist forces llama_state_save_file
+  // to fail, exercising the throw path in writeCacheFile.
+  std::string bad_path = "no_such_dir/session.bin";
+
+  EXPECT_THROW(
+      {
+        processPromptWithCacheOptions(
+            model,
+            R"([{"role": "user", "content": "hi"}])",
+            bad_path,
+            true);
+      },
+      qvac_errors::StatusError);
+
+  EXPECT_FALSE(fs::exists(bad_path + ".tmp"));
+  EXPECT_FALSE(fs::exists(bad_path));
+}
+
 TEST_F(CacheManagementTest, PersistToWithNoCacheKeyIsNoOp) {
   if (!hasValidModel()) {
     FAIL() << "Test model not found";

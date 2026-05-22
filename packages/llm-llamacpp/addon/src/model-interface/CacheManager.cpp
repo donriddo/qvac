@@ -43,7 +43,12 @@ bool CacheManager::handleCache(
               "%s: No cacheKey provided, clearing existing cache '%s'\n",
               __func__,
               sessionPath_.c_str()));
-      saveCache();
+      try {
+        saveCache();
+      } catch (...) {
+        invalidate();
+        throw;
+      }
       resetStateCallback_(true);
       sessionPath_.clear();
       cacheDisabled_ = true;
@@ -65,7 +70,12 @@ bool CacheManager::handleCache(
             __func__,
             sessionPath_.c_str(),
             cacheKey.c_str()));
-    saveCache();
+    try {
+      saveCache();
+    } catch (...) {
+      invalidate();
+      throw;
+    }
   }
 
   resetStateCallback_(true);
