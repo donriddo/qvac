@@ -183,7 +183,8 @@ void CacheManager::writeCacheFile(const std::string& path) {
     std::error_code ec;
     std::filesystem::remove(tmpPath, ec);
     throw qvac_errors::StatusError(
-        ADDON_ID, toString(UnableToSaveSessionFile),
+        ADDON_ID,
+        toString(UnableToSaveSessionFile),
         string_format(
             "%s: failed to save session file to '%s'\n",
             __func__,
@@ -195,7 +196,8 @@ void CacheManager::writeCacheFile(const std::string& path) {
     std::error_code ec;
     std::filesystem::remove(tmpPath, ec);
     throw qvac_errors::StatusError(
-        ADDON_ID, toString(UnableToSaveSessionFile),
+        ADDON_ID,
+        toString(UnableToSaveSessionFile),
         string_format(
             "%s: failed to promote tmp file to '%s': %s\n",
             __func__,
