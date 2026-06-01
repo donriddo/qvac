@@ -765,15 +765,18 @@ TEST_F(CacheManagementTest, HandleCacheSwitchFailureInvalidatesState) {
   // Trigger a cache-switch: handleCache flushes the old key to a
   // non-existent directory → throws UnableToSaveSessionFile.
   // With the invalidate-on-throw fix, state is left clean (disabled).
-  EXPECT_THROW(
-      {
-        processPromptWithCacheOptions(
-            model,
-            R"([{"role": "user", "content": "hi"}])",
-            "/tmp/qvac_test_no_such_dir_b/session.bin",
-            false);
-      },
-      qvac_errors::StatusError);
+  try {
+    processPromptWithCacheOptions(
+        model,
+        R"([{"role": "user", "content": "hi"}])",
+        "/tmp/qvac_test_no_such_dir_b/session.bin",
+        false);
+    FAIL() << "expected UnableToSaveSessionFile throw";
+  } catch (const qvac_errors::StatusError& e) {
+    EXPECT_NE(
+        std::string(e.codeString()).find("UnableToSaveSessionFile"),
+        std::string::npos);
+  }
 
   // After invalidate(), a prompt with no cacheKey must not re-attempt the
   // stale flush. If invalidate() was NOT called, hasActiveCache() would still
@@ -804,11 +807,14 @@ TEST_F(CacheManagementTest, HandleCacheClearFailureInvalidatesState) {
 
   // Trigger the cache-clear path (empty cacheKey): handleCache flushes the
   // active key to a non-existent directory → throws UnableToSaveSessionFile.
-  EXPECT_THROW(
-      {
-        processPromptString(model, R"([{"role": "user", "content": "hi"}])");
-      },
-      qvac_errors::StatusError);
+  try {
+    processPromptString(model, R"([{"role": "user", "content": "hi"}])");
+    FAIL() << "expected UnableToSaveSessionFile throw";
+  } catch (const qvac_errors::StatusError& e) {
+    EXPECT_NE(
+        std::string(e.codeString()).find("UnableToSaveSessionFile"),
+        std::string::npos);
+  }
 
   // After invalidate(), the CacheManager is disabled. A second no-cacheKey
   // prompt must not re-attempt the flush (hasActiveCache() is now false).

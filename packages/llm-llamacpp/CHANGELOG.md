@@ -17,11 +17,14 @@ The write is now atomic: state is saved to `path + ".tmp"` first, then renamed t
 - **Cache clear** (`CacheManager::handleCache`) — when `cacheKey` is empty while a cache is active; the active cache is flushed before the state is cleared.
 - **Pre-finetune flush** (`LlamaFinetuner.cpp`) — the active cache is flushed to disk before fine-tuning begins.
 
-In the cache-switch and cache-clear paths, a failed save now calls `invalidate()` before re-throwing, leaving `CacheManager` in a clean disabled state rather than a stale one with a live `sessionPath_`. The pre-finetune path does not call `invalidate()` — if the flush fails there, the model is about to be rebuilt by the finetune reload path anyway.
+In the cache-switch and cache-clear paths, a failed save now calls `invalidate()` before re-throwing, leaving `CacheManager` in a clean disabled state rather than a stale one with a live `sessionPath_`. The explicit-save and pre-finetune paths do not call `invalidate()`:
+
+- **Pre-finetune**: the model is about to be rebuilt by the finetune reload path; `CacheManager` state does not carry over.
+- **Explicit save**: inference already completed and the in-memory KV state is valid — only the disk write failed. Leaving `sessionPath_` intact lets the caller retry or continue from the existing in-memory state. Callers that cannot recover should call the manager's `invalidate()` themselves before discarding the model.
 
 ## Pull Requests
 
-- [#2131](https://github.com/tetherto/qvac/pull/2131) - fix: throw UnableToSaveSessionFile when llama_state_save_file fails
+- [#2354](https://github.com/tetherto/qvac/pull/2354) - fix: throw UnableToSaveSessionFile when llama_state_save_file fails
 
 ## [0.22.1] - 2026-05-26
 
