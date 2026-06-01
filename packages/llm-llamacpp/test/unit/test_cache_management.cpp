@@ -44,6 +44,10 @@ protected:
       if (fs::exists(session_file)) {
         fs::remove(session_file);
       }
+      std::string tmp = session_file + ".tmp";
+      if (fs::exists(tmp)) {
+        fs::remove(tmp);
+      }
     }
   }
 
@@ -684,6 +688,133 @@ TEST_F(CacheManagementTest, ResetTrueWithDifferentCacheKey) {
   EXPECT_GT(cacheTokens2, 0.0);
   EXPECT_TRUE(fs::exists(session1_path));
   EXPECT_TRUE(fs::exists(session2_path));
+}
+
+TEST_F(CacheManagementTest, AtomicWriteLeavesNoTmpArtifact) {
+  if (!hasValidModel()) {
+    FAIL() << "Test model not found";
+  }
+
+  auto model = createModel();
+  if (!model) {
+    FAIL() << "Model failed to load";
+  }
+
+  EXPECT_NO_THROW({
+    processPromptWithCacheOptions(
+        model,
+        R"([{"role": "user", "content": "What is bitcoin? Answer shortly."}])",
+        session1_path,
+        true);
+  });
+
+  // writeCacheFile writes to session1_path+".tmp" then renames to
+  // session1_path. The canonical file must exist and the tmp must be gone.
+  EXPECT_TRUE(fs::exists(session1_path));
+  EXPECT_FALSE(fs::exists(session1_path + ".tmp"));
+}
+
+TEST_F(CacheManagementTest, SaveFailureThrowsAndRemovesTmp) {
+  if (!hasValidModel()) {
+    FAIL() << "Test model not found";
+  }
+
+  auto model = createModel();
+  if (!model) {
+    FAIL() << "Model failed to load";
+  }
+
+  // A path whose parent directory does not exist forces llama_state_save_file
+  // to fail, exercising the throw path in writeCacheFile.
+  const std::string bad_path = "/tmp/qvac_test_no_such_dir/session.bin";
+
+  try {
+    processPromptWithCacheOptions(
+        model, R"([{"role": "user", "content": "hi"}])", bad_path, true);
+    FAIL() << "expected UnableToSaveSessionFile throw";
+  } catch (const qvac_errors::StatusError& e) {
+    EXPECT_NE(
+        std::string(e.codeString()).find("UnableToSaveSessionFile"),
+        std::string::npos);
+  }
+
+  EXPECT_FALSE(fs::exists(bad_path + ".tmp"));
+  EXPECT_FALSE(fs::exists(bad_path));
+}
+
+TEST_F(CacheManagementTest, HandleCacheSwitchFailureInvalidatesState) {
+  if (!hasValidModel()) {
+    FAIL() << "Test model not found";
+  }
+
+  auto model = createModel();
+  if (!model) {
+    FAIL() << "Model failed to load";
+  }
+
+  // Prime the CacheManager with a key in a non-existent dir. No write yet
+  // (saveCacheToDisk=false) — this just registers sessionPath_.
+  EXPECT_NO_THROW({
+    processPromptWithCacheOptions(
+        model,
+        R"([{"role": "user", "content": "hi"}])",
+        "/tmp/qvac_test_no_such_dir_a/session.bin",
+        false);
+  });
+
+  // Trigger a cache-switch: handleCache flushes the old key to a
+  // non-existent directory → throws UnableToSaveSessionFile.
+  // With the invalidate-on-throw fix, state is left clean (disabled).
+  EXPECT_THROW(
+      {
+        processPromptWithCacheOptions(
+            model,
+            R"([{"role": "user", "content": "hi"}])",
+            "/tmp/qvac_test_no_such_dir_b/session.bin",
+            false);
+      },
+      qvac_errors::StatusError);
+
+  // After invalidate(), a prompt with no cacheKey must not re-attempt the
+  // stale flush. If invalidate() was NOT called, hasActiveCache() would still
+  // be true and the clear path would throw a second time here.
+  EXPECT_NO_THROW({
+    processPromptString(model, R"([{"role": "user", "content": "hi"}])");
+  });
+}
+
+TEST_F(CacheManagementTest, HandleCacheClearFailureInvalidatesState) {
+  if (!hasValidModel()) {
+    FAIL() << "Test model not found";
+  }
+
+  auto model = createModel();
+  if (!model) {
+    FAIL() << "Model failed to load";
+  }
+
+  // Prime with a key in a non-existent dir (no write yet).
+  EXPECT_NO_THROW({
+    processPromptWithCacheOptions(
+        model,
+        R"([{"role": "user", "content": "hi"}])",
+        "/tmp/qvac_test_no_such_dir_a/session.bin",
+        false);
+  });
+
+  // Trigger the cache-clear path (empty cacheKey): handleCache flushes the
+  // active key to a non-existent directory → throws UnableToSaveSessionFile.
+  EXPECT_THROW(
+      {
+        processPromptString(model, R"([{"role": "user", "content": "hi"}])");
+      },
+      qvac_errors::StatusError);
+
+  // After invalidate(), the CacheManager is disabled. A second no-cacheKey
+  // prompt must not re-attempt the flush (hasActiveCache() is now false).
+  EXPECT_NO_THROW({
+    processPromptString(model, R"([{"role": "user", "content": "hi"}])");
+  });
 }
 
 TEST_F(CacheManagementTest, PersistToWithNoCacheKeyIsNoOp) {
