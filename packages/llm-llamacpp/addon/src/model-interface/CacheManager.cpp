@@ -43,7 +43,12 @@ bool CacheManager::handleCache(
               "%s: No cacheKey provided, clearing existing cache '%s'\n",
               __func__,
               sessionPath_.c_str()));
-      saveCache();
+      try {
+        saveCache();
+      } catch (...) {
+        invalidate();
+        throw;
+      }
       resetStateCallback_(true);
       sessionPath_.clear();
       cacheDisabled_ = true;
@@ -65,7 +70,12 @@ bool CacheManager::handleCache(
             __func__,
             sessionPath_.c_str(),
             cacheKey.c_str()));
-    saveCache();
+    try {
+      saveCache();
+    } catch (...) {
+      invalidate();
+      throw;
+    }
   }
 
   resetStateCallback_(true);
@@ -162,13 +172,36 @@ void CacheManager::saveCache() {
 
 void CacheManager::writeCacheFile(const std::string& path) {
   llama_context* ctx = llmContext_->getCtx();
+  const std::string tmpPath = path + ".tmp";
   QLOG_IF(
       Priority::DEBUG,
       string_format("%s: saving cache to '%s'\n", __func__, path.c_str()));
   llama_token sessionTokens[2] = {
       static_cast<llama_token>(llmContext_->getNPast()),
       static_cast<llama_token>(llmContext_->getFirstMsgTokens())};
-  llama_state_save_file(ctx, path.c_str(), sessionTokens, 2);
+  if (!llama_state_save_file(ctx, tmpPath.c_str(), sessionTokens, 2)) {
+    std::error_code ec;
+    std::filesystem::remove(tmpPath, ec);
+    throw qvac_errors::StatusError(
+        ADDON_ID, toString(UnableToSaveSessionFile),
+        string_format(
+            "%s: failed to save session file to '%s'\n",
+            __func__,
+            path.c_str()));
+  }
+  std::error_code renameEc;
+  std::filesystem::rename(tmpPath, path, renameEc);
+  if (renameEc) {
+    std::error_code ec;
+    std::filesystem::remove(tmpPath, ec);
+    throw qvac_errors::StatusError(
+        ADDON_ID, toString(UnableToSaveSessionFile),
+        string_format(
+            "%s: failed to promote tmp file to '%s': %s\n",
+            __func__,
+            path.c_str(),
+            renameEc.message().c_str()));
+  }
 }
 
 void CacheManager::invalidate() {
