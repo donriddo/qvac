@@ -17,10 +17,14 @@ The write is now atomic: state is saved to `path + ".tmp"` first, then renamed t
 - **Cache clear** (`CacheManager::handleCache`) — when `cacheKey` is empty while a cache is active; the active cache is flushed before the state is cleared.
 - **Pre-finetune flush** (`LlamaFinetuner.cpp`) — the active cache is flushed to disk before fine-tuning begins.
 
-In the cache-switch and cache-clear paths, a failed save now calls `invalidate()` before re-throwing, leaving `CacheManager` in a clean disabled state rather than a stale one with a live `sessionPath_`. The explicit-save and pre-finetune paths do not call `invalidate()`:
+In the cache-switch and cache-clear paths, a failed save now calls `resetStateCallback_(true)` and then `invalidate()` before re-throwing. `resetStateCallback_` clears the in-memory KV state immediately so that any retry with a new `cacheKey` starts from a clean context rather than stale KV from the previous session. `invalidate()` clears `sessionPath_` and disables caching so the next prompt does not attempt to flush the failed path again. The explicit-save and pre-finetune paths do not call `invalidate()`:
 
 - **Pre-finetune**: the model is about to be rebuilt by the finetune reload path; `CacheManager` state does not carry over.
 - **Explicit save**: inference already completed and the in-memory KV state is valid — only the disk write failed. Leaving `sessionPath_` intact lets the caller retry or continue from the existing in-memory state. Callers that cannot recover should call the manager's `invalidate()` themselves before discarding the model.
+
+#### Cache-file overwrite on Windows no longer fails
+
+`std::filesystem::rename` on Windows fails with an error when the destination file already exists. All second-and-later saves to a given `cacheKey` on Windows would therefore throw `UnableToSaveSessionFile` even though the write to the `.tmp` file succeeded. `writeCacheFile` now falls back to removing the existing canonical file and retrying the rename when the first rename attempt fails, restoring correct behaviour on Windows for overwrite saves.
 
 ## Pull Requests
 

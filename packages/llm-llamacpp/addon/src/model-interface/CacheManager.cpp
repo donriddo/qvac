@@ -46,6 +46,7 @@ bool CacheManager::handleCache(
       try {
         saveCache();
       } catch (...) {
+        resetStateCallback_(true);
         invalidate();
         throw;
       }
@@ -73,6 +74,7 @@ bool CacheManager::handleCache(
     try {
       saveCache();
     } catch (...) {
+      resetStateCallback_(true);
       invalidate();
       throw;
     }
@@ -192,6 +194,16 @@ void CacheManager::writeCacheFile(const std::string& path) {
   }
   std::error_code renameEc;
   std::filesystem::rename(tmpPath, path, renameEc);
+  if (renameEc) {
+    // std::filesystem::rename fails when the destination already exists on
+    // Windows. Remove the existing canonical file and retry once.
+    std::error_code removeExistingEc;
+    std::filesystem::remove(path, removeExistingEc);
+    if (!removeExistingEc) {
+      renameEc.clear();
+      std::filesystem::rename(tmpPath, path, renameEc);
+    }
+  }
   if (renameEc) {
     std::error_code ec;
     std::filesystem::remove(tmpPath, ec);

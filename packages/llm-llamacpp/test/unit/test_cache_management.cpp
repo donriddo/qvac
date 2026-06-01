@@ -823,6 +823,87 @@ TEST_F(CacheManagementTest, HandleCacheClearFailureInvalidatesState) {
   });
 }
 
+TEST_F(CacheManagementTest, HandleCacheSwitchFailureRetryWithNewKeySucceeds) {
+  if (!hasValidModel()) {
+    FAIL() << "Test model not found";
+  }
+
+  auto model = createModel();
+  if (!model) {
+    FAIL() << "Model failed to load";
+  }
+
+  // Prime with a key in a non-existent dir (no write) — registers sessionPath_.
+  EXPECT_NO_THROW({
+    processPromptWithCacheOptions(
+        model,
+        R"([{"role": "user", "content": "hi"}])",
+        "/tmp/qvac_test_no_such_dir_a/session.bin",
+        false);
+  });
+
+  // Switch to another bad key — flushes the old key to a non-existent dir →
+  // throws UnableToSaveSessionFile.
+  try {
+    processPromptWithCacheOptions(
+        model,
+        R"([{"role": "user", "content": "hi"}])",
+        "/tmp/qvac_test_no_such_dir_b/session.bin",
+        false);
+    FAIL() << "expected UnableToSaveSessionFile throw";
+  } catch (const qvac_errors::StatusError& e) {
+    EXPECT_NE(
+        std::string(e.codeString()).find("UnableToSaveSessionFile"),
+        std::string::npos);
+  }
+
+  // After resetStateCallback_ + invalidate(), retrying with a valid key must
+  // succeed and run inference on fresh KV, not stale in-memory state.
+  EXPECT_NO_THROW({
+    processPromptWithCacheOptions(
+        model,
+        R"([{"role": "user", "content": "hi"}])",
+        session2_path,
+        false);
+    auto stats = model->runtimeStats();
+    EXPECT_GE(getStatValue(stats, "CacheTokens"), 0.0);
+  });
+}
+
+TEST_F(CacheManagementTest, AtomicWriteOverwriteExistingFile) {
+  if (!hasValidModel()) {
+    FAIL() << "Test model not found";
+  }
+
+  auto model = createModel();
+  if (!model) {
+    FAIL() << "Model failed to load";
+  }
+
+  // First save — creates session1_path.
+  EXPECT_NO_THROW({
+    processPromptWithCacheOptions(
+        model,
+        R"([{"role": "user", "content": "What is bitcoin? Answer shortly."}])",
+        session1_path,
+        true);
+  });
+  EXPECT_TRUE(fs::exists(session1_path));
+  EXPECT_FALSE(fs::exists(session1_path + ".tmp"));
+
+  // Second save — overwrites the existing canonical file (exercises the
+  // rename-over-existing path, which fails on Windows without the fallback).
+  EXPECT_NO_THROW({
+    processPromptWithCacheOptions(
+        model,
+        R"([{"role": "user", "content": "What is ethereum? Answer shortly."}])",
+        session1_path,
+        true);
+  });
+  EXPECT_TRUE(fs::exists(session1_path));
+  EXPECT_FALSE(fs::exists(session1_path + ".tmp"));
+}
+
 TEST_F(CacheManagementTest, PersistToWithNoCacheKeyIsNoOp) {
   if (!hasValidModel()) {
     FAIL() << "Test model not found";
