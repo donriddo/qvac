@@ -861,10 +861,7 @@ TEST_F(CacheManagementTest, HandleCacheSwitchFailureRetryWithNewKeySucceeds) {
   // succeed and run inference on fresh KV, not stale in-memory state.
   EXPECT_NO_THROW({
     processPromptWithCacheOptions(
-        model,
-        R"([{"role": "user", "content": "hi"}])",
-        session2_path,
-        false);
+        model, R"([{"role": "user", "content": "hi"}])", session2_path, false);
     auto stats = model->runtimeStats();
     EXPECT_GE(getStatValue(stats, "CacheTokens"), 0.0);
   });

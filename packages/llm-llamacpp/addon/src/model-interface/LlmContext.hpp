@@ -61,8 +61,7 @@ public:
   LlamaBatch() noexcept : batch_{}, initialized_(false) {}
 
   LlamaBatch(int32_t nTokens, int32_t embd, int32_t nSeqMax)
-      : batch_(llama_batch_init(nTokens, embd, nSeqMax)),
-        initialized_(true) {}
+      : batch_(llama_batch_init(nTokens, embd, nSeqMax)), initialized_(true) {}
 
   LlamaBatch(LlamaBatch&& other) noexcept
       : batch_(other.batch_), initialized_(other.initialized_) {
