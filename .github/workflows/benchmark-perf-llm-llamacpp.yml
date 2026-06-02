@@ -1,8 +1,12 @@
 name: Benchmark Performance — LLM Parameter Sweep
 
-# Manually-triggered parameter sweep for the LLM addon. Runs the isolated
-# benchmarks/performance suite — not the integration tests.
-# All sweep dimensions are exposed as inputs so nothing is hardcoded.
+# Manually-triggered parameter sweep for the LLM addon.
+# Desktop: runs benchmarks/performance/llm-parameter-sweep.js on a Linux GPU runner.
+# Mobile: runs runBenchmarkPerfTest on Android + iOS via Device Farm.
+#
+# All sweep parameters (models, quantizations, reasoning-budget, etc.) are
+# defined in the scripts — edit benchmarks/performance/llm-parameter-sweep.config.js
+# for desktop or benchmarks/performance/mobile.config.json for mobile.
 
 on:
   workflow_dispatch:
@@ -11,81 +15,21 @@ on:
         description: "Git ref (branch/tag/SHA) of the code to benchmark"
         required: false
         type: string
-      models:
-        description: "Comma-separated model IDs from models.manifest.json (empty = all)"
+      run_desktop:
+        description: "Run desktop benchmark (Linux GPU)"
         required: false
-        default: ""
-        type: string
-      quantization:
-        description: "Comma-separated quantizations to sweep"
+        default: true
+        type: boolean
+      run_mobile:
+        description: "Run mobile benchmark (Android / iOS via Device Farm)"
         required: false
-        default: "Q4_0,Q4_K_M,Q8_0,F16"
-        type: string
-      reasoning_budget:
-        description: "Comma-separated reasoning-budget values (-1 = on, 0 = off, empty = use sweep config default)"
-        required: false
-        default: ""
-        type: string
-      device:
-        description: "Device to run on"
-        required: false
-        default: "gpu"
-        type: choice
-        options:
-          - gpu
-          - cpu
-      ctx_size:
-        description: "Context window size"
-        required: false
-        default: "2048"
-        type: string
-      threads:
-        description: "Thread count"
-        required: false
-        default: "4"
-        type: string
-      batch_size:
-        description: "Batch size"
-        required: false
-        default: "512"
-        type: string
-      ubatch_size:
-        description: "Micro-batch size (must be <= batch-size)"
-        required: false
-        default: "512"
-        type: string
-      flash_attn:
-        description: "Flash attention"
-        required: false
-        default: "off"
-        type: choice
-        options:
-          - "off"
-          - "on"
-      cache_type_k:
-        description: "KV cache key type"
-        required: false
-        default: "f16"
-        type: string
-      cache_type_v:
-        description: "KV cache value type"
-        required: false
-        default: "f16"
-        type: string
-      repeats:
-        description: "Repeats per case"
-        required: false
-        default: "3"
-        type: string
-      addon_version:
-        description: "Published @qvac/llm-llamacpp version (empty = build from source)"
-        required: false
-        default: ""
-        type: string
+        default: true
+        type: boolean
 
 permissions:
   contents: read
   packages: read
+  id-token: write
 
 jobs:
   label-gate:
@@ -123,12 +67,28 @@ jobs:
           ref="${INPUT_REF:-$REF_NAME}"
           echo "ref=$ref" >> "$GITHUB_OUTPUT"
 
-  benchmark:
+  prebuild:
     needs:
       - context
       - label-gate
-    if: needs.label-gate.outputs.authorised == 'true'
-    name: Parameter Sweep
+    if: needs.label-gate.outputs.authorised == 'true' && inputs.run_mobile
+    permissions:
+      contents: write
+      packages: write
+      pull-requests: write
+      id-token: write
+    uses: ./.github/workflows/prebuilds-llm-llamacpp.yml
+    secrets: inherit
+    with:
+      repository: ${{ github.repository }}
+      ref: ${{ needs.context.outputs.ref }}
+
+  desktop-benchmark:
+    needs:
+      - context
+      - label-gate
+    if: needs.label-gate.outputs.authorised == 'true' && inputs.run_desktop
+    name: Desktop Parameter Sweep
     runs-on: ai-run-linux-gpu
     environment: release
     timeout-minutes: 360
@@ -140,7 +100,6 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
         with:
           ref: ${{ needs.context.outputs.ref }}
-          token: ${{ secrets.PAT_TOKEN }}
 
       - name: Setup Node.js
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # 6.3.0
@@ -165,7 +124,6 @@ jobs:
         run: npm install -g --force bare
 
       - name: Get vcpkg cache
-        if: inputs.addon_version == ''
         id: cache-vcpkg
         uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # 5.0.4
         with:
@@ -174,11 +132,9 @@ jobs:
           restore-keys: linux-x64-
 
       - name: Setup LLVM
-        if: inputs.addon_version == ''
         uses: tetherto/qvac/.github/actions/setup-llvm@98a6a6b6e8f3866dfdd75052a4071269ce85dc41
 
       - name: Build addon from source
-        if: inputs.addon_version == ''
         working-directory: packages/llm-llamacpp
         run: |
           echo "=== Building addon from source ==="
@@ -245,64 +201,15 @@ jobs:
         working-directory: packages/llm-llamacpp/benchmarks/performance
         run: npm install
 
-      - name: Install published addon
-        if: inputs.addon_version != ''
-        working-directory: packages/llm-llamacpp/benchmarks/performance
-        env:
-          ADDON_VERSION: ${{ inputs.addon_version }}
-        run: npm install "@qvac/llm-llamacpp@${ADDON_VERSION}"
-
       - name: Download models
         working-directory: packages/llm-llamacpp/benchmarks/performance
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          MODELS: ${{ inputs.models }}
-        run: |
-          ARGS=(node ./prepare-models.js --target addon)
-          if [ -n "${MODELS:-}" ]; then
-            ARGS+=(--models "$MODELS")
-          fi
-          "${ARGS[@]}"
+        run: node ./prepare-models.js --target addon
 
       - name: Run parameter sweep
         working-directory: packages/llm-llamacpp/benchmarks/performance
-        env:
-          MODELS: ${{ inputs.models }}
-          QUANTIZATION: ${{ inputs.quantization }}
-          REASONING_BUDGET: ${{ inputs.reasoning_budget }}
-          DEVICE: ${{ inputs.device }}
-          CTX_SIZE: ${{ inputs.ctx_size }}
-          THREADS: ${{ inputs.threads }}
-          BATCH_SIZE: ${{ inputs.batch_size }}
-          UBATCH_SIZE: ${{ inputs.ubatch_size }}
-          FLASH_ATTN: ${{ inputs.flash_attn }}
-          CACHE_TYPE_K: ${{ inputs.cache_type_k }}
-          CACHE_TYPE_V: ${{ inputs.cache_type_v }}
-          REPEATS: ${{ inputs.repeats }}
-          ADDON_SOURCE: ${{ inputs.addon_version != '' && 'npm' || 'local' }}
-        run: |
-          ARGS=(
-            --quantization "$QUANTIZATION"
-            --device "$DEVICE"
-          )
-          if [ -n "${REASONING_BUDGET:-}" ]; then
-            ARGS+=(--reasoning-budget "$REASONING_BUDGET")
-          fi
-          ARGS+=(
-            --ctx-size "$CTX_SIZE"
-            --threads "$THREADS"
-            --batch-size "$BATCH_SIZE"
-            --ubatch-size "$UBATCH_SIZE"
-            --flash-attn "$FLASH_ATTN"
-            --cache-type-k "$CACHE_TYPE_K"
-            --cache-type-v "$CACHE_TYPE_V"
-            --repeats "$REPEATS"
-            --addon-source "$ADDON_SOURCE"
-          )
-          if [ -n "${MODELS:-}" ]; then
-            ARGS+=(--models "$MODELS")
-          fi
-          bare ./llm-parameter-sweep.js "${ARGS[@]}"
+        run: bare ./llm-parameter-sweep.js --addon-source local
 
       - name: Add job summary
         if: always()
@@ -311,24 +218,9 @@ jobs:
         run: |
           LATEST_MD=$(find results/parameter-sweep -name "*.md" -type f 2>/dev/null | sort | tail -1)
           {
-            echo "## LLM Parameter Sweep"
+            echo "## LLM Parameter Sweep — Desktop"
             echo ""
-            echo "| Input | Value |"
-            echo "|-------|-------|"
-            echo "| ref | \`${{ needs.context.outputs.ref }}\` |"
-            echo "| models | \`${{ inputs.models || '(all)' }}\` |"
-            echo "| quantization | \`${{ inputs.quantization }}\` |"
-            echo "| reasoning-budget | \`${{ inputs.reasoning_budget || '(sweep default)' }}\` |"
-            echo "| device | \`${{ inputs.device }}\` |"
-            echo "| ctx-size | \`${{ inputs.ctx_size }}\` |"
-            echo "| threads | \`${{ inputs.threads }}\` |"
-            echo "| batch-size | \`${{ inputs.batch_size }}\` |"
-            echo "| ubatch-size | \`${{ inputs.ubatch_size }}\` |"
-            echo "| flash-attn | \`${{ inputs.flash_attn }}\` |"
-            echo "| cache-type-k | \`${{ inputs.cache_type_k }}\` |"
-            echo "| cache-type-v | \`${{ inputs.cache_type_v }}\` |"
-            echo "| repeats | \`${{ inputs.repeats }}\` |"
-            echo "| addon | \`${{ inputs.addon_version || 'built from source' }}\` |"
+            echo "ref: \`${{ needs.context.outputs.ref }}\`"
             echo ""
             if [ -n "${LATEST_MD:-}" ]; then
               cat "$LATEST_MD"
@@ -341,7 +233,25 @@ jobs:
         if: always()
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # 7.0.0
         with:
-          name: llm-param-sweep-${{ github.run_number }}
+          name: llm-param-sweep-desktop-${{ github.run_number }}
           path: packages/llm-llamacpp/benchmarks/performance/results/parameter-sweep/
           retention-days: 90
           if-no-files-found: ignore
+
+  mobile-benchmark:
+    needs:
+      - context
+      - prebuild
+      - label-gate
+    if: needs.label-gate.outputs.authorised == 'true' && inputs.run_mobile
+    permissions:
+      contents: read
+      packages: read
+      pull-requests: write
+      id-token: write
+    uses: ./.github/workflows/integration-mobile-test-llm-llamacpp.yml
+    secrets: inherit
+    with:
+      repository: ${{ github.repository }}
+      ref: ${{ needs.context.outputs.ref }}
+      qvac_perf_only: true
