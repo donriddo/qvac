@@ -254,4 +254,7 @@ jobs:
     with:
       repository: ${{ github.repository }}
       ref: ${{ needs.context.outputs.ref }}
-      qvac_perf_only: true
+      # Schedule only the benchmark group. runBenchmarkPerfTest is deliberately
+      # absent from the addon's test-groups.json, so this override is the only
+      # path that runs it — normal mobile integration runs never trigger it.
+      test_groups: '[{"name":"benchmarkPerf","grep":"runBenchmarkPerfTest"}]'
