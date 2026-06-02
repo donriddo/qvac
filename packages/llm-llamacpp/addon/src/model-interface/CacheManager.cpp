@@ -3,6 +3,10 @@
 #include <filesystem>
 #include <system_error>
 
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
 #include <llama.h>
 #include <inference-addon-cpp/Errors.hpp>
 
@@ -192,18 +196,29 @@ void CacheManager::writeCacheFile(const std::string& path) {
             __func__,
             path.c_str()));
   }
+#ifdef _WIN32
+  // MoveFileExW atomically replaces the destination on Windows — unlike
+  // delete-then-rename, the old canonical file is preserved if promotion fails.
+  if (!MoveFileExW(
+          std::filesystem::path(tmpPath).wstring().c_str(),
+          std::filesystem::path(path).wstring().c_str(),
+          MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) {
+    const std::error_code moveEc(
+        static_cast<int>(GetLastError()), std::system_category());
+    std::error_code ec;
+    std::filesystem::remove(tmpPath, ec);
+    throw qvac_errors::StatusError(
+        ADDON_ID,
+        toString(UnableToSaveSessionFile),
+        string_format(
+            "%s: failed to promote tmp file to '%s': %s\n",
+            __func__,
+            path.c_str(),
+            moveEc.message().c_str()));
+  }
+#else
   std::error_code renameEc;
   std::filesystem::rename(tmpPath, path, renameEc);
-  if (renameEc) {
-    // std::filesystem::rename fails when the destination already exists on
-    // Windows. Remove the existing canonical file and retry once.
-    std::error_code removeExistingEc;
-    std::filesystem::remove(path, removeExistingEc);
-    if (!removeExistingEc) {
-      renameEc.clear();
-      std::filesystem::rename(tmpPath, path, renameEc);
-    }
-  }
   if (renameEc) {
     std::error_code ec;
     std::filesystem::remove(tmpPath, ec);
@@ -216,6 +231,7 @@ void CacheManager::writeCacheFile(const std::string& path) {
             path.c_str(),
             renameEc.message().c_str()));
   }
+#endif
 }
 
 void CacheManager::invalidate() {
