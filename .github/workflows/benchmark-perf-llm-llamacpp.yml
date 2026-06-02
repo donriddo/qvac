@@ -51,7 +51,10 @@ jobs:
         id: gate
         uses: ./.github/actions/label-gate
         with:
-          github-token: ${{ secrets.PAT_TOKEN }}
+          # Dispatch-only workflow: label-gate treats workflow_dispatch as a
+          # trusted event and authorises without any API call, so the default
+          # GITHUB_TOKEN suffices — no PAT needed.
+          github-token: ${{ github.token }}
 
   context:
     runs-on: ubuntu-latest
