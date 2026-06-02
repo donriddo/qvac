@@ -68,11 +68,6 @@ on:
         type: boolean
         required: false
         default: false
-      test_groups:
-        description: 'JSON array of {name,grep} overrides, e.g. [{"name":"benchmarkPerf","grep":"runBenchmarkPerfTest"}]. When set, replaces auto-detected test-groups.json shards.'
-        type: string
-        required: false
-        default: ""
 
 jobs:
   build-and-test:
