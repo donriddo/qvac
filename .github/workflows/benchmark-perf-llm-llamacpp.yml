@@ -15,6 +15,10 @@ on:
         description: "Git ref (branch/tag/SHA) of the code to benchmark"
         required: false
         type: string
+      repository:
+        description: "Repository to benchmark (owner/repo). Defaults to this repo; set to a fork to benchmark a branch that lives there."
+        required: false
+        type: string
       run_desktop:
         description: "Run desktop benchmark (Linux GPU)"
         required: false
@@ -57,15 +61,20 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       ref: ${{ steps.ctx.outputs.ref }}
+      repository: ${{ steps.ctx.outputs.repository }}
     steps:
       - id: ctx
         shell: bash
         env:
           INPUT_REF: ${{ inputs.ref }}
+          INPUT_REPO: ${{ inputs.repository }}
           REF_NAME: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
         run: |
           ref="${INPUT_REF:-$REF_NAME}"
+          repo="${INPUT_REPO:-$REPO}"
           echo "ref=$ref" >> "$GITHUB_OUTPUT"
+          echo "repository=$repo" >> "$GITHUB_OUTPUT"
 
   prebuild:
     needs:
@@ -80,7 +89,7 @@ jobs:
     uses: ./.github/workflows/prebuilds-llm-llamacpp.yml
     secrets: inherit
     with:
-      repository: ${{ github.repository }}
+      repository: ${{ needs.context.outputs.repository }}
       ref: ${{ needs.context.outputs.ref }}
 
   desktop-benchmark:
@@ -99,6 +108,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
         with:
+          repository: ${{ needs.context.outputs.repository }}
           ref: ${{ needs.context.outputs.ref }}
 
       - name: Setup Node.js
@@ -252,7 +262,7 @@ jobs:
     uses: ./.github/workflows/integration-mobile-test-llm-llamacpp.yml
     secrets: inherit
     with:
-      repository: ${{ github.repository }}
+      repository: ${{ needs.context.outputs.repository }}
       ref: ${{ needs.context.outputs.ref }}
       # Schedule only the benchmark group. runBenchmarkPerfTest is deliberately
       # absent from the addon's test-groups.json, so this override is the only
