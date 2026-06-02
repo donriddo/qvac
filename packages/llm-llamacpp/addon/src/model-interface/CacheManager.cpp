@@ -196,6 +196,11 @@ void CacheManager::writeCacheFile(const std::string& path) {
             __func__,
             path.c_str()));
   }
+  atomicPromoteFile(tmpPath, path);
+}
+
+void CacheManager::atomicPromoteFile(
+    const std::string& from, const std::string& to) {
 #ifdef _WIN32
   // MoveFileExW atomically replaces the destination on NTFS — unlike
   // delete-then-rename, the old canonical file is preserved if promotion fails.
@@ -204,35 +209,35 @@ void CacheManager::writeCacheFile(const std::string& path) {
   // calls fopen with the same string), so this is a pre-existing issue across
   // the whole CacheManager — not introduced here.
   if (!MoveFileExW(
-          std::filesystem::path(tmpPath).wstring().c_str(),
-          std::filesystem::path(path).wstring().c_str(),
+          std::filesystem::path(from).wstring().c_str(),
+          std::filesystem::path(to).wstring().c_str(),
           MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) {
     const std::error_code moveEc(
         static_cast<int>(GetLastError()), std::system_category());
     std::error_code ec;
-    std::filesystem::remove(tmpPath, ec);
+    std::filesystem::remove(from, ec);
     throw qvac_errors::StatusError(
         ADDON_ID,
         toString(UnableToSaveSessionFile),
         string_format(
             "%s: failed to promote tmp file to '%s': %s\n",
             __func__,
-            path.c_str(),
+            to.c_str(),
             moveEc.message().c_str()));
   }
 #else
   std::error_code renameEc;
-  std::filesystem::rename(tmpPath, path, renameEc);
+  std::filesystem::rename(from, to, renameEc);
   if (renameEc) {
     std::error_code ec;
-    std::filesystem::remove(tmpPath, ec);
+    std::filesystem::remove(from, ec);
     throw qvac_errors::StatusError(
         ADDON_ID,
         toString(UnableToSaveSessionFile),
         string_format(
             "%s: failed to promote tmp file to '%s': %s\n",
             __func__,
-            path.c_str(),
+            to.c_str(),
             renameEc.message().c_str()));
   }
 #endif
