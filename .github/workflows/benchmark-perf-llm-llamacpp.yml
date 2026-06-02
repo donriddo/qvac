@@ -21,6 +21,11 @@ on:
         required: false
         default: "Q4_0,Q4_K_M,Q8_0,F16"
         type: string
+      reasoning_budget:
+        description: "Comma-separated reasoning-budget values (-1 = on, 0 = off, empty = use sweep config default)"
+        required: false
+        default: ""
+        type: string
       device:
         description: "Device to run on"
         required: false
@@ -264,6 +269,7 @@ jobs:
         env:
           MODELS: ${{ inputs.models }}
           QUANTIZATION: ${{ inputs.quantization }}
+          REASONING_BUDGET: ${{ inputs.reasoning_budget }}
           DEVICE: ${{ inputs.device }}
           CTX_SIZE: ${{ inputs.ctx_size }}
           THREADS: ${{ inputs.threads }}
@@ -278,6 +284,11 @@ jobs:
           ARGS=(
             --quantization "$QUANTIZATION"
             --device "$DEVICE"
+          )
+          if [ -n "${REASONING_BUDGET:-}" ]; then
+            ARGS+=(--reasoning-budget "$REASONING_BUDGET")
+          fi
+          ARGS+=(
             --ctx-size "$CTX_SIZE"
             --threads "$THREADS"
             --batch-size "$BATCH_SIZE"
@@ -307,6 +318,7 @@ jobs:
             echo "| ref | \`${{ needs.context.outputs.ref }}\` |"
             echo "| models | \`${{ inputs.models || '(all)' }}\` |"
             echo "| quantization | \`${{ inputs.quantization }}\` |"
+            echo "| reasoning-budget | \`${{ inputs.reasoning_budget || '(sweep default)' }}\` |"
             echo "| device | \`${{ inputs.device }}\` |"
             echo "| ctx-size | \`${{ inputs.ctx_size }}\` |"
             echo "| threads | \`${{ inputs.threads }}\` |"
