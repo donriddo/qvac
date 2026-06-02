@@ -12,11 +12,7 @@ on:
   workflow_dispatch:
     inputs:
       ref:
-        description: "Git ref (branch/tag/SHA) of the code to benchmark"
-        required: false
-        type: string
-      repository:
-        description: "Repository to benchmark (owner/repo). Defaults to this repo; set to a fork to benchmark a branch that lives there."
+        description: "Git ref (branch/tag/SHA) of the code to benchmark (must be on this repo)"
         required: false
         type: string
       run_desktop:
@@ -61,20 +57,15 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       ref: ${{ steps.ctx.outputs.ref }}
-      repository: ${{ steps.ctx.outputs.repository }}
     steps:
       - id: ctx
         shell: bash
         env:
           INPUT_REF: ${{ inputs.ref }}
-          INPUT_REPO: ${{ inputs.repository }}
           REF_NAME: ${{ github.ref_name }}
-          REPO: ${{ github.repository }}
         run: |
           ref="${INPUT_REF:-$REF_NAME}"
-          repo="${INPUT_REPO:-$REPO}"
           echo "ref=$ref" >> "$GITHUB_OUTPUT"
-          echo "repository=$repo" >> "$GITHUB_OUTPUT"
 
   prebuild:
     needs:
@@ -89,7 +80,7 @@ jobs:
     uses: ./.github/workflows/prebuilds-llm-llamacpp.yml
     secrets: inherit
     with:
-      repository: ${{ needs.context.outputs.repository }}
+      repository: ${{ github.repository }}
       ref: ${{ needs.context.outputs.ref }}
 
   desktop-benchmark:
@@ -99,7 +90,6 @@ jobs:
     if: needs.label-gate.outputs.authorised == 'true' && inputs.run_desktop
     name: Desktop Parameter Sweep
     runs-on: ai-run-linux-gpu
-    environment: release
     timeout-minutes: 360
     env:
       VCPKG_BINARY_SOURCES: "clear;files,${{ github.workspace }}/packages/llm-llamacpp/vcpkg/cache,readwrite"
@@ -108,26 +98,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
         with:
-          repository: ${{ needs.context.outputs.repository }}
           ref: ${{ needs.context.outputs.ref }}
 
       - name: Setup Node.js
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # 6.3.0
         with:
           node-version: lts/*
-
-      - name: Configure npm registries
-        shell: bash
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-          PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
-        run: |
-          : > .npmrc
-          echo "registry=https://registry.npmjs.org/" >> .npmrc
-          echo "@qvac:registry=https://registry.npmjs.org/" >> .npmrc
-          echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" >> .npmrc
-          echo "@tetherto:registry=https://npm.pkg.github.com" >> .npmrc
-          echo "//npm.pkg.github.com/:_authToken=${PAT_TOKEN}" >> .npmrc
 
       - name: Install bare runtime
         working-directory: packages/llm-llamacpp
@@ -213,8 +189,7 @@ jobs:
 
       - name: Download models
         working-directory: packages/llm-llamacpp/benchmarks/performance
-        env:
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        # Models are public (unsloth Qwen3.5 GGUFs) — no HF_TOKEN needed.
         run: node ./prepare-models.js --target addon
 
       - name: Run parameter sweep
@@ -262,7 +237,7 @@ jobs:
     uses: ./.github/workflows/integration-mobile-test-llm-llamacpp.yml
     secrets: inherit
     with:
-      repository: ${{ needs.context.outputs.repository }}
+      repository: ${{ github.repository }}
       ref: ${{ needs.context.outputs.ref }}
       # Schedule only the benchmark group. runBenchmarkPerfTest is deliberately
       # absent from the addon's test-groups.json, so this override is the only
