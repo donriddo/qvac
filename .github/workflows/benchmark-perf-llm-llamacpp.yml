@@ -1,12 +1,12 @@
 name: Benchmark Performance — LLM Parameter Sweep
 
-# Manually-triggered parameter sweep for the LLM addon.
-# Desktop: runs benchmarks/performance/llm-parameter-sweep.js on a Linux GPU runner.
-# Mobile: runs runBenchmarkPerfTest on Android + iOS via Device Farm.
+# Manually-triggered LLM benchmark (no sweep inputs — everything is in the scripts).
+# Desktop: bare benchmarks/performance/llm-parameter-sweep.js on a Linux GPU runner.
+# Mobile:  runBenchmarkPerfTest on Android + iOS via Device Farm.
 #
-# All sweep parameters (models, quantizations, reasoning-budget, etc.) are
-# defined in the scripts — edit benchmarks/performance/llm-parameter-sweep.config.js
-# for desktop or benchmarks/performance/mobile.config.json for mobile.
+# To change what runs, edit:
+#   desktop: models.manifest.json (models) + llm-parameter-sweep.config.js (sweep dims)
+#   mobile:  mobile.config.json
 
 on:
   workflow_dispatch:
