@@ -1,0 +1,335 @@
+name: Benchmark Performance — LLM Parameter Sweep
+
+# Manually-triggered parameter sweep for the LLM addon. Runs the isolated
+# benchmarks/performance suite — not the integration tests.
+# All sweep dimensions are exposed as inputs so nothing is hardcoded.
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Git ref (branch/tag/SHA) of the code to benchmark"
+        required: false
+        type: string
+      models:
+        description: "Comma-separated model IDs from models.manifest.json (empty = all)"
+        required: false
+        default: ""
+        type: string
+      quantization:
+        description: "Comma-separated quantizations to sweep"
+        required: false
+        default: "Q4_0,Q4_K_M,Q8_0,F16"
+        type: string
+      device:
+        description: "Device to run on"
+        required: false
+        default: "gpu"
+        type: choice
+        options:
+          - gpu
+          - cpu
+      ctx_size:
+        description: "Context window size"
+        required: false
+        default: "2048"
+        type: string
+      threads:
+        description: "Thread count"
+        required: false
+        default: "4"
+        type: string
+      batch_size:
+        description: "Batch size"
+        required: false
+        default: "512"
+        type: string
+      ubatch_size:
+        description: "Micro-batch size (must be <= batch-size)"
+        required: false
+        default: "512"
+        type: string
+      flash_attn:
+        description: "Flash attention"
+        required: false
+        default: "off"
+        type: choice
+        options:
+          - "off"
+          - "on"
+      cache_type_k:
+        description: "KV cache key type"
+        required: false
+        default: "f16"
+        type: string
+      cache_type_v:
+        description: "KV cache value type"
+        required: false
+        default: "f16"
+        type: string
+      repeats:
+        description: "Repeats per case"
+        required: false
+        default: "3"
+        type: string
+      addon_version:
+        description: "Published @qvac/llm-llamacpp version (empty = build from source)"
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  label-gate:
+    name: Authorise (label-gate)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    outputs:
+      authorised: ${{ steps.gate.outputs.authorised }}
+    steps:
+      - name: Checkout (label-gate action only)
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          sparse-checkout: .github/actions/label-gate
+          sparse-checkout-cone-mode: false
+      - name: Run label-gate
+        id: gate
+        uses: ./.github/actions/label-gate
+        with:
+          github-token: ${{ secrets.PAT_TOKEN }}
+
+  context:
+    runs-on: ubuntu-latest
+    outputs:
+      ref: ${{ steps.ctx.outputs.ref }}
+    steps:
+      - id: ctx
+        shell: bash
+        env:
+          INPUT_REF: ${{ inputs.ref }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          ref="${INPUT_REF:-$REF_NAME}"
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+
+  benchmark:
+    needs:
+      - context
+      - label-gate
+    if: needs.label-gate.outputs.authorised == 'true'
+    name: Parameter Sweep
+    runs-on: ai-run-linux-gpu
+    environment: release
+    timeout-minutes: 360
+    env:
+      VCPKG_BINARY_SOURCES: "clear;files,${{ github.workspace }}/packages/llm-llamacpp/vcpkg/cache,readwrite"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
+        with:
+          ref: ${{ needs.context.outputs.ref }}
+          token: ${{ secrets.PAT_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # 6.3.0
+        with:
+          node-version: lts/*
+
+      - name: Configure npm registries
+        shell: bash
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
+        run: |
+          : > .npmrc
+          echo "registry=https://registry.npmjs.org/" >> .npmrc
+          echo "@qvac:registry=https://registry.npmjs.org/" >> .npmrc
+          echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" >> .npmrc
+          echo "@tetherto:registry=https://npm.pkg.github.com" >> .npmrc
+          echo "//npm.pkg.github.com/:_authToken=${PAT_TOKEN}" >> .npmrc
+
+      - name: Install bare runtime
+        working-directory: packages/llm-llamacpp
+        run: npm install -g --force bare
+
+      - name: Get vcpkg cache
+        if: inputs.addon_version == ''
+        id: cache-vcpkg
+        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # 5.0.4
+        with:
+          key: linux-x64-${{ hashFiles('packages/llm-llamacpp/vcpkg.json', 'packages/llm-llamacpp/vcpkg-configuration.json', 'packages/llm-llamacpp/vcpkg/ports/**') }}
+          path: packages/llm-llamacpp/vcpkg/cache
+          restore-keys: linux-x64-
+
+      - name: Setup LLVM
+        if: inputs.addon_version == ''
+        uses: tetherto/qvac/.github/actions/setup-llvm@98a6a6b6e8f3866dfdd75052a4071269ce85dc41
+
+      - name: Build addon from source
+        if: inputs.addon_version == ''
+        working-directory: packages/llm-llamacpp
+        run: |
+          echo "=== Building addon from source ==="
+
+          echo "Cleaning up disk space..."
+          sudo docker image prune --all --force
+          sudo rm -rf /opt/hostedtoolcache/CodeQL /opt/ghc /usr/share/dotnet /usr/local/lib/android
+          df -h
+
+          npm install -g --force bare-make
+
+          echo "VCPKG_INSTALLATION_ROOT=$VCPKG_INSTALLATION_ROOT"
+          if [ -n "${VCPKG_INSTALLATION_ROOT:-}" ] && [ -d "$VCPKG_INSTALLATION_ROOT" ]; then
+            echo "Using pre-installed vcpkg at $VCPKG_INSTALLATION_ROOT"
+            export VCPKG_ROOT=$VCPKG_INSTALLATION_ROOT
+          else
+            echo "vcpkg not found, bootstrapping..."
+            sudo apt-get update
+            sudo apt-get install -y curl zip unzip tar pkg-config
+            git clone https://github.com/Microsoft/vcpkg.git /tmp/vcpkg
+            /tmp/vcpkg/bootstrap-vcpkg.sh -disableMetrics
+            export VCPKG_ROOT=/tmp/vcpkg
+          fi
+          echo "VCPKG_ROOT=$VCPKG_ROOT"
+          echo "VCPKG_ROOT=$VCPKG_ROOT" >> $GITHUB_ENV
+          rm -rf $VCPKG_ROOT/buildtrees/*
+          rm -rf $VCPKG_ROOT/packages/*
+          mkdir -p vcpkg/cache
+
+          echo "Installing system dependencies..."
+          sudo apt-get update
+          sudo apt-get install -y libxi-dev libxtst-dev libxrandr-dev xz-utils
+
+          echo "Installing Vulkan SDK (latest)..."
+          wget -q -O /tmp/vulkansdk.tar.xz https://sdk.lunarg.com/sdk/download/latest/linux/vulkan_sdk.tar.xz
+          mkdir -p "$HOME/vulkan" && cd "$HOME/vulkan"
+          tar xf /tmp/vulkansdk.tar.xz --strip-components=1
+          export VULKAN_SDK="$HOME/vulkan/x86_64"
+          export PATH="$VULKAN_SDK/bin:$PATH"
+          export LD_LIBRARY_PATH="$VULKAN_SDK/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+          export VK_ADD_LAYER_PATH="$VULKAN_SDK/share/vulkan/explicit_layer.d"
+          export PKG_CONFIG_PATH="$VULKAN_SDK/share/pkgconfig:$VULKAN_SDK/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
+          echo "VULKAN_SDK=$VULKAN_SDK" >> $GITHUB_ENV
+          echo "PATH=$PATH" >> $GITHUB_ENV
+          echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH" >> $GITHUB_ENV
+          echo "VK_ADD_LAYER_PATH=$VK_ADD_LAYER_PATH" >> $GITHUB_ENV
+          echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH" >> $GITHUB_ENV
+
+          cd "$GITHUB_WORKSPACE/packages/llm-llamacpp"
+          npm install
+
+          echo "Running bare-make generate..."
+          bare-make generate --platform linux --arch x64
+
+          echo "Running bare-make build..."
+          bare-make build
+
+          echo "Running bare-make install..."
+          bare-make install
+
+          echo "=== Build complete ==="
+
+      - name: Install benchmark dependencies
+        working-directory: packages/llm-llamacpp/benchmarks/performance
+        run: npm install
+
+      - name: Install published addon
+        if: inputs.addon_version != ''
+        working-directory: packages/llm-llamacpp/benchmarks/performance
+        env:
+          ADDON_VERSION: ${{ inputs.addon_version }}
+        run: npm install "@qvac/llm-llamacpp@${ADDON_VERSION}"
+
+      - name: Download models
+        working-directory: packages/llm-llamacpp/benchmarks/performance
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          MODELS: ${{ inputs.models }}
+        run: |
+          ARGS=(node ./prepare-models.js --target addon)
+          if [ -n "${MODELS:-}" ]; then
+            ARGS+=(--models "$MODELS")
+          fi
+          "${ARGS[@]}"
+
+      - name: Run parameter sweep
+        working-directory: packages/llm-llamacpp/benchmarks/performance
+        env:
+          MODELS: ${{ inputs.models }}
+          QUANTIZATION: ${{ inputs.quantization }}
+          DEVICE: ${{ inputs.device }}
+          CTX_SIZE: ${{ inputs.ctx_size }}
+          THREADS: ${{ inputs.threads }}
+          BATCH_SIZE: ${{ inputs.batch_size }}
+          UBATCH_SIZE: ${{ inputs.ubatch_size }}
+          FLASH_ATTN: ${{ inputs.flash_attn }}
+          CACHE_TYPE_K: ${{ inputs.cache_type_k }}
+          CACHE_TYPE_V: ${{ inputs.cache_type_v }}
+          REPEATS: ${{ inputs.repeats }}
+          ADDON_SOURCE: ${{ inputs.addon_version != '' && 'npm' || 'local' }}
+        run: |
+          ARGS=(
+            --quantization "$QUANTIZATION"
+            --device "$DEVICE"
+            --ctx-size "$CTX_SIZE"
+            --threads "$THREADS"
+            --batch-size "$BATCH_SIZE"
+            --ubatch-size "$UBATCH_SIZE"
+            --flash-attn "$FLASH_ATTN"
+            --cache-type-k "$CACHE_TYPE_K"
+            --cache-type-v "$CACHE_TYPE_V"
+            --repeats "$REPEATS"
+            --addon-source "$ADDON_SOURCE"
+          )
+          if [ -n "${MODELS:-}" ]; then
+            ARGS+=(--models "$MODELS")
+          fi
+          bare ./llm-parameter-sweep.js "${ARGS[@]}"
+
+      - name: Add job summary
+        if: always()
+        working-directory: packages/llm-llamacpp/benchmarks/performance
+        shell: bash
+        run: |
+          LATEST_MD=$(find results/parameter-sweep -name "*.md" -type f 2>/dev/null | sort | tail -1)
+          {
+            echo "## LLM Parameter Sweep"
+            echo ""
+            echo "| Input | Value |"
+            echo "|-------|-------|"
+            echo "| ref | \`${{ needs.context.outputs.ref }}\` |"
+            echo "| models | \`${{ inputs.models || '(all)' }}\` |"
+            echo "| quantization | \`${{ inputs.quantization }}\` |"
+            echo "| device | \`${{ inputs.device }}\` |"
+            echo "| ctx-size | \`${{ inputs.ctx_size }}\` |"
+            echo "| threads | \`${{ inputs.threads }}\` |"
+            echo "| batch-size | \`${{ inputs.batch_size }}\` |"
+            echo "| ubatch-size | \`${{ inputs.ubatch_size }}\` |"
+            echo "| flash-attn | \`${{ inputs.flash_attn }}\` |"
+            echo "| cache-type-k | \`${{ inputs.cache_type_k }}\` |"
+            echo "| cache-type-v | \`${{ inputs.cache_type_v }}\` |"
+            echo "| repeats | \`${{ inputs.repeats }}\` |"
+            echo "| addon | \`${{ inputs.addon_version || 'built from source' }}\` |"
+            echo ""
+            if [ -n "${LATEST_MD:-}" ]; then
+              cat "$LATEST_MD"
+            else
+              echo "No results file found."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # 7.0.0
+        with:
+          name: llm-param-sweep-${{ github.run_number }}
+          path: packages/llm-llamacpp/benchmarks/performance/results/parameter-sweep/
+          retention-days: 90
+          if-no-files-found: ignore
