@@ -3,15 +3,15 @@
 #include <filesystem>
 #include <system_error>
 
-#ifdef _WIN32
-#include <windows.h>
-#endif
-
 #include <llama.h>
 #include <inference-addon-cpp/Errors.hpp>
 
 #include "addon/LlmErrors.hpp"
 #include "utils/LoggingMacros.hpp"
+
+#ifdef _WIN32
+#include <windows.h>
+#endif
 
 using namespace qvac_lib_inference_addon_llama::errors;
 using namespace qvac_lib_inference_addon_cpp::logger;
@@ -197,8 +197,12 @@ void CacheManager::writeCacheFile(const std::string& path) {
             path.c_str()));
   }
 #ifdef _WIN32
-  // MoveFileExW atomically replaces the destination on Windows — unlike
+  // MoveFileExW atomically replaces the destination on NTFS — unlike
   // delete-then-rename, the old canonical file is preserved if promotion fails.
+  // NOTE: path() from std::string uses the system ANSI code page on MSVC, not
+  // UTF-8. Non-ASCII paths are already broken for llama_state_save_file (which
+  // calls fopen with the same string), so this is a pre-existing issue across
+  // the whole CacheManager — not introduced here.
   if (!MoveFileExW(
           std::filesystem::path(tmpPath).wstring().c_str(),
           std::filesystem::path(path).wstring().c_str(),

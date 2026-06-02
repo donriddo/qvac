@@ -2,6 +2,8 @@
 
 ## [0.23.0] - 2026-06-02
 
+Minor bump: `UnableToSaveSessionFile` is now a new observable throw on paths that previously succeeded silently, which is a new public error surface.
+
 ### Fixed
 
 #### KV-cache file writes are now atomic; save failure throws `UnableToSaveSessionFile`
@@ -22,9 +24,9 @@ In the cache-switch and cache-clear paths, a failed save now calls `resetStateCa
 - **Pre-finetune**: the model is about to be rebuilt by the finetune reload path; `CacheManager` state does not carry over.
 - **Explicit save**: inference already completed and the in-memory KV state is valid — only the disk write failed. Leaving `sessionPath_` intact lets the caller retry or continue from the existing in-memory state. Callers that cannot recover should call the manager's `invalidate()` themselves before discarding the model.
 
-#### Cache-file overwrite on Windows is now atomic
+#### Cache-file overwrite on Windows is now atomic on NTFS
 
-`std::filesystem::rename` on Windows fails when the destination file already exists, so second-and-later saves to a given `cacheKey` would throw `UnableToSaveSessionFile` even though the write to `.tmp` succeeded. The promotion step now uses `MoveFileExW(tmp, canonical, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)` on Windows, which atomically replaces the destination — the old canonical file is preserved intact if promotion fails, eliminating the data-loss window that a delete-then-rename fallback would create.
+`std::filesystem::rename` on Windows fails when the destination file already exists, so second-and-later saves to a given `cacheKey` would throw `UnableToSaveSessionFile` even though the write to `.tmp` succeeded. The promotion step now uses `MoveFileExW(tmp, canonical, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)` on Windows, which atomically replaces the destination on NTFS — the old canonical file is preserved intact if promotion fails, eliminating the data-loss window that a delete-then-rename fallback would create.
 
 ## Pull Requests
 
