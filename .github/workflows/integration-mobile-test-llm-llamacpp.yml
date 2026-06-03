@@ -41,6 +41,11 @@ on:
         type: string
         required: false
         default: ""
+      artifact_suffix:
+        description: "Optional prefix inserted into the perf-report artifact name so multiple invocations in one run don't collide. Default empty keeps the existing name."
+        type: string
+        required: false
+        default: ""
   workflow_dispatch:
     inputs:
       ref:
@@ -217,7 +222,7 @@ jobs:
           platform: ${{ matrix.platform }}
           merge: 'true'
           unzip-customer-artifacts: 'true'
-          artifact-name: perf-report-llamacpp-llm-${{ matrix.platform }}-${{ github.run_number }}
+          artifact-name: perf-report-llamacpp-llm-${{ inputs.artifact_suffix }}${{ matrix.platform }}-${{ github.run_number }}
 
       - name: Comment results on PR
         if: always() && !cancelled()
