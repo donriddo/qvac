@@ -16,6 +16,156 @@ async function runApiBehaviorTest (options = {}) { // eslint-disable-line no-unu
   return runIntegrationModule('../integration/api-behavior.test.js', options)
 }
 
+async function runBenchmarkPerf08bQ40F16Test (options = {}) { // eslint-disable-line no-unused-vars
+  if (typeof __shouldRunTest === 'function' && !__shouldRunTest('runBenchmarkPerf08bQ40F16Test')) return __FILTERED
+  return runIntegrationModule('../integration/benchmark-perf-08b-q4-0-f16.test.js', options)
+}
+
+async function runBenchmarkPerf08bQ40Q40Test (options = {}) { // eslint-disable-line no-unused-vars
+  if (typeof __shouldRunTest === 'function' && !__shouldRunTest('runBenchmarkPerf08bQ40Q40Test')) return __FILTERED
+  return runIntegrationModule('../integration/benchmark-perf-08b-q4-0-q4-0.test.js', options)
+}
+
+async function runBenchmarkPerf08bQ40Q80Test (options = {}) { // eslint-disable-line no-unused-vars
+  if (typeof __shouldRunTest === 'function' && !__shouldRunTest('runBenchmarkPerf08bQ40Q80Test')) return __FILTERED
+  return runIntegrationModule('../integration/benchmark-perf-08b-q4-0-q8-0.test.js', options)
+}
+
+async function runBenchmarkPerf08bQ41F16Test (options = {}) { // eslint-disable-line no-unused-vars
+  if (typeof __shouldRunTest === 'function' && !__shouldRunTest('runBenchmarkPerf08bQ41F16Test')) return __FILTERED
+  return runIntegrationModule('../integration/benchmark-perf-08b-q4-1-f16.test.js', options)
+}
+
+async function runBenchmarkPerf08bQ41Q40Test (options = {}) { // eslint-disable-line no-unused-vars
+  if (typeof __shouldRunTest === 'function' && !__shouldRunTest('runBenchmarkPerf08bQ41Q40Test')) return __FILTERED
+  return runIntegrationModule('../integration/benchmark-perf-08b-q4-1-q4-0.test.js', options)
+}
+
+async function runBenchmarkPerf08bQ41Q80Test (options = {}) { // eslint-disable-line no-unused-vars
+  if (typeof __shouldRunTest === 'function' && !__shouldRunTest('runBenchmarkPerf08bQ41Q80Test')) return __FILTERED
+  return runIntegrationModule('../integration/benchmark-perf-08b-q4-1-q8-0.test.js', options)
+}
+
+async function runBenchmarkPerf08bQ4KMF16Test (options = {}) { // eslint-disable-line no-unused-vars
+  if (typeof __shouldRunTest === 'function' && !__shouldRunTest('runBenchmarkPerf08bQ4KMF16Test')) return __FILTERED
+  return runIntegrationModule('../integration/benchmark-perf-08b-q4-k-m-f16.test.js', options)
+}
+
+async function runBenchmarkPerf08bQ4KMQ40Test (options = {}) { // eslint-disable-line no-unused-vars
+  if (typeof __shouldRunTest === 'function' && !__shouldRunTest('runBenchmarkPerf08bQ4KMQ40Test')) return __FILTERED
+  return runIntegrationModule('../integration/benchmark-perf-08b-q4-k-m-q4-0.test.js', options)
+}
+
+async function runBenchmarkPerf08bQ4KMQ80Test (options = {}) { // eslint-disable-line no-unused-vars
+  if (typeof __shouldRunTest === 'function' && !__shouldRunTest('runBenchmarkPerf08bQ4KMQ80Test')) return __FILTERED
+  return runIntegrationModule('../integration/benchmark-perf-08b-q4-k-m-q8-0.test.js', options)
+}
+
+async function runBenchmarkPerf08bQ6KF16Test (options = {}) { // eslint-disable-line no-unused-vars
+  if (typeof __shouldRunTest === 'function' && !__shouldRunTest('runBenchmarkPerf08bQ6KF16Test')) return __FILTERED
+  return runIntegrationModule('../integration/benchmark-perf-08b-q6-k-f16.test.js', options)
+}
+
+async function runBenchmarkPerf08bQ6KQ40Test (options = {}) { // eslint-disable-line no-unused-vars
+  if (typeof __shouldRunTest === 'function' && !__shouldRunTest('runBenchmarkPerf08bQ6KQ40Test')) return __FILTERED
+  return runIntegrationModule('../integration/benchmark-perf-08b-q6-k-q4-0.test.js', options)
+}
+
+async function runBenchmarkPerf08bQ6KQ80Test (options = {}) { // eslint-disable-line no-unused-vars
+  if (typeof __shouldRunTest === 'function' && !__shouldRunTest('runBenchmarkPerf08bQ6KQ80Test')) return __FILTERED
+  return runIntegrationModule('../integration/benchmark-perf-08b-q6-k-q8-0.test.js', options)
+}
+
+async function runBenchmarkPerf08bQ80F16Test (options = {}) { // eslint-disable-line no-unused-vars
+  if (typeof __shouldRunTest === 'function' && !__shouldRunTest('runBenchmarkPerf08bQ80F16Test')) return __FILTERED
+  return runIntegrationModule('../integration/benchmark-perf-08b-q8-0-f16.test.js', options)
+}
+
+async function runBenchmarkPerf08bQ80Q40Test (options = {}) { // eslint-disable-line no-unused-vars
+  if (typeof __shouldRunTest === 'function' && !__shouldRunTest('runBenchmarkPerf08bQ80Q40Test')) return __FILTERED
+  return runIntegrationModule('../integration/benchmark-perf-08b-q8-0-q4-0.test.js', options)
+}
+
+async function runBenchmarkPerf08bQ80Q80Test (options = {}) { // eslint-disable-line no-unused-vars
+  if (typeof __shouldRunTest === 'function' && !__shouldRunTest('runBenchmarkPerf08bQ80Q80Test')) return __FILTERED
+  return runIntegrationModule('../integration/benchmark-perf-08b-q8-0-q8-0.test.js', options)
+}
+
+async function runBenchmarkPerf2bQ40F16Test (options = {}) { // eslint-disable-line no-unused-vars
+  if (typeof __shouldRunTest === 'function' && !__shouldRunTest('runBenchmarkPerf2bQ40F16Test')) return __FILTERED
+  return runIntegrationModule('../integration/benchmark-perf-2b-q4-0-f16.test.js', options)
+}
+
+async function runBenchmarkPerf2bQ40Q40Test (options = {}) { // eslint-disable-line no-unused-vars
+  if (typeof __shouldRunTest === 'function' && !__shouldRunTest('runBenchmarkPerf2bQ40Q40Test')) return __FILTERED
+  return runIntegrationModule('../integration/benchmark-perf-2b-q4-0-q4-0.test.js', options)
+}
+
+async function runBenchmarkPerf2bQ40Q80Test (options = {}) { // eslint-disable-line no-unused-vars
+  if (typeof __shouldRunTest === 'function' && !__shouldRunTest('runBenchmarkPerf2bQ40Q80Test')) return __FILTERED
+  return runIntegrationModule('../integration/benchmark-perf-2b-q4-0-q8-0.test.js', options)
+}
+
+async function runBenchmarkPerf2bQ41F16Test (options = {}) { // eslint-disable-line no-unused-vars
+  if (typeof __shouldRunTest === 'function' && !__shouldRunTest('runBenchmarkPerf2bQ41F16Test')) return __FILTERED
+  return runIntegrationModule('../integration/benchmark-perf-2b-q4-1-f16.test.js', options)
+}
+
+async function runBenchmarkPerf2bQ41Q40Test (options = {}) { // eslint-disable-line no-unused-vars
+  if (typeof __shouldRunTest === 'function' && !__shouldRunTest('runBenchmarkPerf2bQ41Q40Test')) return __FILTERED
+  return runIntegrationModule('../integration/benchmark-perf-2b-q4-1-q4-0.test.js', options)
+}
+
+async function runBenchmarkPerf2bQ41Q80Test (options = {}) { // eslint-disable-line no-unused-vars
+  if (typeof __shouldRunTest === 'function' && !__shouldRunTest('runBenchmarkPerf2bQ41Q80Test')) return __FILTERED
+  return runIntegrationModule('../integration/benchmark-perf-2b-q4-1-q8-0.test.js', options)
+}
+
+async function runBenchmarkPerf2bQ4KMF16Test (options = {}) { // eslint-disable-line no-unused-vars
+  if (typeof __shouldRunTest === 'function' && !__shouldRunTest('runBenchmarkPerf2bQ4KMF16Test')) return __FILTERED
+  return runIntegrationModule('../integration/benchmark-perf-2b-q4-k-m-f16.test.js', options)
+}
+
+async function runBenchmarkPerf2bQ4KMQ40Test (options = {}) { // eslint-disable-line no-unused-vars
+  if (typeof __shouldRunTest === 'function' && !__shouldRunTest('runBenchmarkPerf2bQ4KMQ40Test')) return __FILTERED
+  return runIntegrationModule('../integration/benchmark-perf-2b-q4-k-m-q4-0.test.js', options)
+}
+
+async function runBenchmarkPerf2bQ4KMQ80Test (options = {}) { // eslint-disable-line no-unused-vars
+  if (typeof __shouldRunTest === 'function' && !__shouldRunTest('runBenchmarkPerf2bQ4KMQ80Test')) return __FILTERED
+  return runIntegrationModule('../integration/benchmark-perf-2b-q4-k-m-q8-0.test.js', options)
+}
+
+async function runBenchmarkPerf2bQ6KF16Test (options = {}) { // eslint-disable-line no-unused-vars
+  if (typeof __shouldRunTest === 'function' && !__shouldRunTest('runBenchmarkPerf2bQ6KF16Test')) return __FILTERED
+  return runIntegrationModule('../integration/benchmark-perf-2b-q6-k-f16.test.js', options)
+}
+
+async function runBenchmarkPerf2bQ6KQ40Test (options = {}) { // eslint-disable-line no-unused-vars
+  if (typeof __shouldRunTest === 'function' && !__shouldRunTest('runBenchmarkPerf2bQ6KQ40Test')) return __FILTERED
+  return runIntegrationModule('../integration/benchmark-perf-2b-q6-k-q4-0.test.js', options)
+}
+
+async function runBenchmarkPerf2bQ6KQ80Test (options = {}) { // eslint-disable-line no-unused-vars
+  if (typeof __shouldRunTest === 'function' && !__shouldRunTest('runBenchmarkPerf2bQ6KQ80Test')) return __FILTERED
+  return runIntegrationModule('../integration/benchmark-perf-2b-q6-k-q8-0.test.js', options)
+}
+
+async function runBenchmarkPerf2bQ80F16Test (options = {}) { // eslint-disable-line no-unused-vars
+  if (typeof __shouldRunTest === 'function' && !__shouldRunTest('runBenchmarkPerf2bQ80F16Test')) return __FILTERED
+  return runIntegrationModule('../integration/benchmark-perf-2b-q8-0-f16.test.js', options)
+}
+
+async function runBenchmarkPerf2bQ80Q40Test (options = {}) { // eslint-disable-line no-unused-vars
+  if (typeof __shouldRunTest === 'function' && !__shouldRunTest('runBenchmarkPerf2bQ80Q40Test')) return __FILTERED
+  return runIntegrationModule('../integration/benchmark-perf-2b-q8-0-q4-0.test.js', options)
+}
+
+async function runBenchmarkPerf2bQ80Q80Test (options = {}) { // eslint-disable-line no-unused-vars
+  if (typeof __shouldRunTest === 'function' && !__shouldRunTest('runBenchmarkPerf2bQ80Q80Test')) return __FILTERED
+  return runIntegrationModule('../integration/benchmark-perf-2b-q8-0-q8-0.test.js', options)
+}
+
 async function runBitnetTest (options = {}) { // eslint-disable-line no-unused-vars
   if (typeof __shouldRunTest === 'function' && !__shouldRunTest('runBitnetTest')) return __FILTERED
   return runIntegrationModule('../integration/bitnet.test.js', options)

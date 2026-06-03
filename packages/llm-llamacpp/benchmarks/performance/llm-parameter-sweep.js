@@ -331,7 +331,8 @@ async function main () {
         const caseMetricSamples = {
           runMs: [],
           ttftMs: [],
-          tps: []
+          tps: [],
+          ppTps: []
         }
         let firstPromptTokens = null
         let firstGeneratedTokens = null
@@ -366,6 +367,7 @@ async function main () {
                 unloadMs: null, // Will unload after all prompts
                 ttftMs: round(ttftMs, 3),
                 tps: round(stats.TPS != null ? stats.TPS : null, 3),
+                ppTps: round(stats.ppTPS != null ? stats.ppTPS : null, 3),
                 promptTokens: stats.promptTokens ?? null,
                 generatedTokens: stats.generatedTokens ?? null
               }
@@ -374,6 +376,7 @@ async function main () {
               caseMetricSamples.runMs.push(metrics.runMs)
               if (metrics.ttftMs != null) caseMetricSamples.ttftMs.push(metrics.ttftMs)
               if (metrics.tps != null) caseMetricSamples.tps.push(metrics.tps)
+              if (metrics.ppTps != null) caseMetricSamples.ppTps.push(metrics.ppTps)
               if (firstPromptTokens == null && metrics.promptTokens != null) firstPromptTokens = metrics.promptTokens
               if (firstGeneratedTokens == null && metrics.generatedTokens != null) firstGeneratedTokens = metrics.generatedTokens
               caseRepeatsAttempted += 1
@@ -537,6 +540,8 @@ async function main () {
               ttftMsStd: round(stddev(caseMetricSamples.ttftMs), 3),
               tpsMean: round(average(caseMetricSamples.tps), 3),
               tpsStd: round(stddev(caseMetricSamples.tps), 3),
+              ppTpsMean: round(average(caseMetricSamples.ppTps), 3),
+              ppTpsStd: round(stddev(caseMetricSamples.ppTps), 3),
               promptTokens: firstPromptTokens,
               generatedTokens: firstGeneratedTokens
             }

@@ -45,12 +45,12 @@ function toMarkdown (report) {
   lines.push('')
   for (const model of report.models) {
     lines.push(`## Model: ${model.modelId}`)
-    lines.push('| Quantization | Device | Ctx Size | Batch Size | Ubatch Size | Flash Attn | Threads | Cache K | Cache V | Prompt Case | Status | Load Mean | Load Std | Run Mean | Run Std | TTFT Mean | TTFT Std | TPS Mean | TPS Std | Unload Mean | Unload Std | Prompt Tokens | Generated Tokens | Quality Match | Error |')
-    lines.push('|---|---|---:|---:|---:|---|---:|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|')
+    lines.push('| Quantization | Reasoning Budget | Device | Ctx Size | Batch Size | Ubatch Size | Flash Attn | Threads | Cache K | Cache V | Prompt Case | Status | TTFT Mean | TTFT Std | TPS Mean | TPS Std | ppTPS Mean | ppTPS Std | Load Mean | Load Std | Run Mean | Run Std | Unload Mean | Unload Std | Prompt Tokens | Generated Tokens | Quality Match | Error |')
+    lines.push('|---|---|---|---:|---:|---:|---|---:|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|')
     for (const item of model.cases) {
       const runtimeConfig = item.runtimeConfig || {}
-      const quality = item.qualityMatch != null ? item.qualityMatch.toFixed(3) : ''
       const quantizationCell = item.isBaseline ? 'default' : (item.quantization ?? '')
+      const rbCell = item.isBaseline ? 'default' : (runtimeConfig['reasoning-budget'] != null ? String(runtimeConfig['reasoning-budget']) : '')
       const deviceCell = item.isBaseline ? 'default' : (runtimeConfig.device != null ? String(runtimeConfig.device) : '')
       const ctxSizeCell = item.isBaseline ? 'default' : (runtimeConfig['ctx-size'] != null ? String(runtimeConfig['ctx-size']) : '')
       const batchSizeCell = item.isBaseline ? 'default' : (runtimeConfig['batch-size'] != null ? String(runtimeConfig['batch-size']) : '')
@@ -65,14 +65,15 @@ function toMarkdown (report) {
         ? truncateText(item.error.message, 120)
         : ''
       lines.push(
-        `| ${quantizationCell} | ${deviceCell} | ${ctxSizeCell} | ${batchSizeCell} | ${ubatchSizeCell} | ${flashAttnCell} | ${threadsCell} | ${cacheKCell} | ${cacheVCell} | ${item.promptCase ?? ''} | ${item.status ?? ''}` +
-        ` | ${item.metrics?.loadMsMean ?? ''} | ${item.metrics?.loadMsStd ?? ''}` +
-        ` | ${item.metrics?.runMsMean ?? ''} | ${item.metrics?.runMsStd ?? ''}` +
+        `| ${quantizationCell} | ${rbCell} | ${deviceCell} | ${ctxSizeCell} | ${batchSizeCell} | ${ubatchSizeCell} | ${flashAttnCell} | ${threadsCell} | ${cacheKCell} | ${cacheVCell} | ${item.promptCase ?? ''} | ${item.status ?? ''}` +
         ` | ${item.metrics?.ttftMsMean ?? ''} | ${item.metrics?.ttftMsStd ?? ''}` +
         ` | ${item.metrics?.tpsMean ?? ''} | ${item.metrics?.tpsStd ?? ''}` +
+        ` | ${item.metrics?.ppTpsMean ?? ''} | ${item.metrics?.ppTpsStd ?? ''}` +
+        ` | ${item.metrics?.loadMsMean ?? ''} | ${item.metrics?.loadMsStd ?? ''}` +
+        ` | ${item.metrics?.runMsMean ?? ''} | ${item.metrics?.runMsStd ?? ''}` +
         ` | ${item.metrics?.unloadMsMean ?? ''} | ${item.metrics?.unloadMsStd ?? ''}` +
         ` | ${item.metrics?.promptTokens ?? ''} | ${item.metrics?.generatedTokens ?? ''}` +
-        ` | ${quality} | ${errorCell} |`
+        ` | ${item.qualityMatch != null ? item.qualityMatch.toFixed(3) : ''} | ${errorCell} |`
       )
     }
     lines.push('')

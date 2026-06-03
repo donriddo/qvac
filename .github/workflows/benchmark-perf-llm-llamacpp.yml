@@ -6,7 +6,8 @@ name: Benchmark Performance — LLM Parameter Sweep
 #
 # To change what runs, edit:
 #   desktop: models.manifest.json (models) + llm-parameter-sweep.config.js (sweep dims)
-#   mobile:  mobile.config.json
+#   mobile:  test/integration/_benchmark-perf.js (shared runner) + the
+#            benchmark-perf-*.test.js shards (one per model x KV-cache type)
 
 on:
   workflow_dispatch:
@@ -123,6 +124,12 @@ jobs:
       - name: Setup LLVM
         uses: tetherto/qvac/.github/actions/setup-llvm@98a6a6b6e8f3866dfdd75052a4071269ce85dc41
 
+      - name: Setup Vulkan SDK
+        uses: tetherto/qvac/.github/actions/setup-vulkan-sdk@0bbdca93da303a0b1634ba14a89cec085621078d
+        with:
+          platform: linux
+          arch: x64
+
       - name: Build addon from source
         working-directory: packages/llm-llamacpp
         run: |
@@ -157,21 +164,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libxi-dev libxtst-dev libxrandr-dev xz-utils
 
-          echo "Installing Vulkan SDK (latest)..."
-          wget -q -O /tmp/vulkansdk.tar.xz https://sdk.lunarg.com/sdk/download/latest/linux/vulkan_sdk.tar.xz
-          mkdir -p "$HOME/vulkan" && cd "$HOME/vulkan"
-          tar xf /tmp/vulkansdk.tar.xz --strip-components=1
-          export VULKAN_SDK="$HOME/vulkan/x86_64"
-          export PATH="$VULKAN_SDK/bin:$PATH"
-          export LD_LIBRARY_PATH="$VULKAN_SDK/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
-          export VK_ADD_LAYER_PATH="$VULKAN_SDK/share/vulkan/explicit_layer.d"
-          export PKG_CONFIG_PATH="$VULKAN_SDK/share/pkgconfig:$VULKAN_SDK/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
-          echo "VULKAN_SDK=$VULKAN_SDK" >> $GITHUB_ENV
-          echo "PATH=$PATH" >> $GITHUB_ENV
-          echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH" >> $GITHUB_ENV
-          echo "VK_ADD_LAYER_PATH=$VK_ADD_LAYER_PATH" >> $GITHUB_ENV
-          echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH" >> $GITHUB_ENV
-
           cd "$GITHUB_WORKSPACE/packages/llm-llamacpp"
           npm install
 
@@ -199,24 +191,8 @@ jobs:
         working-directory: packages/llm-llamacpp/benchmarks/performance
         run: bare ./llm-parameter-sweep.js --addon-source local
 
-      - name: Add job summary
-        if: always()
-        working-directory: packages/llm-llamacpp/benchmarks/performance
-        shell: bash
-        run: |
-          LATEST_MD=$(find results/parameter-sweep -name "*.md" -type f 2>/dev/null | sort | tail -1)
-          {
-            echo "## LLM Parameter Sweep — Desktop"
-            echo ""
-            echo "ref: \`${{ needs.context.outputs.ref }}\`"
-            echo ""
-            if [ -n "${LATEST_MD:-}" ]; then
-              cat "$LATEST_MD"
-            else
-              echo "No results file found."
-            fi
-          } >> "$GITHUB_STEP_SUMMARY"
-
+      # The run summary is rendered by the summarize job (unified desktop +
+      # mobile view); this job just uploads the raw sweep results.
       - name: Upload results
         if: always()
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # 7.0.0
@@ -242,7 +218,86 @@ jobs:
     with:
       repository: ${{ github.repository }}
       ref: ${{ needs.context.outputs.ref }}
-      # Schedule only the benchmark group. runBenchmarkPerfTest is deliberately
+      # One group per (model x KV-cache type) so each Device Farm session
+      # finishes inside the fixed 20-minute iOS per-test ceiling. These wrappers are deliberately
       # absent from the addon's test-groups.json, so this override is the only
-      # path that runs it — normal mobile integration runs never trigger it.
-      test_groups: '[{"name":"benchmarkPerf","grep":"runBenchmarkPerfTest"}]'
+      # path that runs them — normal mobile integration runs never trigger the
+      # benchmark.
+      test_groups: '[{"name":"BenchmarkPerf08bQ40F16","grep":"runBenchmarkPerf08bQ40F16Test"},{"name":"BenchmarkPerf08bQ40Q40","grep":"runBenchmarkPerf08bQ40Q40Test"},{"name":"BenchmarkPerf08bQ40Q80","grep":"runBenchmarkPerf08bQ40Q80Test"},{"name":"BenchmarkPerf08bQ41F16","grep":"runBenchmarkPerf08bQ41F16Test"},{"name":"BenchmarkPerf08bQ41Q40","grep":"runBenchmarkPerf08bQ41Q40Test"},{"name":"BenchmarkPerf08bQ41Q80","grep":"runBenchmarkPerf08bQ41Q80Test"},{"name":"BenchmarkPerf08bQ4KMF16","grep":"runBenchmarkPerf08bQ4KMF16Test"},{"name":"BenchmarkPerf08bQ4KMQ40","grep":"runBenchmarkPerf08bQ4KMQ40Test"},{"name":"BenchmarkPerf08bQ4KMQ80","grep":"runBenchmarkPerf08bQ4KMQ80Test"},{"name":"BenchmarkPerf08bQ6KF16","grep":"runBenchmarkPerf08bQ6KF16Test"},{"name":"BenchmarkPerf08bQ6KQ40","grep":"runBenchmarkPerf08bQ6KQ40Test"},{"name":"BenchmarkPerf08bQ6KQ80","grep":"runBenchmarkPerf08bQ6KQ80Test"},{"name":"BenchmarkPerf08bQ80F16","grep":"runBenchmarkPerf08bQ80F16Test"},{"name":"BenchmarkPerf08bQ80Q40","grep":"runBenchmarkPerf08bQ80Q40Test"},{"name":"BenchmarkPerf08bQ80Q80","grep":"runBenchmarkPerf08bQ80Q80Test"},{"name":"BenchmarkPerf2bQ40F16","grep":"runBenchmarkPerf2bQ40F16Test"},{"name":"BenchmarkPerf2bQ40Q40","grep":"runBenchmarkPerf2bQ40Q40Test"},{"name":"BenchmarkPerf2bQ40Q80","grep":"runBenchmarkPerf2bQ40Q80Test"},{"name":"BenchmarkPerf2bQ41F16","grep":"runBenchmarkPerf2bQ41F16Test"},{"name":"BenchmarkPerf2bQ41Q40","grep":"runBenchmarkPerf2bQ41Q40Test"},{"name":"BenchmarkPerf2bQ41Q80","grep":"runBenchmarkPerf2bQ41Q80Test"},{"name":"BenchmarkPerf2bQ4KMF16","grep":"runBenchmarkPerf2bQ4KMF16Test"},{"name":"BenchmarkPerf2bQ4KMQ40","grep":"runBenchmarkPerf2bQ4KMQ40Test"},{"name":"BenchmarkPerf2bQ4KMQ80","grep":"runBenchmarkPerf2bQ4KMQ80Test"},{"name":"BenchmarkPerf2bQ6KF16","grep":"runBenchmarkPerf2bQ6KF16Test"},{"name":"BenchmarkPerf2bQ6KQ40","grep":"runBenchmarkPerf2bQ6KQ40Test"},{"name":"BenchmarkPerf2bQ6KQ80","grep":"runBenchmarkPerf2bQ6KQ80Test"},{"name":"BenchmarkPerf2bQ80F16","grep":"runBenchmarkPerf2bQ80F16Test"},{"name":"BenchmarkPerf2bQ80Q40","grep":"runBenchmarkPerf2bQ80Q40Test"},{"name":"BenchmarkPerf2bQ80Q80","grep":"runBenchmarkPerf2bQ80Q80Test"}]'
+
+  # Aggregates the mobile per-model perf-report artifacts (one per shard,
+  # both platforms) into a single consolidated table rendered into the run
+  # summary, so the full mobile matrix is visible from the run page without
+  # opening artifacts. Desktop writes its own table inline in its job.
+  summarize:
+    needs:
+      - context
+      - label-gate
+      - desktop-benchmark
+      - mobile-benchmark
+    if: needs.label-gate.outputs.authorised == 'true' && always() && needs.context.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout aggregator
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
+        with:
+          ref: ${{ needs.context.outputs.ref }}
+          sparse-checkout: |
+            packages/llm-llamacpp/benchmarks/performance/render-report.js
+
+      - name: Setup Node.js
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # 6.3.0
+        with:
+          node-version: lts/*
+
+      # Both desktop (llm-param-sweep-desktop-*) and mobile
+      # (perf-report-llamacpp-llm-*) artifacts feed the same renderer, so the
+      # run summary shows desktop and every device in one identical format.
+      - name: Download desktop sweep artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # 8.0.1
+        with:
+          pattern: llm-param-sweep-desktop-${{ github.run_number }}
+          path: combined-reports
+        continue-on-error: true
+
+      - name: Download mobile perf-report artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # 8.0.1
+        with:
+          pattern: perf-report-llamacpp-llm-*-${{ github.run_number }}
+          path: combined-reports
+        continue-on-error: true
+
+      - name: Render unified benchmark report
+        run: |
+          if ! find combined-reports -name "*.json" -type f 2>/dev/null | grep -q .; then
+            echo "No benchmark reports found."
+            exit 0
+          fi
+          mkdir -p benchmark-artifacts
+          node packages/llm-llamacpp/benchmarks/performance/render-report.js \
+            --dir combined-reports \
+            --output benchmark-artifacts/qwen35-benchmark-findings.md
+
+      - name: Add to run summary
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          MD_FILE="benchmark-artifacts/qwen35-benchmark-findings.md"
+          if [ -f "$MD_FILE" ]; then
+            cat "$MD_FILE" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No consolidated benchmark report available." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload consolidated report
+        if: always()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # 7.0.0
+        with:
+          name: qwen35-benchmark-findings-${{ github.run_number }}
+          path: benchmark-artifacts/
+          retention-days: 90
+          if-no-files-found: ignore

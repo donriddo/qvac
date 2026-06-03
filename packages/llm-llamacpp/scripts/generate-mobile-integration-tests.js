@@ -66,9 +66,15 @@ function validateGroups (functionNames) {
   }
   const groups = JSON.parse(fs.readFileSync(groupsFile, 'utf-8'))
   const nameSet = new Set(functionNames)
+  // Benchmark shards (benchmark-perf-*.test.js -> runBenchmarkPerf*) are
+  // scheduled only by the Benchmark Performance workflow via an explicit
+  // test_groups override, and are deliberately absent from test-groups.json
+  // so normal mobile integration runs never trigger the heavy benchmark.
+  // Exclude them from the group-coverage requirement.
+  const isOverrideOnly = (n) => n.startsWith('runBenchmarkPerf')
   for (const [platform, splits] of Object.entries(groups)) {
     const covered = new Set(Object.values(splits).flat())
-    const missing = functionNames.filter(n => !covered.has(n))
+    const missing = functionNames.filter(n => !covered.has(n) && !isOverrideOnly(n))
     const extra = [...covered].filter(n => !nameSet.has(n))
     if (missing.length) {
       throw new Error(
