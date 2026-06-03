@@ -204,11 +204,16 @@ jobs:
 
   # Mobile is sharded one group per (model x KV-cache type) = 30 groups so each
   # Device Farm session finishes inside the fixed 20-minute iOS per-test ceiling.
-  # 30 groups exceed the mobile workflow's default 120-minute job timeout, so we
-  # raise it to 240 via job_timeout_minutes (observed mobile wall ~140-160 min;
-  # default stays 120 for every other caller). These wrappers are deliberately
-  # absent from the addon's test-groups.json, so this override is the only path
-  # that runs them — normal mobile integration runs never trigger the benchmark.
+  # All 30 in one reused-workflow call do NOT fit: Android serializes the runs
+  # against its device pool (>240 min) and the macOS runner fills its disk
+  # collecting 30 runs' logs. So we split the groups into three batches by
+  # KV-cache type (10 each — the proven in-budget load) and run them
+  # sequentially (max-parallel: 1) to avoid Device Farm pool contention. Each
+  # batch raises the job timeout to 180 for headroom (proven 10-shard wall ~119
+  # min) and gets a distinct artifact_suffix so its perf-report doesn't collide;
+  # summarize aggregates all three. These wrappers are deliberately absent from
+  # the addon's test-groups.json, so this override is the only path that runs
+  # them — normal mobile integration runs never trigger the benchmark.
   mobile-benchmark:
     needs:
       - context
@@ -220,13 +225,25 @@ jobs:
       packages: read
       pull-requests: write
       id-token: write
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        include:
+          - cache: f16
+            groups: '[{"name":"BenchmarkPerf08bQ40F16","grep":"runBenchmarkPerf08bQ40F16Test"},{"name":"BenchmarkPerf08bQ41F16","grep":"runBenchmarkPerf08bQ41F16Test"},{"name":"BenchmarkPerf08bQ4KMF16","grep":"runBenchmarkPerf08bQ4KMF16Test"},{"name":"BenchmarkPerf08bQ6KF16","grep":"runBenchmarkPerf08bQ6KF16Test"},{"name":"BenchmarkPerf08bQ80F16","grep":"runBenchmarkPerf08bQ80F16Test"},{"name":"BenchmarkPerf2bQ40F16","grep":"runBenchmarkPerf2bQ40F16Test"},{"name":"BenchmarkPerf2bQ41F16","grep":"runBenchmarkPerf2bQ41F16Test"},{"name":"BenchmarkPerf2bQ4KMF16","grep":"runBenchmarkPerf2bQ4KMF16Test"},{"name":"BenchmarkPerf2bQ6KF16","grep":"runBenchmarkPerf2bQ6KF16Test"},{"name":"BenchmarkPerf2bQ80F16","grep":"runBenchmarkPerf2bQ80F16Test"}]'
+          - cache: q8_0
+            groups: '[{"name":"BenchmarkPerf08bQ40Q80","grep":"runBenchmarkPerf08bQ40Q80Test"},{"name":"BenchmarkPerf08bQ41Q80","grep":"runBenchmarkPerf08bQ41Q80Test"},{"name":"BenchmarkPerf08bQ4KMQ80","grep":"runBenchmarkPerf08bQ4KMQ80Test"},{"name":"BenchmarkPerf08bQ6KQ80","grep":"runBenchmarkPerf08bQ6KQ80Test"},{"name":"BenchmarkPerf08bQ80Q80","grep":"runBenchmarkPerf08bQ80Q80Test"},{"name":"BenchmarkPerf2bQ40Q80","grep":"runBenchmarkPerf2bQ40Q80Test"},{"name":"BenchmarkPerf2bQ41Q80","grep":"runBenchmarkPerf2bQ41Q80Test"},{"name":"BenchmarkPerf2bQ4KMQ80","grep":"runBenchmarkPerf2bQ4KMQ80Test"},{"name":"BenchmarkPerf2bQ6KQ80","grep":"runBenchmarkPerf2bQ6KQ80Test"},{"name":"BenchmarkPerf2bQ80Q80","grep":"runBenchmarkPerf2bQ80Q80Test"}]'
+          - cache: q4_0
+            groups: '[{"name":"BenchmarkPerf08bQ40Q40","grep":"runBenchmarkPerf08bQ40Q40Test"},{"name":"BenchmarkPerf08bQ41Q40","grep":"runBenchmarkPerf08bQ41Q40Test"},{"name":"BenchmarkPerf08bQ4KMQ40","grep":"runBenchmarkPerf08bQ4KMQ40Test"},{"name":"BenchmarkPerf08bQ6KQ40","grep":"runBenchmarkPerf08bQ6KQ40Test"},{"name":"BenchmarkPerf08bQ80Q40","grep":"runBenchmarkPerf08bQ80Q40Test"},{"name":"BenchmarkPerf2bQ40Q40","grep":"runBenchmarkPerf2bQ40Q40Test"},{"name":"BenchmarkPerf2bQ41Q40","grep":"runBenchmarkPerf2bQ41Q40Test"},{"name":"BenchmarkPerf2bQ4KMQ40","grep":"runBenchmarkPerf2bQ4KMQ40Test"},{"name":"BenchmarkPerf2bQ6KQ40","grep":"runBenchmarkPerf2bQ6KQ40Test"},{"name":"BenchmarkPerf2bQ80Q40","grep":"runBenchmarkPerf2bQ80Q40Test"}]'
     uses: ./.github/workflows/integration-mobile-test-llm-llamacpp.yml
     secrets: inherit
     with:
       repository: ${{ github.repository }}
       ref: ${{ needs.context.outputs.ref }}
-      job_timeout_minutes: 240
-      test_groups: '[{"name":"BenchmarkPerf08bQ40F16","grep":"runBenchmarkPerf08bQ40F16Test"},{"name":"BenchmarkPerf08bQ40Q40","grep":"runBenchmarkPerf08bQ40Q40Test"},{"name":"BenchmarkPerf08bQ40Q80","grep":"runBenchmarkPerf08bQ40Q80Test"},{"name":"BenchmarkPerf08bQ41F16","grep":"runBenchmarkPerf08bQ41F16Test"},{"name":"BenchmarkPerf08bQ41Q40","grep":"runBenchmarkPerf08bQ41Q40Test"},{"name":"BenchmarkPerf08bQ41Q80","grep":"runBenchmarkPerf08bQ41Q80Test"},{"name":"BenchmarkPerf08bQ4KMF16","grep":"runBenchmarkPerf08bQ4KMF16Test"},{"name":"BenchmarkPerf08bQ4KMQ40","grep":"runBenchmarkPerf08bQ4KMQ40Test"},{"name":"BenchmarkPerf08bQ4KMQ80","grep":"runBenchmarkPerf08bQ4KMQ80Test"},{"name":"BenchmarkPerf08bQ6KF16","grep":"runBenchmarkPerf08bQ6KF16Test"},{"name":"BenchmarkPerf08bQ6KQ40","grep":"runBenchmarkPerf08bQ6KQ40Test"},{"name":"BenchmarkPerf08bQ6KQ80","grep":"runBenchmarkPerf08bQ6KQ80Test"},{"name":"BenchmarkPerf08bQ80F16","grep":"runBenchmarkPerf08bQ80F16Test"},{"name":"BenchmarkPerf08bQ80Q40","grep":"runBenchmarkPerf08bQ80Q40Test"},{"name":"BenchmarkPerf08bQ80Q80","grep":"runBenchmarkPerf08bQ80Q80Test"},{"name":"BenchmarkPerf2bQ40F16","grep":"runBenchmarkPerf2bQ40F16Test"},{"name":"BenchmarkPerf2bQ40Q40","grep":"runBenchmarkPerf2bQ40Q40Test"},{"name":"BenchmarkPerf2bQ40Q80","grep":"runBenchmarkPerf2bQ40Q80Test"},{"name":"BenchmarkPerf2bQ41F16","grep":"runBenchmarkPerf2bQ41F16Test"},{"name":"BenchmarkPerf2bQ41Q40","grep":"runBenchmarkPerf2bQ41Q40Test"},{"name":"BenchmarkPerf2bQ41Q80","grep":"runBenchmarkPerf2bQ41Q80Test"},{"name":"BenchmarkPerf2bQ4KMF16","grep":"runBenchmarkPerf2bQ4KMF16Test"},{"name":"BenchmarkPerf2bQ4KMQ40","grep":"runBenchmarkPerf2bQ4KMQ40Test"},{"name":"BenchmarkPerf2bQ4KMQ80","grep":"runBenchmarkPerf2bQ4KMQ80Test"},{"name":"BenchmarkPerf2bQ6KF16","grep":"runBenchmarkPerf2bQ6KF16Test"},{"name":"BenchmarkPerf2bQ6KQ40","grep":"runBenchmarkPerf2bQ6KQ40Test"},{"name":"BenchmarkPerf2bQ6KQ80","grep":"runBenchmarkPerf2bQ6KQ80Test"},{"name":"BenchmarkPerf2bQ80F16","grep":"runBenchmarkPerf2bQ80F16Test"},{"name":"BenchmarkPerf2bQ80Q40","grep":"runBenchmarkPerf2bQ80Q40Test"},{"name":"BenchmarkPerf2bQ80Q80","grep":"runBenchmarkPerf2bQ80Q80Test"}]'
+      job_timeout_minutes: 180
+      test_groups: ${{ matrix.groups }}
+      artifact_suffix: ${{ matrix.cache }}-
 
   # Aggregates the mobile per-model perf-report artifacts (one per shard,
   # both platforms) into a single consolidated table rendered into the run

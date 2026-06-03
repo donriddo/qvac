@@ -42,10 +42,15 @@ on:
         required: false
         default: ""
       job_timeout_minutes:
-        description: "Override the build-and-test job timeout (minutes). Default 120. Raised by Benchmark Performance (LLM) where the full sharded matrix needs longer."
+        description: "Override the build-and-test job timeout (minutes). Default 120. Raised by Benchmark Performance (LLM) where the sharded matrix needs more headroom."
         type: number
         required: false
         default: 120
+      artifact_suffix:
+        description: "Optional prefix inserted into the perf-report artifact name so multiple invocations in one run (e.g. Benchmark batches) don't collide. Default empty keeps the existing name."
+        type: string
+        required: false
+        default: ""
   workflow_dispatch:
     inputs:
       ref:
@@ -222,7 +227,7 @@ jobs:
           platform: ${{ matrix.platform }}
           merge: 'true'
           unzip-customer-artifacts: 'true'
-          artifact-name: perf-report-llamacpp-llm-${{ matrix.platform }}-${{ github.run_number }}
+          artifact-name: perf-report-llamacpp-llm-${{ inputs.artifact_suffix }}${{ matrix.platform }}-${{ github.run_number }}
 
       - name: Comment results on PR
         if: always() && !cancelled()
