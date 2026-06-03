@@ -41,11 +41,11 @@ on:
         type: string
         required: false
         default: ""
-      artifact_suffix:
-        description: "Optional prefix inserted into the perf-report artifact name so multiple invocations in one run don't collide. Default empty keeps the existing name."
-        type: string
+      job_timeout_minutes:
+        description: "Override the build-and-test job timeout (minutes). Default 120. Raised by Benchmark Performance (LLM) where the full sharded matrix needs longer."
+        type: number
         required: false
-        default: ""
+        default: 120
   workflow_dispatch:
     inputs:
       ref:
@@ -79,7 +79,7 @@ jobs:
     name: Build ${{ matrix.platform }} and Run E2E Tests
     runs-on: ${{ matrix.runner }}
     environment: release
-    timeout-minutes: 120
+    timeout-minutes: ${{ inputs.job_timeout_minutes || 120 }}
     continue-on-error: true
     permissions:
       contents: read
@@ -222,7 +222,7 @@ jobs:
           platform: ${{ matrix.platform }}
           merge: 'true'
           unzip-customer-artifacts: 'true'
-          artifact-name: perf-report-llamacpp-llm-${{ inputs.artifact_suffix }}${{ matrix.platform }}-${{ github.run_number }}
+          artifact-name: perf-report-llamacpp-llm-${{ matrix.platform }}-${{ github.run_number }}
 
       - name: Comment results on PR
         if: always() && !cancelled()
