@@ -26,6 +26,19 @@ on:
         required: false
         default: true
         type: boolean
+      summarize_only:
+        description: "Re-render report from a previous run's artifacts (skips benchmarks)"
+        required: false
+        default: false
+        type: boolean
+      artifact_run_number:
+        description: "Run number to pull artifacts from when summarize_only=true (e.g. 9)"
+        required: false
+        type: string
+      compare_run_number:
+        description: "Run number of a baseline run to diff against (shows Δ TPS / Δ TTFT columns)"
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -91,7 +104,7 @@ jobs:
     needs:
       - context
       - label-gate
-    if: needs.label-gate.outputs.authorised == 'true' && inputs.run_desktop
+    if: needs.label-gate.outputs.authorised == 'true' && inputs.run_desktop && !inputs.summarize_only
     name: Desktop Parameter Sweep
     runs-on: ai-run-linux-gpu
     timeout-minutes: 360
@@ -178,6 +191,13 @@ jobs:
 
           echo "=== Build complete ==="
 
+      - name: Detect GPU
+        id: gpu
+        shell: bash
+        run: |
+          gpu_name=$(nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null | head -1 | tr -d '\r' || echo "GPU")
+          echo "name=$gpu_name" >> "$GITHUB_OUTPUT"
+
       - name: Install benchmark dependencies
         working-directory: packages/llm-llamacpp/benchmarks/performance
         run: npm install
@@ -201,6 +221,8 @@ jobs:
           path: packages/llm-llamacpp/benchmarks/performance/results/parameter-sweep/
           retention-days: 90
           if-no-files-found: ignore
+        env:
+          DESKTOP_GPU: ${{ steps.gpu.outputs.name }}
 
   # Mobile is sharded one group per (model x KV-cache type) = 30 groups so each
   # Device Farm session finishes inside the fixed 20-minute iOS per-test ceiling.
@@ -219,7 +241,7 @@ jobs:
       - context
       - prebuild
       - label-gate
-    if: needs.label-gate.outputs.authorised == 'true' && inputs.run_mobile
+    if: needs.label-gate.outputs.authorised == 'true' && inputs.run_mobile && !inputs.summarize_only
     permissions:
       contents: read
       packages: read
@@ -245,10 +267,10 @@ jobs:
       test_groups: ${{ matrix.groups }}
       artifact_suffix: ${{ matrix.cache }}-
 
-  # Aggregates the mobile per-model perf-report artifacts (one per shard,
-  # both platforms) into a single consolidated table rendered into the run
-  # summary, so the full mobile matrix is visible from the run page without
-  # opening artifacts. Desktop writes its own table inline in its job.
+  # Aggregates desktop + mobile artifacts into one unified markdown report.
+  # Runs after benchmarks finish, or standalone when summarize_only=true
+  # (pass artifact_run_number to pull results from a previous run).
+  # Pass compare_run_number to show Δ TPS / Δ TTFT regression columns.
   summarize:
     needs:
       - context
@@ -260,6 +282,9 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: read
+    env:
+      # Use artifact_run_number when summarize_only, otherwise current run
+      ARTIFACT_RUN: ${{ inputs.artifact_run_number || github.run_number }}
     steps:
       - name: Checkout aggregator
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
@@ -273,33 +298,64 @@ jobs:
         with:
           node-version: lts/*
 
-      # Both desktop (llm-param-sweep-desktop-*) and mobile
-      # (perf-report-llamacpp-llm-*) artifacts feed the same renderer, so the
-      # run summary shows desktop and every device in one identical format.
+      - name: Get addon version
+        id: addon_ver
+        shell: bash
+        run: |
+          ver=$(node -e "process.stdout.write(require('./packages/llm-llamacpp/package.json').version)" 2>/dev/null || true)
+          echo "version=${ver:+@qvac/llm-llamacpp@$ver}" >> "$GITHUB_OUTPUT"
+
       - name: Download desktop sweep artifact
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # 8.0.1
         with:
-          pattern: llm-param-sweep-desktop-${{ github.run_number }}
+          pattern: llm-param-sweep-desktop-${{ env.ARTIFACT_RUN }}
           path: combined-reports
         continue-on-error: true
 
       - name: Download mobile perf-report artifacts
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # 8.0.1
         with:
-          pattern: perf-report-llamacpp-llm-*-${{ github.run_number }}
+          pattern: perf-report-llamacpp-llm-*-${{ env.ARTIFACT_RUN }}
           path: combined-reports
         continue-on-error: true
 
+      - name: Download baseline artifacts for comparison
+        if: inputs.compare_run_number != ''
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # 8.0.1
+        with:
+          pattern: llm-param-sweep-desktop-${{ inputs.compare_run_number }}
+          path: baseline-reports
+        continue-on-error: true
+
+      - name: Download baseline mobile artifacts for comparison
+        if: inputs.compare_run_number != ''
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # 8.0.1
+        with:
+          pattern: perf-report-llamacpp-llm-*-${{ inputs.compare_run_number }}
+          path: baseline-reports
+        continue-on-error: true
+
       - name: Render unified benchmark report
+        shell: bash
         run: |
           if ! find combined-reports -name "*.json" -type f 2>/dev/null | grep -q .; then
             echo "No benchmark reports found."
             exit 0
           fi
           mkdir -p benchmark-artifacts
+
+          EXTRA_ARGS=""
+          if [ -n "${{ steps.addon_ver.outputs.version }}" ]; then
+            EXTRA_ARGS="$EXTRA_ARGS --addon-version ${{ steps.addon_ver.outputs.version }}"
+          fi
+          if [ -d baseline-reports ] && find baseline-reports -name "*.json" -type f 2>/dev/null | grep -q .; then
+            EXTRA_ARGS="$EXTRA_ARGS --compare-dir baseline-reports"
+          fi
+
           node packages/llm-llamacpp/benchmarks/performance/render-report.js \
             --dir combined-reports \
-            --output benchmark-artifacts/qwen35-benchmark-findings.md
+            --output benchmark-artifacts/qwen35-benchmark-findings.md \
+            $EXTRA_ARGS
 
       - name: Add to run summary
         if: always()
