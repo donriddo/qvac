@@ -57,6 +57,70 @@ function modelSpec (size, quant) {
   }
 }
 
+function modelSpec17b (quant) {
+  return {
+    id: `qwen3-1.7b-${quant}`,
+    name: `Qwen3-1.7B-${quant}.gguf`,
+    url: `https://huggingface.co/unsloth/Qwen3-1.7B-GGUF/resolve/main/Qwen3-1.7B-${quant}.gguf`
+  }
+}
+
+function benchmarkModel17b (quant, cacheType) {
+  const spec = modelSpec17b(quant)
+  const id = `${spec.id}-${cacheType}`
+  safeTest(`Mobile perf benchmark: ${id} (TTFT / TPS / ppTPS)`, {
+    timeout: 1_800_000,
+    skip: !isMobile
+  }, async t => {
+    const specLogger = attachSpecLogger({ forwardToConsole: true })
+    try {
+      const [modelName, dirPath] = await ensureModel({ modelName: spec.name, downloadUrl: spec.url })
+      const modelPath = path.join(dirPath, modelName)
+      for (const device of DEVICES) {
+        const labelFor = rb => `[${spec.id}] [${device}] [rb=${rb}] [kv=${cacheType}]`
+        const modelFor = rb => `${id}-${device}-rb${rb}`
+        for (const rb of REASONING_BUDGETS) recordCrashedPlaceholder(labelFor(rb), device, modelFor(rb))
+        let addon = null
+        try {
+          addon = new LlmLlamacpp({
+            files: { model: [modelPath] },
+            config: { ...RUNTIME, device, 'cache-type-k': cacheType, 'cache-type-v': cacheType },
+            logger: { error: () => {}, warn: () => {}, info: () => {}, debug: () => {} },
+            opts: { stats: true }
+          })
+          await addon.load()
+        } catch (loadErr) {
+          t.comment(`[${id}] [${device}] load failed (reported as Crashed): ${loadErr && loadErr.message ? loadErr.message : loadErr}`)
+          await (addon && addon.unload && addon.unload().catch(() => {}))
+          continue
+        }
+        try {
+          for (const rb of REASONING_BUDGETS) {
+            const label = labelFor(rb)
+            try {
+              for (let w = 1; w <= PERF_WARMUP_RUNS; w++) {
+                const { endTime, startTime } = await runInference(addon, PROMPT, rb)
+                t.comment(`${label} warmup ${w}/${PERF_WARMUP_RUNS} (${endTime - startTime}ms) - perf NOT recorded`)
+              }
+              for (let run = 1; run <= PERF_RUNS; run++) {
+                const { output, startTime, endTime, stats } = await runInference(addon, PROMPT, rb)
+                t.comment(recordPerformance(label, endTime - startTime, { stats, deviceId: device, scenario: 'benchmark-perf', model: modelFor(rb) }))
+                t.ok(output.length > 0, `${label} run ${run}/${PERF_RUNS} produced output`)
+              }
+            } catch (runErr) {
+              t.comment(`${label} run failed (reported as Crashed): ${runErr && runErr.message ? runErr.message : runErr}`)
+            }
+          }
+        } finally {
+          await addon.unload().catch(() => {})
+        }
+      }
+    } finally {
+      specLogger.release()
+    }
+  })
+}
+
 async function runInference (addon, prompt, reasoningBudget) {
   const startTime = Date.now()
   const response = await addon.run(prompt, {
@@ -155,4 +219,4 @@ function benchmarkModel (size, quant, cacheType) {
   })
 }
 
-module.exports = { benchmarkModel, modelSpec }
+module.exports = { benchmarkModel, modelSpec, benchmarkModel17b, modelSpec17b }
