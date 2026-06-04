@@ -160,17 +160,15 @@ function render (rows, desktopDevice) {
 
   lines.push('## Best configuration per device')
   lines.push('')
-  lines.push('| Device | Lowest TTFT (ms) | Highest TPS | Highest ppTPS |')
-  lines.push('| --- | --- | --- | --- |')
+  lines.push('| Device | Highest TPS | Highest ppTPS |')
+  lines.push('| --- | --- | --- |')
   for (const device of devices) {
     const ok = byDevice.get(device).filter(r => !r.crashed)
-    const bestTtft = ok.filter(r => r.ttft !== null).sort((a, b) => a.ttft - b.ttft)[0]
     const bestTps = ok.filter(r => r.tps !== null).sort((a, b) => b.tps - a.tps)[0]
     const bestPp = ok.filter(r => r.ppTps !== null).sort((a, b) => b.ppTps - a.ppTps)[0]
-    const ttftCell = bestTtft ? `${bestTtft.config} — ${fmt(bestTtft.ttft)}` : '-'
     const tpsCell = bestTps ? `${bestTps.config} — ${fmt(bestTps.tps)}` : '-'
     const ppCell = bestPp ? `${bestPp.config} — ${fmt(bestPp.ppTps)}` : '-'
-    lines.push(`| ${device} | ${ttftCell} | ${tpsCell} | ${ppCell} |`)
+    lines.push(`| ${device} | ${tpsCell} | ${ppCell} |`)
   }
   lines.push('')
   return lines.join('\n') + '\n'
