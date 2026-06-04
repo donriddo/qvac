@@ -36,6 +36,24 @@ test("embedStatsSchema: contextSize is optional", (t) => {
   if (result.success) t.is(result.data.contextSize, undefined);
 });
 
+test("embedResponseSchema: round-trips contextSize through stats", (t) => {
+  const result = embedResponseSchema.safeParse({
+    type: "embed",
+    success: true,
+    embedding: [0.1, 0.2, 0.3],
+    stats: {
+      totalTime: 5,
+      tokensPerSecond: 200,
+      totalTokens: 1000,
+      contextSize: 512,
+    },
+  });
+  t.is(result.success, true);
+  if (result.success) {
+    t.is(result.data.stats?.contextSize, 512);
+  }
+});
+
 test("embedResponseSchema: round-trips backendDevice through stats", (t) => {
   const result = embedResponseSchema.safeParse({
     type: "embed",
