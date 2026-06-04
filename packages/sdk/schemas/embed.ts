@@ -39,6 +39,7 @@ export const embedStatsSchema = z.object({
     .enum(["cpu", "gpu"])
     .optional()
     .describe("Compute backend used for inference"),
+  contextSize: z.number().optional().describe("Active runtime context size (tokens)"),
 });
 
 export const embedResponseSchema = z.object({
