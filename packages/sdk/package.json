@@ -199,7 +199,7 @@
     "@qvac/classification-ggml": "^0.2.0",
     "@qvac/decoder-audio": "^0.3.7",
     "@qvac/diffusion-cpp": "^0.10.0",
-    "@qvac/embed-llamacpp": "^0.18.2",
+    "@qvac/embed-llamacpp": "^0.19.0",
     "@qvac/error": "^0.1.1",
     "@qvac/langdetect-text": "^0.1.2",
     "@qvac/llm-llamacpp": "^0.23.2",
