@@ -280,9 +280,11 @@ jobs:
       - name: Stamp desktop device
         if: always()
         shell: bash
+        env:
+          GPU_NAME: ${{ steps.gpu.outputs.name }}
         run: |
           mkdir -p packages/llm-llamacpp/benchmarks/performance/results/parameter-sweep
-          printf '{"desktopDevice":"Desktop (%s)"}\n' "${{ steps.gpu.outputs.name }}" \
+          printf '{"desktopDevice":"Desktop (%s)"}\n' "$GPU_NAME" \
             > packages/llm-llamacpp/benchmarks/performance/results/parameter-sweep/desktop-meta.json
           cat packages/llm-llamacpp/benchmarks/performance/results/parameter-sweep/desktop-meta.json
 
