@@ -113,10 +113,12 @@ jobs:
         working-directory: packages/llm-llamacpp
         run: node scripts/generate-benchmark-shards.js --check
 
-  # Records the exact addon version this run benchmarks into a run-meta.json
-  # artifact, read from the checked-out package.json. The summarize/comparison
-  # step reads the version from this artifact, so a stamped run can never be
-  # mislabelled — including its own baseline in a future comparison.
+  # Records, into a run-meta.json artifact, the exact addon version this run
+  # benchmarks (from the checked-out package.json) AND the mobile shard list it
+  # targets (from the checked-out matrix). The summarize/comparison step reads
+  # both from this artifact, so a stamped run can never be mislabelled and its
+  # coverage is always scored against its OWN matrix — even when re-rendered
+  # after the matrix has grown.
   stamp-version:
     needs:
       - context
@@ -127,18 +129,19 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: Checkout package.json
+      - name: Checkout package.json + benchmark matrix
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
         with:
           ref: ${{ needs.context.outputs.ref }}
-          sparse-checkout: packages/llm-llamacpp/package.json
+          sparse-checkout: |
+            packages/llm-llamacpp/package.json
+            packages/llm-llamacpp/test/integration/_benchmark-matrix.js
           sparse-checkout-cone-mode: false
       - name: Write run-meta.json
         shell: bash
         run: |
           mkdir -p run-meta
-          ver=$(node -e "process.stdout.write(require('./packages/llm-llamacpp/package.json').version)")
-          printf '{"addonVersion":"@qvac/llm-llamacpp@%s"}\n' "$ver" > run-meta/run-meta.json
+          node -e "const pkg=require('./packages/llm-llamacpp/package.json');const m=require('./packages/llm-llamacpp/test/integration/_benchmark-matrix.js');require('fs').writeFileSync('run-meta/run-meta.json',JSON.stringify({addonVersion:'@qvac/llm-llamacpp@'+pkg.version,expectedShards:m.matrix().map(m.mobileShardKey)})+'\n')"
           cat run-meta/run-meta.json
       - name: Upload run-meta
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # 7.0.0

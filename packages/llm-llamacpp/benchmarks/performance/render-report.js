@@ -86,7 +86,7 @@ function loadDir (dir, desktopDevice) {
       if (d && typeof d.desktopDevice === 'string' && d.desktopDevice) { resolvedDesktop = d.desktopDevice; break }
     } catch {}
   }
-  const meta = { addonVersion: null, repeats: null, promptTokens: null }
+  const meta = { addonVersion: null, repeats: null, promptTokens: null, expectedShards: null }
   let rows = []
   for (const f of files) {
     const r = rowsFromFile(f, resolvedDesktop, meta)
@@ -103,11 +103,14 @@ function rowsFromFile (file, desktopDevice, meta) {
   try { doc = JSON.parse(fs.readFileSync(file, 'utf8')) } catch { return [] }
   const rows = []
 
-  // run-meta.json — the addon version stamped into the run's artifacts at
-  // benchmark time. The version label (current run and baseline) comes from
-  // here, so it always reflects what actually ran.
+  // run-meta.json — the addon version and the expected mobile shard list,
+  // stamped into the run's artifacts at benchmark time. Both come from here so a
+  // re-render always reflects what THAT run targeted: the version label stays
+  // correct after the code moves on, and coverage compares against the run's own
+  // matrix rather than the renderer's current one (which may have since grown).
   if (doc && typeof doc.addonVersion === 'string') {
     if (meta.addonVersion === null) meta.addonVersion = doc.addonVersion
+    if (meta.expectedShards === null && Array.isArray(doc.expectedShards)) meta.expectedShards = doc.expectedShards
     return rows
   }
 
@@ -313,8 +316,12 @@ function shardLabel (key) {
 // at least a Crashed placeholder row, so a shard with no row at all never ran
 // or its data was lost (e.g. a dropped KV-cache batch artifact). Surfacing this
 // keeps a partial run from rendering as a complete-looking report.
-function coverageLines (rows, desktopDevice, devices) {
-  const expected = matrix().map(mobileShardKey)
+function coverageLines (rows, desktopDevice, devices, expectedShards) {
+  // Prefer the shard list THIS run stamped into its run-meta; fall back to the
+  // renderer's current matrix only for runs predating the stamp. This keeps a
+  // re-render of an older run from being scored against a matrix that has since
+  // grown (e.g. an old 30-shard run reading 30/70 against today's 70).
+  const expected = expectedShards || matrix().map(mobileShardKey)
   const expectedSet = new Set(expected)
   const mobileDevices = devices.filter(d => d !== desktopDevice)
   if (!mobileDevices.length) {
@@ -337,10 +344,12 @@ function coverageLines (rows, desktopDevice, devices) {
     seenAll.add(k)
   }
 
+  // Only show the dimension breakdown when the expected set came from the live
+  // matrix; a stamped older run may have different dimensions than today's code.
+  const dims = expectedShards ? '' : ` (${SIZES.length} sizes x ${QUANTS.length} quants x ${CACHE_TYPES.length} KV-cache types)`
   const lines = ['## Coverage', '']
   lines.push(
-    `Mobile matrix: ${expected.length} shards expected per device ` +
-    `(${SIZES.length} sizes x ${QUANTS.length} quants x ${CACHE_TYPES.length} KV-cache types). ` +
+    `Mobile matrix: ${expected.length} shards expected per device${dims}. ` +
     `${mobileDevices.length} device(s) reported.`
   )
   lines.push('')
@@ -472,7 +481,7 @@ function render (rows, desktopDevice, meta, addonVersionArg, baselineMap, baseli
   )
   lines.push('')
 
-  for (const l of coverageLines(rows, desktopDevice, devices)) lines.push(l)
+  for (const l of coverageLines(rows, desktopDevice, devices, meta.expectedShards)) lines.push(l)
 
   for (const l of mermaidSection(rows, desktopDevice)) lines.push(l)
 
