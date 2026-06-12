@@ -370,21 +370,6 @@ function shortDevice (name) {
   return name.replace(/^Apple /, '').replace(/^Samsung Galaxy /, '').replace(/^Google /, '')
 }
 
-// Mean of a metric over mobile (non-desktop, non-crashed) rows, grouped by keyFn.
-function avgByMobile (rows, desktopDevice, keyFn, metric) {
-  const g = new Map()
-  for (const r of rows) {
-    if (r.device === desktopDevice || r.crashed || r[metric] === null) continue
-    const k = keyFn(r)
-    if (k == null) continue
-    if (!g.has(k)) g.set(k, [])
-    g.get(k).push(r[metric])
-  }
-  const o = new Map()
-  for (const [k, v] of g) o.set(k, mean(v))
-  return o
-}
-
 function mermaidBar (title, ylabel, labels, values) {
   const max = Math.ceil(Math.max(...values, 1) * 1.15)
   return [
@@ -398,35 +383,30 @@ function mermaidBar (title, ylabel, labels, values) {
   ]
 }
 
-// At-a-glance Mermaid bar charts embedded in the markdown so they render inline
-// in the GitHub UI (xychart-beta is single-series, so devices rank in one chart
-// and the KV-cache/quant comparison is shown for the fastest device). The full
-// per-device grouped charts with stddev error bars live in the HTML artifact.
+// One inline at-a-glance bar chart: decode TPS per device at a SINGLE fixed
+// configuration — no averaging across backends, sizes or budgets, so every bar
+// is one real measured number. xychart-beta is single-series and cannot draw
+// error bars, so the per-backend breakdowns by KV-cache type / quantization,
+// with 3-rep stddev whiskers, live in the HTML chart artifact.
 function mermaidSection (rows, desktopDevice) {
-  const byDevice = avgByMobile(rows, desktopDevice, r => r.device, 'tps')
-  if (!byDevice.size) return []
-  const devices = [...byDevice.keys()]
-  const lines = ['## Charts', '']
-  lines.push('> Quick at-a-glance bars. Download the **qwen35-benchmark-charts.html** artifact for the full per-device grouped charts with stddev error bars.', '')
-  lines.push('### Decode throughput (TPS) by device', '')
-  lines.push(...mermaidBar('Decode TPS by device', 'TPS', devices.map(shortDevice), devices.map(d => byDevice.get(d))), '')
-  const top = devices.reduce((a, b) => (byDevice.get(b) > byDevice.get(a) ? b : a))
-  const topRows = rows.filter(r => r.device === top)
-  const KVO = ['f16', 'q8_0', 'q4_0', 'tbq3_0/pq3_0', 'tbq4_0/pq4_0', 'pq3_0', 'pq4_0']
-  const QO = ['Q4_0', 'Q4_1', 'Q4_K_M', 'Q6_K', 'Q8_0']
-  const kvMap = avgByMobile(topRows, desktopDevice, r => rowKv(r.config), 'tps')
-  const kvCats = KVO.filter(c => kvMap.has(c))
-  if (kvCats.length > 1) {
-    lines.push(`### Decode throughput (TPS) by KV-cache type (${shortDevice(top)})`, '')
-    lines.push(...mermaidBar(`TPS by KV-cache type (${shortDevice(top)})`, 'TPS', kvCats, kvCats.map(c => kvMap.get(c))), '')
-  }
-  const qMap = avgByMobile(topRows, desktopDevice, r => rowQuant(r.config), 'tps')
-  const qCats = QO.filter(c => qMap.has(c))
-  if (qCats.length > 1) {
-    lines.push(`### Decode throughput (TPS) by quantization (${shortDevice(top)})`, '')
-    lines.push(...mermaidBar(`TPS by quantization (${shortDevice(top)})`, 'TPS', qCats, qCats.map(c => qMap.get(c))), '')
-  }
-  return lines
+  const held = { backend: 'gpu', rb: CHART_RB, size: CHART_SIZE, quant: CHART_QUANT_HELD, kv: CHART_KV_DEFAULT }
+  const pts = atConfig(rows, held).filter(r => r.device !== desktopDevice && !r.crashed && r.tps !== null)
+  if (pts.length < 2) return []
+  const byDevice = new Map()
+  for (const r of pts) if (!byDevice.has(r.device)) byDevice.set(r.device, r.tps)
+  const devices = [...byDevice.keys()].sort((a, b) => byDevice.get(b) - byDevice.get(a))
+  const cfg = `Qwen3.5-${CHART_SIZE.toUpperCase()}, ${CHART_QUANT_HELD}, KV ${CHART_KV_DEFAULT}, reasoning on, GPU`
+  return [
+    '## Charts',
+    '',
+    `> At-a-glance TPS by device at one fixed config: **${cfg}**. ` +
+    'Per-backend charts broken down by KV-cache type and quantization, with ±1 stddev over 3 reps, ' +
+    'are in the **qwen35-benchmark-findings** artifact (open `qwen35-benchmark-charts.html`). ' +
+    'The full matrix and all sizes are in the tables below.',
+    '',
+    ...mermaidBar(`TPS by device (${cfg})`, 'TPS', devices.map(shortDevice), devices.map(d => byDevice.get(d))),
+    ''
+  ]
 }
 
 function render (rows, desktopDevice, meta, addonVersionArg, baselineMap, baseline) {
@@ -586,10 +566,51 @@ function rowKv (config) {
   return m ? m[1] : null
 }
 
-// Aggregate a metric over mobile rows, grouped by a category (kv or quant) on the
-// x-axis with one bar per device. Each cell is mean +/- stddev across the rows
-// sharing (device, category) — i.e. averaged over the other matrix axes.
-function chartSeries (rows, desktopDevice, byKey, order, metric) {
+function rowBackend (config) {
+  const m = /\[(gpu|cpu)\]/.exec(config)
+  return m ? m[1] : null
+}
+
+function rowRb (config) {
+  const m = /\[rb=(-?\d+)\]/.exec(config)
+  return m ? m[1] : null
+}
+
+function rowSize (config) {
+  const m = /^\[qwen[\d.]+-([^-\]]+)-/i.exec(config)
+  return m ? m[1] : null
+}
+
+// Charts hold every axis but the one on the x-axis at a single value, so each
+// bar is one real measured configuration rather than an average across gpu/cpu,
+// model sizes or reasoning budgets. reasoning-budget -1 is the model's default
+// (reasoning channel on; 0 disables it) and KV f16 is llama.cpp's default; the
+// featured size and held quant are stated in every chart. gpu and cpu are
+// charted separately and never blended.
+const CHART_BACKENDS = ['gpu', 'cpu']
+const CHART_RB = '-1'
+const CHART_SIZE = '2b'
+const CHART_KV_DEFAULT = 'f16'
+const CHART_QUANT_HELD = 'Q4_K_M'
+
+// Keep only rows sitting at the given fixed point of the matrix; an axis left
+// undefined is the one being varied on the x-axis.
+function atConfig (rows, { backend, rb, size, quant, kv }) {
+  return rows.filter(r =>
+    (backend == null || rowBackend(r.config) === backend) &&
+    (rb == null || rowRb(r.config) === rb) &&
+    (size == null || rowSize(r.config) === size) &&
+    (quant == null || rowQuant(r.config) === quant) &&
+    (kv == null || rowKv(r.config) === kv)
+  )
+}
+
+// One bar per device for each category of the varied axis. The caller passes
+// rows already pinned to a single point on every OTHER axis (via atConfig), so
+// each (device, category) is exactly one measured config: the bar is that row's
+// mean and the whisker its own measured 3-rep stddev (stdKey) — never a spread
+// recomputed across blended configs.
+function chartSeries (rows, desktopDevice, byKey, order, metric, stdKey) {
   const pts = rows.filter(r => r.device !== desktopDevice && !r.crashed && r[metric] !== null && byKey(r.config) !== null)
   const present = new Set(pts.map(r => byKey(r.config)))
   const cats = order.filter(c => present.has(c))
@@ -598,19 +619,19 @@ function chartSeries (rows, desktopDevice, byKey, order, metric) {
     name: dev,
     color: CHART_COLORS[i % CHART_COLORS.length],
     cells: cats.map(cat => {
-      const vals = pts.filter(r => r.device === dev && byKey(r.config) === cat).map(r => r[metric])
-      return vals.length ? { mean: mean(vals), std: stddev(vals) } : null
+      const row = pts.find(r => r.device === dev && byKey(r.config) === cat)
+      return row ? { mean: row[metric], std: row[stdKey] != null ? row[stdKey] : null } : null
     })
   }))
   return { cats, series }
 }
 
-function svgBarChart (title, unit, cats, series) {
+function svgBarChart (title, unit, cats, series, maxOverride) {
   const W = 860; const H = 360
   const m = { l: 64, r: 16, t: 16, b: 70 }
   const pw = W - m.l - m.r; const ph = H - m.t - m.b
-  let max = 0
-  for (const s of series) for (const c of s.cells) if (c) max = Math.max(max, c.mean + (c.std || 0))
+  let max = maxOverride || 0
+  if (!maxOverride) for (const s of series) for (const c of s.cells) if (c) max = Math.max(max, c.mean + (c.std || 0))
   const niceMax = (max > 0 ? max : 1) * 1.1
   const y = v => m.t + ph - (v / niceMax) * ph
   const out = ['<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" preserveAspectRatio="xMidYMid meet" font-family="system-ui,Arial" font-size="12">']
@@ -642,21 +663,35 @@ function svgBarChart (title, unit, cats, series) {
 
 function renderHtml (rows, desktopDevice, meta, addonVersionArg) {
   const addonVersion = meta.addonVersion || addonVersionArg || ''
-  const devices = [...new Set(rows.filter(r => r.device !== desktopDevice && !r.crashed).map(r => r.device))].sort()
+  const mobile = rows.filter(r => r.device !== desktopDevice)
+  const devices = [...new Set(mobile.filter(r => !r.crashed).map(r => r.device))].sort()
   const legend = devices.map((d, i) => `<span style="display:inline-flex;align-items:center;margin:0 14px 6px 0"><span style="width:12px;height:12px;background:${CHART_COLORS[i % CHART_COLORS.length]};display:inline-block;margin-right:5px;border-radius:2px"></span>${d}</span>`).join('')
   const KVO = ['f16', 'q8_0', 'q4_0', 'tbq3_0/pq3_0', 'tbq4_0/pq4_0', 'pq3_0', 'pq4_0']
   const QO = ['Q4_0', 'Q4_1', 'Q4_K_M', 'Q6_K', 'Q8_0']
-  const charts = [
-    ['Decode throughput by KV-cache type', 'TPS, tokens/sec', rowKv, KVO, 'tps'],
-    ['Decode throughput by quantization', 'TPS, tokens/sec', rowQuant, QO, 'tps'],
-    ['Prefill throughput by KV-cache type', 'ppTPS, tokens/sec', rowKv, KVO, 'ppTps'],
-    ['Time to first token by KV-cache type', 'TTFT, ms (lower is better)', rowKv, KVO, 'ttft']
-  ].map(([title, unit, byKey, order, metric]) => {
-    const { cats, series } = chartSeries(rows, desktopDevice, byKey, order, metric)
-    return cats.length ? svgBarChart(title, unit, cats, series) : ''
-  }).join('')
+  // [title, unit, byKey, order, metric, stdKey, held]. Each chart varies one axis
+  // and holds the rest at a fixed point (size, reasoning budget, and the other
+  // categorical). gpu and cpu are rendered as separate charts sharing one y-scale
+  // per metric so the backend gap is read correctly.
+  const defs = [
+    ['TPS by KV-cache type', 'TPS, tokens/sec', rowKv, KVO, 'tps', 'tpsStd', { quant: CHART_QUANT_HELD }],
+    ['TPS by quantization', 'TPS, tokens/sec', rowQuant, QO, 'tps', 'tpsStd', { kv: CHART_KV_DEFAULT }],
+    ['ppTPS by KV-cache type', 'ppTPS, tokens/sec', rowKv, KVO, 'ppTps', 'ppTpsStd', { quant: CHART_QUANT_HELD }],
+    ['TTFT by KV-cache type', 'TTFT, ms (lower is better)', rowKv, KVO, 'ttft', 'ttftStd', { quant: CHART_QUANT_HELD }]
+  ]
+  let charts = ''
+  for (const [title, unit, byKey, order, metric, stdKey, extra] of defs) {
+    const perBackend = CHART_BACKENDS.map(backend => {
+      const subset = atConfig(mobile, { backend, rb: CHART_RB, size: CHART_SIZE, ...extra })
+      return { backend, ...chartSeries(subset, desktopDevice, byKey, order, metric, stdKey) }
+    }).filter(b => b.cats.length)
+    if (!perBackend.length) continue
+    let smax = 0
+    for (const b of perBackend) for (const s of b.series) for (const c of s.cells) if (c) smax = Math.max(smax, c.mean + (c.std || 0))
+    for (const b of perBackend) charts += svgBarChart(`${title} — ${b.backend.toUpperCase()}`, unit, b.cats, b.series, smax)
+  }
   const metaBits = [addonVersion && `Addon <code>${addonVersion}</code>`, meta.promptTokens && `Prompt ${meta.promptTokens} tok`].filter(Boolean).join(' &middot; ')
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Qwen3.5 Benchmark Charts</title></head><body style="max-width:920px;margin:24px auto;padding:0 16px;font-family:system-ui,Arial;color:#111827"><h1 style="font-size:20px;margin-bottom:2px">Qwen3.5 Benchmark Charts</h1><p style="color:#6b7280;margin-top:0">${metaBits}</p><p style="color:#374151">Bars are the mean across the other matrix axes (quantization, reasoning budget, gpu/cpu); the thin line is &plusmn;1 stddev. Mobile devices only.</p><div style="margin:8px 0 20px">${legend}</div>${charts || '<p>No mobile data to chart.</p>'}</body></html>`
+  const caption = `Each bar is one measured configuration: <b>Qwen3.5-${CHART_SIZE.toUpperCase()}, reasoning on (rb=-1)</b>. KV-cache charts hold the weights at ${CHART_QUANT_HELD}; the quantization chart holds the KV-cache at ${CHART_KV_DEFAULT} (llama.cpp default). GPU and CPU are shown separately and never averaged; each metric's gpu/cpu pair shares one y-scale. Whiskers are &plusmn;1 stddev over 3 reps. A missing bar means that configuration crashed or is unsupported on that device. The full matrix and all model sizes are in the report tables.`
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Qwen3.5 Benchmark Charts</title></head><body style="max-width:920px;margin:24px auto;padding:0 16px;font-family:system-ui,Arial;color:#111827"><h1 style="font-size:20px;margin-bottom:2px">Qwen3.5 Benchmark Charts</h1><p style="color:#6b7280;margin-top:0">${metaBits}</p><p style="color:#374151">${caption}</p><div style="margin:8px 0 20px">${legend}</div>${charts || '<p>No mobile data to chart.</p>'}</body></html>`
 }
 
 function main () {
