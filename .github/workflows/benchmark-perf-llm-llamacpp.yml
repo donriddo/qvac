@@ -154,7 +154,7 @@ jobs:
     needs:
       - context
       - label-gate
-    if: needs.label-gate.outputs.authorised == 'true' && inputs.run_mobile && !inputs.summarize_only
+    if: needs.label-gate.outputs.authorised == 'true' && (inputs.run_mobile || inputs.run_desktop) && !inputs.summarize_only
     permissions:
       contents: write
       packages: write
@@ -170,14 +170,21 @@ jobs:
     needs:
       - context
       - label-gate
+      - prebuild
     if: needs.label-gate.outputs.authorised == 'true' && inputs.run_desktop && !inputs.summarize_only
     name: Desktop Parameter Sweep
-    runs-on: ai-run-linux-gpu
+    runs-on: qvac-ubuntu2204-x64-gpu
     timeout-minutes: 360
-    env:
-      VCPKG_BINARY_SOURCES: "clear;files,${{ github.workspace }}/packages/llm-llamacpp/vcpkg/cache,readwrite"
 
     steps:
+      # Self-hosted runners are persistent, so the workspace must be wiped
+      # between runs (skipped on the rare github-hosted fallback).
+      - name: Manual Workspace Cleanup
+        run: rm -rf "$GITHUB_WORKSPACE" && mkdir -p "$GITHUB_WORKSPACE"
+        shell: bash
+        working-directory: .
+        if: runner.environment != 'github-hosted'
+
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
         with:
@@ -189,73 +196,27 @@ jobs:
           node-version: lts/*
 
       - name: Install bare runtime
-        working-directory: packages/llm-llamacpp
         run: npm install -g --force bare
 
-      - name: Get vcpkg cache
-        id: cache-vcpkg
-        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # 5.0.4
-        with:
-          key: linux-x64-${{ hashFiles('packages/llm-llamacpp/vcpkg.json', 'packages/llm-llamacpp/vcpkg-configuration.json', 'packages/llm-llamacpp/vcpkg/ports/**') }}
-          path: packages/llm-llamacpp/vcpkg/cache
-          restore-keys: linux-x64-
-
-      - name: Setup LLVM
-        uses: tetherto/qvac/.github/actions/setup-llvm@98a6a6b6e8f3866dfdd75052a4071269ce85dc41
-
-      - name: Setup Vulkan SDK
-        uses: tetherto/qvac/.github/actions/setup-vulkan-sdk@0bbdca93da303a0b1634ba14a89cec085621078d
-        with:
-          platform: linux
-          arch: x64
-
-      - name: Build addon from source
+      - name: Install addon dependencies
         working-directory: packages/llm-llamacpp
+        run: npm install
+
+      # Run the exact linux-x64 binary the prebuild job built (the same artifacts
+      # the integration tests consume) instead of compiling on the runner, so the
+      # benchmark needs no build toolchain and matches what ships.
+      - name: Download prebuilds (from artifacts)
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # 8.0.1
+        with:
+          path: ${{ runner.temp }}/prebuilds-staging
+          merge-multiple: true
+
+      - name: Move prebuilds into the addon
+        shell: bash
         run: |
-          echo "=== Building addon from source ==="
-
-          echo "Cleaning up disk space..."
-          sudo docker image prune --all --force
-          sudo rm -rf /opt/hostedtoolcache/CodeQL /opt/ghc /usr/share/dotnet /usr/local/lib/android
-          df -h
-
-          npm install -g --force bare-make
-
-          echo "VCPKG_INSTALLATION_ROOT=$VCPKG_INSTALLATION_ROOT"
-          if [ -n "${VCPKG_INSTALLATION_ROOT:-}" ] && [ -d "$VCPKG_INSTALLATION_ROOT" ]; then
-            echo "Using pre-installed vcpkg at $VCPKG_INSTALLATION_ROOT"
-            export VCPKG_ROOT=$VCPKG_INSTALLATION_ROOT
-          else
-            echo "vcpkg not found, bootstrapping..."
-            sudo apt-get update
-            sudo apt-get install -y curl zip unzip tar pkg-config
-            git clone https://github.com/Microsoft/vcpkg.git /tmp/vcpkg
-            /tmp/vcpkg/bootstrap-vcpkg.sh -disableMetrics
-            export VCPKG_ROOT=/tmp/vcpkg
-          fi
-          echo "VCPKG_ROOT=$VCPKG_ROOT"
-          echo "VCPKG_ROOT=$VCPKG_ROOT" >> $GITHUB_ENV
-          rm -rf $VCPKG_ROOT/buildtrees/*
-          rm -rf $VCPKG_ROOT/packages/*
-          mkdir -p vcpkg/cache
-
-          echo "Installing system dependencies..."
-          sudo apt-get update
-          sudo apt-get install -y libxi-dev libxtst-dev libxrandr-dev xz-utils
-
-          cd "$GITHUB_WORKSPACE/packages/llm-llamacpp"
-          npm install
-
-          echo "Running bare-make generate..."
-          bare-make generate --platform linux --arch x64
-
-          echo "Running bare-make build..."
-          bare-make build
-
-          echo "Running bare-make install..."
-          bare-make install
-
-          echo "=== Build complete ==="
+          mkdir -p packages/llm-llamacpp/prebuilds
+          cp -r ${{ runner.temp }}/prebuilds-staging/* packages/llm-llamacpp/prebuilds/
+          ls -la packages/llm-llamacpp/prebuilds/
 
       - name: Detect GPU
         id: gpu
