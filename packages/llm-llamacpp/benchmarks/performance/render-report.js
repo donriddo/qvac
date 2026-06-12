@@ -25,6 +25,7 @@ function parseArgs (argv) {
     dir: null,
     output: null,
     html: null,
+    chartsUrl: null,
     desktopDevice: 'Desktop (linux-x64 GPU)',
     addonVersion: null,
     compareDir: null,
@@ -37,6 +38,7 @@ function parseArgs (argv) {
     if (t === '--dir') a.dir = argv[++i]
     else if (t === '--output') a.output = argv[++i]
     else if (t === '--html') a.html = argv[++i]
+    else if (t === '--charts-url') a.chartsUrl = argv[++i]
     else if (t === '--desktop-device') a.desktopDevice = argv[++i]
     else if (t === '--addon-version') a.addonVersion = argv[++i]
     else if (t === '--compare-dir') a.compareDir = argv[++i]
@@ -397,7 +399,7 @@ function mermaidBar (title, ylabel, labels, values) {
 // is one real measured number. xychart-beta is single-series and cannot draw
 // error bars, so the per-backend breakdowns by KV-cache type / quantization,
 // with 3-rep stddev whiskers, live in the HTML chart artifact.
-function mermaidSection (rows, desktopDevice) {
+function mermaidSection (rows, desktopDevice, chartsUrl) {
   const held = { backend: 'gpu', rb: CHART_RB, size: CHART_SIZE, quant: CHART_QUANT_HELD, kv: CHART_KV_DEFAULT }
   const pts = atConfig(rows, held).filter(r => r.device !== desktopDevice && !r.crashed && r.tps !== null)
   if (pts.length < 2) return []
@@ -405,12 +407,17 @@ function mermaidSection (rows, desktopDevice) {
   for (const r of pts) if (!byDevice.has(r.device)) byDevice.set(r.device, r.tps)
   const devices = [...byDevice.keys()].sort((a, b) => byDevice.get(b) - byDevice.get(a))
   const cfg = `Qwen3.5-${CHART_SIZE.toUpperCase()}, ${CHART_QUANT_HELD}, KV ${CHART_KV_DEFAULT}, reasoning on, GPU`
+  // The download URL only exists after the artifact is uploaded, so the workflow
+  // passes it in post-upload; a local render leaves the artifact name as plain text.
+  const artifact = chartsUrl
+    ? `[**qwen35-benchmark-findings** artifact](${chartsUrl})`
+    : '**qwen35-benchmark-findings** artifact'
   return [
     '## Charts',
     '',
     `> At-a-glance TPS by device at one fixed config: **${cfg}**. ` +
     'Per-backend charts broken down by KV-cache type and quantization, with ±1 stddev over 3 reps, ' +
-    'are in the **qwen35-benchmark-findings** artifact (open `qwen35-benchmark-charts.html`). ' +
+    `are in the ${artifact} — download and open \`qwen35-benchmark-charts.html\` inside. ` +
     'The full matrix and all sizes are in the tables below.',
     '',
     ...mermaidBar(`TPS by device (${cfg})`, 'TPS', devices.map(shortDevice), devices.map(d => byDevice.get(d))),
@@ -418,7 +425,7 @@ function mermaidSection (rows, desktopDevice) {
   ]
 }
 
-function render (rows, desktopDevice, meta, addonVersionArg, baselineMap, baseline) {
+function render (rows, desktopDevice, meta, addonVersionArg, baselineMap, baseline, chartsUrl) {
   const byDevice = new Map()
   for (const r of rows) {
     if (!byDevice.has(r.device)) byDevice.set(r.device, [])
@@ -483,7 +490,7 @@ function render (rows, desktopDevice, meta, addonVersionArg, baselineMap, baseli
 
   for (const l of coverageLines(rows, desktopDevice, devices, meta.expectedShards)) lines.push(l)
 
-  for (const l of mermaidSection(rows, desktopDevice)) lines.push(l)
+  for (const l of mermaidSection(rows, desktopDevice, chartsUrl)) lines.push(l)
 
   const hasTokens = rows.some(r => r.tokens !== null)
 
@@ -748,7 +755,7 @@ function main () {
     return
   }
 
-  const md = render(rows, desktopDevice, meta, args.addonVersion, baselineMap, baseline)
+  const md = render(rows, desktopDevice, meta, args.addonVersion, baselineMap, baseline, args.chartsUrl)
   if (args.output) fs.writeFileSync(args.output, md)
   else process.stdout.write(md)
 

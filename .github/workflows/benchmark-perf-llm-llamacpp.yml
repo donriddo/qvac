@@ -485,7 +485,7 @@ jobs:
           # The desktop device name (incl. GPU) comes from the stamped
           # desktop-meta.json inside the sweep artifact, so it's correct on
           # re-renders too; no --desktop-device needed here.
-          ARGS=(--dir combined-reports --output benchmark-artifacts/qwen35-benchmark-findings.md --html benchmark-artifacts/qwen35-benchmark-charts.html)
+          ARGS=(--dir combined-reports --output benchmark-artifacts/qwen35-benchmark-findings.md --html benchmark-artifacts/qwen35-benchmark-charts.html --charts-url "__CHARTS_URL__")
           if [ -n "$ADDON_VERSION" ]; then
             ARGS+=(--addon-version "$ADDON_VERSION")
           fi
@@ -499,19 +499,13 @@ jobs:
 
           node packages/llm-llamacpp/benchmarks/performance/render-report.js "${ARGS[@]}"
 
-      - name: Add to run summary
-        if: always()
-        shell: bash
-        run: |
-          set +e
-          MD_FILE="benchmark-artifacts/qwen35-benchmark-findings.md"
-          if [ -f "$MD_FILE" ]; then
-            cat "$MD_FILE" >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "No consolidated benchmark report available." >> "$GITHUB_STEP_SUMMARY"
-          fi
-
+      # Upload first so the artifact's download URL is known, then substitute it
+      # into the report's chart-download link before writing the run summary — so
+      # the link in the summary points straight at the download instead of telling
+      # readers to scroll to the artifacts section. Falls back to the run page URL
+      # if the upload didn't yield a URL.
       - name: Upload consolidated report
+        id: upload
         if: always()
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # 7.0.0
         with:
@@ -519,3 +513,20 @@ jobs:
           path: benchmark-artifacts/
           retention-days: 90
           if-no-files-found: ignore
+
+      - name: Add to run summary
+        if: always()
+        shell: bash
+        env:
+          ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
+          RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set +e
+          MD_FILE="benchmark-artifacts/qwen35-benchmark-findings.md"
+          if [ -f "$MD_FILE" ]; then
+            url="$ARTIFACT_URL"
+            if [ -z "$url" ]; then url="$RUN_URL"; fi
+            sed "s|__CHARTS_URL__|$url|g" "$MD_FILE" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No consolidated benchmark report available." >> "$GITHUB_STEP_SUMMARY"
+          fi
