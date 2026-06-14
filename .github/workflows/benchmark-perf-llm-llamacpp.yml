@@ -354,42 +354,67 @@ jobs:
           ver=$(node -e "process.stdout.write(require('./packages/llm-llamacpp/package.json').version)" 2>/dev/null || true)
           echo "version=${ver:+@qvac/llm-llamacpp@$ver}" >> "$GITHUB_OUTPUT"
 
-      # Fetch this run's artifacts with the gh CLI rather than
-      # actions/download-artifact: that action verifies artifact digests and was
-      # failing with `digest-mismatch` on otherwise-intact artifacts, silently
-      # leaving combined-reports empty under continue-on-error. The CLI pulls the
-      # same files reliably. run-id alone identifies the run (the run number is
-      # never needed); defaults to the current run, artifact_run_id targets a
-      # previous one. Brings down the desktop sweep, the mobile perf-reports and
-      # the run-meta (addon version + expected shards) side by side.
-      - name: Download current-run artifacts
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RUN_ID: ${{ inputs.artifact_run_id || github.run_id }}
-          REPO: ${{ github.repository }}
-        run: |
-          mkdir -p combined-reports
-          gh run download "$RUN_ID" -R "$REPO" \
-            -p "llm-param-sweep-desktop-*" \
-            -p "perf-report-llamacpp-llm-*" \
-            -p "benchmark-run-meta-*" \
-            -D combined-reports || echo "::warning::Some current-run artifacts could not be downloaded (a missing optional one is fine; the render step fails loudly if there is no data at all)."
+      # Artifacts are matched by name prefix and scoped to a single run via
+      # run-id, so the run number is never needed — run-id alone identifies the
+      # run. Defaults to the current run; artifact_run_id targets a previous one.
+      - name: Download desktop sweep artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # 8.0.1
+        with:
+          pattern: llm-param-sweep-desktop-*
+          run-id: ${{ inputs.artifact_run_id || github.run_id }}
+          github-token: ${{ github.token }}
+          path: combined-reports
+        continue-on-error: true
 
-      - name: Download baseline artifacts for comparison
+      - name: Download mobile perf-report artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # 8.0.1
+        with:
+          pattern: perf-report-llamacpp-llm-*
+          run-id: ${{ inputs.artifact_run_id || github.run_id }}
+          github-token: ${{ github.token }}
+          path: combined-reports
+        continue-on-error: true
+
+      # The version this run benchmarked (run-meta.json), authoritative over any
+      # manual --addon-version. Lands alongside the data so the renderer reads it.
+      - name: Download run-meta (current)
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # 8.0.1
+        with:
+          pattern: benchmark-run-meta-*
+          run-id: ${{ inputs.artifact_run_id || github.run_id }}
+          github-token: ${{ github.token }}
+          path: combined-reports
+        continue-on-error: true
+
+      - name: Download baseline desktop artifact for comparison
         if: inputs.compare_run_id != ''
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-          COMPARE_RUN_ID: ${{ inputs.compare_run_id }}
-          REPO: ${{ github.repository }}
-        run: |
-          mkdir -p baseline-reports
-          gh run download "$COMPARE_RUN_ID" -R "$REPO" \
-            -p "llm-param-sweep-desktop-*" \
-            -p "perf-report-llamacpp-llm-*" \
-            -p "benchmark-run-meta-*" \
-            -D baseline-reports || echo "::warning::Some baseline artifacts could not be downloaded; the verify step below fails the comparison if none arrived."
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # 8.0.1
+        with:
+          pattern: llm-param-sweep-desktop-*
+          run-id: ${{ inputs.compare_run_id }}
+          github-token: ${{ github.token }}
+          path: baseline-reports
+        continue-on-error: true
+
+      - name: Download baseline mobile artifacts for comparison
+        if: inputs.compare_run_id != ''
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # 8.0.1
+        with:
+          pattern: perf-report-llamacpp-llm-*
+          run-id: ${{ inputs.compare_run_id }}
+          github-token: ${{ github.token }}
+          path: baseline-reports
+        continue-on-error: true
+
+      - name: Download baseline run-meta for comparison
+        if: inputs.compare_run_id != ''
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # 8.0.1
+        with:
+          pattern: benchmark-run-meta-*
+          run-id: ${{ inputs.compare_run_id }}
+          github-token: ${{ github.token }}
+          path: baseline-reports
+        continue-on-error: true
 
       - name: Verify baseline artifacts downloaded
         if: inputs.compare_run_id != ''
