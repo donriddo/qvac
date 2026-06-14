@@ -320,6 +320,8 @@ jobs:
   # Runs after benchmarks finish, or standalone when summarize_only=true
   # (set artifact_run_id to re-render a previous run).
   # Set compare_run_id to add Δ TPS / TTFT / ppTPS columns vs a baseline run.
+  # NOTE: needs actions:read so `gh run download` can fetch the report artifacts
+  # (the Actions artifacts API requires it).
   summarize:
     needs:
       - context
@@ -332,6 +334,7 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: read
+      actions: read
     steps:
       - name: Checkout aggregator
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
