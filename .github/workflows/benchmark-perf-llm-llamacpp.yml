@@ -200,9 +200,6 @@ jobs:
         with:
           node-version: lts/*
 
-      - name: Install bare runtime
-        run: npm install -g --force bare
-
       - name: Install addon dependencies
         working-directory: packages/llm-llamacpp
         run: npm install
@@ -241,7 +238,7 @@ jobs:
 
       - name: Run parameter sweep
         working-directory: packages/llm-llamacpp/benchmarks/performance
-        run: bare ./llm-parameter-sweep.js --addon-source local
+        run: npx --yes bare ./llm-parameter-sweep.js --addon-source local
 
       # Stamp the desktop device name (incl. detected GPU) into the results so
       # the renderer shows it even on a later summarize-only re-render, when this
