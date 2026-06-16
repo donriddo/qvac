@@ -176,7 +176,10 @@ jobs:
       - context
       - label-gate
       - prebuild
-    if: needs.label-gate.outputs.authorised == 'true' && inputs.run_desktop && !inputs.summarize_only
+    # !cancelled() + the explicit prebuild-success check so the skip of the
+    # mobile-only verify-shards job (on a desktop-only run) does not propagate
+    # through prebuild and skip this job.
+    if: needs.label-gate.outputs.authorised == 'true' && inputs.run_desktop && !inputs.summarize_only && !cancelled() && needs.prebuild.result == 'success'
     name: Desktop Parameter Sweep
     runs-on: qvac-ubuntu2204-x64-gpu
     timeout-minutes: 360
