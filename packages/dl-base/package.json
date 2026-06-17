@@ -4,8 +4,8 @@
   "description": "Base dataloader class for QVAC",
   "main": "index.js",
   "scripts": {
-    "lint": "standard",
-    "lint:fix": "standard --fix",
+    "lint": "prettier --check \"**/*.{js,cjs,mjs}\" && lunte",
+    "format": "prettier --write \"**/*.{js,cjs,mjs}\"",
     "test:dts": "tsc index.d.ts --noEmit"
   },
   "author": "Tether",
@@ -18,7 +18,9 @@
   "devDependencies": {
     "@types/node": "^22.0.0",
     "brittle": "^3.15.0",
-    "standard": "17.1.0",
+    "lunte": "^1.8.0",
+    "prettier": "^3.6.2",
+    "prettier-config-holepunch": "^2.0.0",
     "typescript": "^5.0.0"
   },
   "dependencies": {

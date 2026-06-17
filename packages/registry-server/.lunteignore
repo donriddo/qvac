@@ -1,0 +1,8 @@
+node_modules
+build
+dist
+prebuilds
+coverage
+**/*.auto.cjs
+client
+*.d.ts
