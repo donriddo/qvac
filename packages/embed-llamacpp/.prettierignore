@@ -3,6 +3,13 @@ build
 dist
 prebuilds
 coverage
+package-lock.json
 **/*.auto.cjs
+test/unit/all.js
+test/integration/all.js
 benchmarks/client/venv
-benchmarks/server
+benchmarks/client/benchmark_results
+benchmarks/results
+benchmarks/performance/resolved-models.json
+benchmarks/performance/results
+benchmarks/document-throughput/results
