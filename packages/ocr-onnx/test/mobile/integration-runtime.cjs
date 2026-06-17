@@ -4,7 +4,7 @@ const path = require('bare-path')
 const fs = require('bare-fs')
 const { pathToFileURL } = require('bare-url')
 
-async function runIntegrationModule (relativeModulePath, options = {}) {
+async function runIntegrationModule(relativeModulePath, options = {}) {
   const modulePath = path.join(__dirname, relativeModulePath)
 
   if (!fs.existsSync(modulePath)) {

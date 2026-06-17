@@ -22,7 +22,7 @@ const tags = require('language-tags')
  * @param {string} cldCode The CLD2 language code
  * @returns {string} ISO 639-1/2/3 code or 'und' if not found
  */
-function cldToISO (cldCode) {
+function cldToISO(cldCode) {
   if (!cldCode) return 'und'
 
   const code = cldCode.toLowerCase()
@@ -55,7 +55,7 @@ function cldToISO (cldCode) {
   }
 
   // Return the code as is if it's 2 or 3 letters, otherwise 'und'
-  return (code.length === 2 || code.length === 3) ? code : 'und'
+  return code.length === 2 || code.length === 3 ? code : 'und'
 }
 
 /**
@@ -63,7 +63,7 @@ function cldToISO (cldCode) {
  * @param {string} isoCode ISO 639-1, 639-2, or 639-3 code
  * @returns {string} Language name
  */
-function getLanguageName (isoCode) {
+function getLanguageName(isoCode) {
   if (!isoCode || isoCode === 'und') return 'Undetermined'
 
   const code = isoCode.toLowerCase()
@@ -87,7 +87,7 @@ function getLanguageName (isoCode) {
  * @param {string} text The text to analyze.
  * @returns {Promise<Object>} The detected language or `Undetermined` if no language is detected.
  */
-async function detectOne (text) {
+async function detectOne(text) {
   if (typeof text !== 'string' || text.trim().length === 0) {
     return {
       code: 'und',
@@ -128,13 +128,15 @@ async function detectOne (text) {
  * @param {number} topK Number of top probable languages to return.
  * @returns {Promise<Array>} A list of probable languages with probabilities.
  */
-async function detectMultiple (text, topK = 3) {
+async function detectMultiple(text, topK = 3) {
   if (typeof text !== 'string' || text.trim().length === 0) {
-    return [{
-      code: 'und',
-      language: 'Undetermined',
-      probability: 1
-    }]
+    return [
+      {
+        code: 'und',
+        language: 'Undetermined',
+        probability: 1
+      }
+    ]
   }
 
   if (typeof topK !== 'number' || topK <= 0) {
@@ -145,23 +147,27 @@ async function detectMultiple (text, topK = 3) {
   try {
     result = await cld.detect(text)
   } catch (error) {
-    return [{
-      code: 'und',
-      language: 'Undetermined',
-      probability: 1
-    }]
+    return [
+      {
+        code: 'und',
+        language: 'Undetermined',
+        probability: 1
+      }
+    ]
   }
 
   if (!result || !result.languages || result.languages.length === 0) {
-    return [{
-      code: 'und',
-      language: 'Undetermined',
-      probability: 1
-    }]
+    return [
+      {
+        code: 'und',
+        language: 'Undetermined',
+        probability: 1
+      }
+    ]
   }
 
   // CLD2 returns languages with percent field
-  const languages = result.languages.slice(0, topK).map(lang => {
+  const languages = result.languages.slice(0, topK).map((lang) => {
     const isoCode = cldToISO(lang.code)
     return {
       code: isoCode,
@@ -178,7 +184,7 @@ async function detectMultiple (text, topK = 3) {
  * @param {string} code The ISO2 or ISO3 language code.
  * @returns {string | null} The language name or null if code is not found.
  */
-function getLangName (code) {
+function getLangName(code) {
   if (typeof code !== 'string' || code.trim().length === 0) {
     return null
   }
@@ -205,7 +211,7 @@ function getLangName (code) {
  * @param {string} languageName The language name.
  * @returns {string | null} The ISO2 code or null if language name is not found.
  */
-function getISO2FromName (languageName) {
+function getISO2FromName(languageName) {
   if (typeof languageName !== 'string' || languageName.trim().length === 0) {
     return null
   }
@@ -228,9 +234,4 @@ function getISO2FromName (languageName) {
   return null
 }
 
-export {
-  detectOne,
-  detectMultiple,
-  getLangName,
-  getISO2FromName
-}
+export { detectOne, detectMultiple, getLangName, getISO2FromName }

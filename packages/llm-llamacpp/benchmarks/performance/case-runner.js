@@ -20,7 +20,7 @@ const SWEEP_OVERRIDE_KEYS = [
   'cache-type-v'
 ]
 
-function splitCsvArg (value, key) {
+function splitCsvArg(value, key) {
   const normalizedInput = normalizeArgValue(value)
   if (normalizedInput === true || normalizedInput == null || normalizedInput === '') {
     throw new Error(`Missing value for --${key}. Expected comma-separated values.`)
@@ -35,7 +35,7 @@ function splitCsvArg (value, key) {
   return parts
 }
 
-function buildSweepFromArgs (baseSweep, args) {
+function buildSweepFromArgs(baseSweep, args) {
   const nextSweep = {}
   for (const [key, values] of Object.entries(baseSweep)) {
     nextSweep[key] = Array.isArray(values) ? values.slice() : values
@@ -50,26 +50,27 @@ function buildSweepFromArgs (baseSweep, args) {
   return nextSweep
 }
 
-function ensureDir (dirPath) {
+function ensureDir(dirPath) {
   fs.mkdirSync(dirPath, { recursive: true })
 }
 
-function resolveModelName (modelDef, quantization) {
+function resolveModelName(modelDef, quantization) {
   return modelDef.quantizationFiles[quantization] || null
 }
 
-function checkModelExists (modelDir, modelName) {
+function checkModelExists(modelDir, modelName) {
   return fs.existsSync(path.join(modelDir, modelName))
 }
 
-function buildCases (modelDef, sweep) {
+function buildCases(modelDef, sweep) {
   const baseQuant = Array.isArray(modelDef.quantizations) ? modelDef.quantizations[0] : null
   const defaults = modelDef.defaults || {}
   if (baseQuant == null) {
     throw new Error(`No baseline quantization configured for model "${modelDef.id}"`)
   }
-  const supportedQuants = (sweep.quantization || [])
-    .filter((quant) => !!resolveModelName(modelDef, quant))
+  const supportedQuants = (sweep.quantization || []).filter(
+    (quant) => !!resolveModelName(modelDef, quant)
+  )
 
   if (supportedQuants.length === 0) {
     throw new Error(`No supported quantizations found for model "${modelDef.id}"`)
@@ -98,9 +99,16 @@ function buildCases (modelDef, sweep) {
     })
   }
 
-  if (devices.length > 0 && ctxSizes.length > 0 && batchSizes.length > 0 && ubatchSizes.length > 0 &&
-      flashAttnValues.length > 0 &&
-      threadsValues.length > 0 && cacheTypeKValues.length > 0 && cacheTypeVValues.length > 0) {
+  if (
+    devices.length > 0 &&
+    ctxSizes.length > 0 &&
+    batchSizes.length > 0 &&
+    ubatchSizes.length > 0 &&
+    flashAttnValues.length > 0 &&
+    threadsValues.length > 0 &&
+    cacheTypeKValues.length > 0 &&
+    cacheTypeVValues.length > 0
+  ) {
     const combos = cartesianProduct([
       supportedQuants,
       devices,
@@ -113,7 +121,17 @@ function buildCases (modelDef, sweep) {
       cacheTypeVValues
     ])
 
-    for (const [quantization, device, ctxSize, batchSize, ubatchSize, flashAttn, threads, cacheTypeK, cacheTypeV] of combos) {
+    for (const [
+      quantization,
+      device,
+      ctxSize,
+      batchSize,
+      ubatchSize,
+      flashAttn,
+      threads,
+      cacheTypeK,
+      cacheTypeV
+    ] of combos) {
       if (Number(ubatchSize) > Number(batchSize)) {
         continue // Skip combinations where ubatchSize is greater than batchSize
       }
@@ -150,34 +168,35 @@ function buildCases (modelDef, sweep) {
   return cases
 }
 
-function isAdaptivePromptId (promptId) {
-  return String(promptId || '').startsWith('ctx-filling__ctx=') ||
+function isAdaptivePromptId(promptId) {
+  return (
+    String(promptId || '').startsWith('ctx-filling__ctx=') ||
     String(promptId || '').startsWith('batch-spanning__ctx=')
+  )
 }
 
-function selectPromptForCase (allPrompts, runtimeConfig, promptCase) {
+function selectPromptForCase(allPrompts, runtimeConfig, promptCase) {
   const byId = new Map(allPrompts.map((p) => [p.id, p]))
   const ctx = String(runtimeConfig['ctx-size'])
   const batch = String(runtimeConfig['batch-size'])
   const ctxId = `ctx-filling__ctx=${ctx}`
   const batchId = `batch-spanning__ctx=${ctx}__bs=${batch}`
-  const promptId = promptCase === 'ctx-filling'
-    ? ctxId
-    : (promptCase === 'span-fill' ? batchId : 'long')
+  const promptId =
+    promptCase === 'ctx-filling' ? ctxId : promptCase === 'span-fill' ? batchId : 'long'
   if (!byId.has(promptId)) {
     throw new Error(
       `Missing required prompt id "${promptId}" in prompt file. ` +
-      'Run `npm run prepare:prompts` (or pass --prompts-file with exact variants).'
+        'Run `npm run prepare:prompts` (or pass --prompts-file with exact variants).'
     )
   }
   return byId.get(promptId)
 }
 
-function getAdaptiveBaselineKey (promptId) {
+function getAdaptiveBaselineKey(promptId) {
   return isAdaptivePromptId(promptId) ? String(promptId) : null
 }
 
-function validatePromptObject (prompt, contextLabel) {
+function validatePromptObject(prompt, contextLabel) {
   if (!prompt || typeof prompt !== 'object') {
     throw new Error(`${contextLabel} must be an object`)
   }
@@ -201,14 +220,15 @@ function validatePromptObject (prompt, contextLabel) {
   }
 }
 
-function aggregateRunMetrics (runMetrics) {
+function aggregateRunMetrics(runMetrics) {
   const loadMsValues = runMetrics.map((x) => x.loadMs).filter((x) => x != null)
   const runMsValues = runMetrics.map((x) => x.runMs).filter((x) => x != null)
   const unloadMsValues = runMetrics.map((x) => x.unloadMs).filter((x) => x != null)
   const ttftMsValues = runMetrics.map((x) => x.ttftMs).filter((x) => x != null)
   const tpsValues = runMetrics.map((x) => x.tps).filter((x) => x != null)
   const firstPromptTokens = runMetrics.find((x) => x.promptTokens != null)?.promptTokens ?? null
-  const firstGeneratedTokens = runMetrics.find((x) => x.generatedTokens != null)?.generatedTokens ?? null
+  const firstGeneratedTokens =
+    runMetrics.find((x) => x.generatedTokens != null)?.generatedTokens ?? null
 
   return {
     repeats: runMetrics.length,
@@ -227,7 +247,7 @@ function aggregateRunMetrics (runMetrics) {
   }
 }
 
-function loadPromptsFromFile (filePath) {
+function loadPromptsFromFile(filePath) {
   const parsed = JSON.parse(fs.readFileSync(filePath, 'utf8'))
   if (!Array.isArray(parsed)) {
     throw new Error(`Invalid prompts JSON at ${filePath}; expected array`)
@@ -238,11 +258,12 @@ function loadPromptsFromFile (filePath) {
   return parsed
 }
 
-function loadPreviousCaseRecords (resultsDir, currentJsonlPath) {
+function loadPreviousCaseRecords(resultsDir, currentJsonlPath) {
   const recordsByCaseKey = new Map()
   let files = []
   try {
-    files = fs.readdirSync(resultsDir)
+    files = fs
+      .readdirSync(resultsDir)
       .filter((name) => /^llm-parameter-sweep-\d{8}-\d{6}\.jsonl$/.test(name))
       .sort()
   } catch {
@@ -273,15 +294,13 @@ function loadPreviousCaseRecords (resultsDir, currentJsonlPath) {
   return recordsByCaseKey
 }
 
-function seedBaselineCachesFromRecord (record, baselineOutputs, adaptiveBaselineOutputs) {
+function seedBaselineCachesFromRecord(record, baselineOutputs, adaptiveBaselineOutputs) {
   if (!record || !record.isBaseline) return
   const promptResults = Array.isArray(record.promptResults) ? record.promptResults : []
   for (const promptResult of promptResults) {
     if (!promptResult || !promptResult.promptId) continue
     const promptId = String(promptResult.promptId)
-    const outputText = typeof promptResult.outputText === 'string'
-      ? promptResult.outputText
-      : null
+    const outputText = typeof promptResult.outputText === 'string' ? promptResult.outputText : null
     if (outputText == null) continue
     baselineOutputs[promptId] = outputText
     const adaptiveKey = getAdaptiveBaselineKey(promptId)

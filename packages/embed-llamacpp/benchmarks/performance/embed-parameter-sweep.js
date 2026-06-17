@@ -14,15 +14,15 @@ const { createProgressReporter } = require('./progress')
 const { tsFileStamp, toMarkdown, toJsonLines } = require('./reporters')
 const { buildCases, runModelCases } = require('./case-runner')
 
-function loadLocalEmbedAddon () {
+function loadLocalEmbedAddon() {
   return require('../../index')
 }
 
-function loadNpmEmbedAddon () {
+function loadNpmEmbedAddon() {
   return require('@qvac/embed-llamacpp')
 }
 
-function createDebugLogger (enabled) {
+function createDebugLogger(enabled) {
   return {
     log: (...msgs) => {
       if (enabled) console.log(...msgs)
@@ -33,27 +33,29 @@ function createDebugLogger (enabled) {
   }
 }
 
-function parseAddonSource (value) {
-  const normalized = String(value || 'local').trim().toLowerCase()
+function parseAddonSource(value) {
+  const normalized = String(value || 'local')
+    .trim()
+    .toLowerCase()
   if (normalized === 'local' || normalized === 'npm') return normalized
   throw new Error(`Invalid --addon-source value "${value}". Expected "local" or "npm".`)
 }
 
-function resolveAddonCtor (addonSource) {
+function resolveAddonCtor(addonSource) {
   try {
     return addonSource === 'npm' ? loadNpmEmbedAddon() : loadLocalEmbedAddon()
   } catch (error) {
     const message = error.message || String(error)
     throw new Error(
       `Failed to load addon source "${addonSource}": ${message}. ` +
-      (addonSource === 'local'
-        ? 'Run `npm run build` for local addon artifacts.'
-        : 'Run `npm run performance:install` to install npm addon package.')
+        (addonSource === 'local'
+          ? 'Run `npm run build` for local addon artifacts.'
+          : 'Run `npm run performance:install` to install npm addon package.')
     )
   }
 }
 
-function parseArgs (argv) {
+function parseArgs(argv) {
   const parsed = {}
   for (let i = 2; i < argv.length; i++) {
     const token = argv[i]
@@ -70,7 +72,7 @@ function parseArgs (argv) {
   return parsed
 }
 
-function parseRepeats (value) {
+function parseRepeats(value) {
   if (value == null) return DEFAULT_REPEATS
   const repeats = Number(value)
   if (!Number.isInteger(repeats) || repeats <= 0) {
@@ -79,7 +81,7 @@ function parseRepeats (value) {
   return repeats
 }
 
-async function main () {
+async function main() {
   const args = parseArgs(process.argv)
   const debugEnabled = Boolean(args.debug)
   const debugLogger = createDebugLogger(debugEnabled)
@@ -91,7 +93,7 @@ async function main () {
   if (!fs.existsSync(inputsFilePath)) {
     throw new Error(
       `Missing inputs file: ${inputsFilePath}. ` +
-      'Place a JSON object { "<batchSize>": string[5], ... } at benchmarks/performance/inputs.json.'
+        'Place a JSON object { "<batchSize>": string[5], ... } at benchmarks/performance/inputs.json.'
     )
   }
   const inputsByBatchSize = JSON.parse(fs.readFileSync(inputsFilePath, 'utf8'))
@@ -109,10 +111,15 @@ async function main () {
     const cases = buildCases(modelDef, PARAMETER_SWEEP)
     return { modelDef, cases }
   })
-  const totalPlannedRuns = plannedRunsByModel.reduce((acc, item) => acc + (item.cases.length * repeats), 0)
+  const totalPlannedRuns = plannedRunsByModel.reduce(
+    (acc, item) => acc + item.cases.length * repeats,
+    0
+  )
   const progress = createProgressReporter(totalPlannedRuns)
 
-  debugLogger.log(`Running full-grid parameter sweep for: ${selectedModels.map((m) => m.id).join(', ')}`)
+  debugLogger.log(
+    `Running full-grid parameter sweep for: ${selectedModels.map((m) => m.id).join(', ')}`
+  )
   debugLogger.log(`Addon source: ${addonSource}`)
   debugLogger.log(`Repeats per case: ${repeats}`)
   debugLogger.log(`Total planned runs: ${totalPlannedRuns}`)

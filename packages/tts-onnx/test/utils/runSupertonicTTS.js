@@ -8,7 +8,7 @@ const { concatenatePcmChunks } = require('./pcmConcatenator')
 
 const SUPERTONIC_SAMPLE_RATE = 44100
 
-async function loadSupertonicTTS (params = {}) {
+async function loadSupertonicTTS(params = {}) {
   const defaultModelDir = path.resolve(path.join(getBaseDir(), 'models', 'supertonic'))
 
   const model = new ONNXTTS({
@@ -30,7 +30,7 @@ async function loadSupertonicTTS (params = {}) {
   return model
 }
 
-async function runSupertonicTTS (model, params, expectation = {}) {
+async function runSupertonicTTS(model, params, expectation = {}) {
   return runTTS(model, params, expectation, {
     sampleRate: SUPERTONIC_SAMPLE_RATE,
     engineTag: 'Supertonic'
@@ -46,7 +46,7 @@ async function runSupertonicTTS (model, params, expectation = {}) {
  * then chunk count matches `phrases.length`. Optional `params.streamingOptions` is forwarded as
  * the second argument to `runStreaming` for tests that need explicit overrides.
  */
-async function runSupertonicStreaming (model, params, expectation = {}) {
+async function runSupertonicStreaming(model, params, expectation = {}) {
   const sampleRate = SUPERTONIC_SAMPLE_RATE
   const tag = '[Supertonic] '
 
@@ -66,7 +66,7 @@ async function runSupertonicStreaming (model, params, expectation = {}) {
   }
 
   try {
-    async function * textStream () {
+    async function* textStream() {
       for (let i = 0; i < phrases.length; i++) {
         yield phrases[i]
       }
@@ -83,7 +83,7 @@ async function runSupertonicStreaming (model, params, expectation = {}) {
     const textByChunk = new Map()
     let jobStats = null
 
-    response.onUpdate(data => {
+    response.onUpdate((data) => {
       if (data && data.outputArray != null && data.chunkIndex !== undefined) {
         pcmByChunk.set(data.chunkIndex, Int16Array.from(data.outputArray))
         if (typeof data.sentenceChunk === 'string') {
@@ -98,7 +98,7 @@ async function runSupertonicStreaming (model, params, expectation = {}) {
     await response.await()
 
     const indices = [...pcmByChunk.keys()].sort((a, b) => a - b)
-    const pcmChunks = indices.map(i => pcmByChunk.get(i))
+    const pcmChunks = indices.map((i) => pcmByChunk.get(i))
     const combined = concatenatePcmChunks(pcmChunks, {
       crossfadeSamples: 0,
       silenceGapSamples: 0
@@ -107,7 +107,7 @@ async function runSupertonicStreaming (model, params, expectation = {}) {
     const durationMs =
       response.stats?.audioDurationMs ||
       jobStats?.audioDurationMs ||
-      (sampleCount / (sampleRate / 1000))
+      sampleCount / (sampleRate / 1000)
 
     const passed = checkExpectations(sampleCount, durationMs, expectation)
     const samples = Array.from(combined)
@@ -130,7 +130,7 @@ async function runSupertonicStreaming (model, params, expectation = {}) {
       : null
 
     const streamChunkCount = pcmChunks.length
-    const sentenceChunks = indices.map(i => textByChunk.get(i) || '')
+    const sentenceChunks = indices.map((i) => textByChunk.get(i) || '')
     const statsInfo = stats
       ? `duration: ${durationMs.toFixed(0)}ms, RTF: ${stats.realTimeFactor?.toFixed(4) || 'N/A'}, chunks: ${streamChunkCount}`
       : `duration: ${durationMs.toFixed(0)}ms (calculated), chunks: ${streamChunkCount}`
@@ -164,7 +164,7 @@ async function runSupertonicStreaming (model, params, expectation = {}) {
  * Integration helper: chunked **output-only** streaming — `run({ input, streamOutput: true })`
  * (same orchestrator as {@link ONNXTTS#runStream}), then `onUpdate` + `await`, concatenating PCM in chunk order.
  */
-async function runSupertonicStream (model, params, expectation = {}) {
+async function runSupertonicStream(model, params, expectation = {}) {
   const sampleRate = SUPERTONIC_SAMPLE_RATE
   const tag = '[Supertonic] '
 
@@ -184,9 +184,7 @@ async function runSupertonicStream (model, params, expectation = {}) {
 
   try {
     const streamOpts =
-      params.streamOptions && typeof params.streamOptions === 'object'
-        ? params.streamOptions
-        : {}
+      params.streamOptions && typeof params.streamOptions === 'object' ? params.streamOptions : {}
 
     const response = await model.run({
       input: params.text,
@@ -198,7 +196,7 @@ async function runSupertonicStream (model, params, expectation = {}) {
     const textByChunk = new Map()
     let jobStats = null
 
-    response.onUpdate(data => {
+    response.onUpdate((data) => {
       if (data && data.outputArray != null && data.chunkIndex !== undefined) {
         pcmByChunk.set(data.chunkIndex, Int16Array.from(data.outputArray))
         if (typeof data.sentenceChunk === 'string') {
@@ -213,7 +211,7 @@ async function runSupertonicStream (model, params, expectation = {}) {
     await response.await()
 
     const indices = [...pcmByChunk.keys()].sort((a, b) => a - b)
-    const pcmChunks = indices.map(i => pcmByChunk.get(i))
+    const pcmChunks = indices.map((i) => pcmByChunk.get(i))
     const combined = concatenatePcmChunks(pcmChunks, {
       crossfadeSamples: 0,
       silenceGapSamples: 0
@@ -222,7 +220,7 @@ async function runSupertonicStream (model, params, expectation = {}) {
     const durationMs =
       response.stats?.audioDurationMs ||
       jobStats?.audioDurationMs ||
-      (sampleCount / (sampleRate / 1000))
+      sampleCount / (sampleRate / 1000)
 
     const passed = checkExpectations(sampleCount, durationMs, expectation)
     const samples = Array.from(combined)
@@ -245,7 +243,7 @@ async function runSupertonicStream (model, params, expectation = {}) {
       : null
 
     const streamChunkCount = pcmChunks.length
-    const sentenceChunks = indices.map(i => textByChunk.get(i) || '')
+    const sentenceChunks = indices.map((i) => textByChunk.get(i) || '')
     const statsInfo = stats
       ? `duration: ${durationMs.toFixed(0)}ms, RTF: ${stats.realTimeFactor?.toFixed(4) || 'N/A'}, chunks: ${streamChunkCount}`
       : `duration: ${durationMs.toFixed(0)}ms (calculated), chunks: ${streamChunkCount}`

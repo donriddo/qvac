@@ -29,7 +29,9 @@ const runLiveAudio = async (payload) => {
   const vadParams = config.model.vad_params || null
 
   const audioDurationSeconds = audioBuffer.length / (sampleRate * 2)
-  logger.info(`Processing live audio chunk: ${audioBuffer.length} bytes, ${audioDurationSeconds.toFixed(2)}s duration, VAD=${!!vadModelPath}`)
+  logger.info(
+    `Processing live audio chunk: ${audioBuffer.length} bytes, ${audioDurationSeconds.toFixed(2)}s duration, VAD=${!!vadModelPath}`
+  )
 
   const cacheKey = `live:${modelPath}:${language}:vad=${!!vadModelPath}`
 
@@ -104,7 +106,7 @@ const runLiveAudio = async (payload) => {
   const response = await modelInstance.run(audioStream)
 
   await response
-    .onUpdate(outputArr => {
+    .onUpdate((outputArr) => {
       const items = Array.isArray(outputArr) ? outputArr : [outputArr]
       logger.info(`Segment update: ${items.length} items received`)
       for (const item of items) {
@@ -118,28 +120,36 @@ const runLiveAudio = async (payload) => {
   const runMs = runSec * 1e3 + runNano / 1e6
 
   const text = segments
-    .map(s => s.text || s)
-    .filter(t => t && t.trim().length > 0)
+    .map((s) => s.text || s)
+    .filter((t) => t && t.trim().length > 0)
     .join(' ')
     .trim()
     .replace(/\s+/g, ' ')
 
   if (segments.length === 0) {
     if (vadModelPath) {
-      logger.warn(`No segments detected! Audio duration: ${audioDurationSeconds.toFixed(2)}s. VAD is enabled and filtering all audio. DISABLE VAD for live streaming with short chunks.`)
+      logger.warn(
+        `No segments detected! Audio duration: ${audioDurationSeconds.toFixed(2)}s. VAD is enabled and filtering all audio. DISABLE VAD for live streaming with short chunks.`
+      )
     } else {
-      logger.warn(`No segments detected! Audio duration: ${audioDurationSeconds.toFixed(2)}s. Check audio input and model configuration.`)
+      logger.warn(
+        `No segments detected! Audio duration: ${audioDurationSeconds.toFixed(2)}s. Check audio input and model configuration.`
+      )
     }
   } else {
-    logger.info(`Live audio processed in ${runMs.toFixed(2)}ms, ${segments.length} segments, text="${text.substring(0, 50)}"`)
+    logger.info(
+      `Live audio processed in ${runMs.toFixed(2)}ms, ${segments.length} segments, text="${text.substring(0, 50)}"`
+    )
   }
 
   return {
-    outputs: [{
-      text,
-      segments,
-      duration: runMs
-    }],
+    outputs: [
+      {
+        text,
+        segments,
+        duration: runMs
+      }
+    ],
     time: {
       runMs
     }

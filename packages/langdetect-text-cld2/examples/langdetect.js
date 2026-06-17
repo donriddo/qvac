@@ -1,18 +1,18 @@
 import { detectOne, detectMultiple, getLangName, getISO2FromName } from '../index.js'
 
-async function detectMostProbableLanguage (text) {
+async function detectMostProbableLanguage(text) {
   const result = await detectOne(text)
   console.log(`Text: ${text}\nMost probable language:`, result)
   console.log('')
 }
 
-async function detectMultipleLanguages (text, topK) {
+async function detectMultipleLanguages(text, topK) {
   const results = await detectMultiple(text, topK)
   console.log(`Text: ${text}\nTop ${topK} probable languages:`, results)
   console.log('')
 }
 
-function languageNameLookup () {
+function languageNameLookup() {
   console.log('Language name lookups (ISO codes to names):')
   console.log('getLangName("en"):', getLangName('en'))
   console.log('getLangName("fr"):', getLangName('fr'))
@@ -26,7 +26,7 @@ function languageNameLookup () {
   console.log('')
 }
 
-function iso2Lookup () {
+function iso2Lookup() {
   console.log('ISO2 lookups (language names to ISO codes):')
   console.log('getISO2FromName("English"):', getISO2FromName('English'))
   console.log('getISO2FromName("French"):', getISO2FromName('French'))
@@ -38,16 +38,23 @@ function iso2Lookup () {
   console.log('')
 }
 
-async function runExamples () {
+async function runExamples() {
   console.log('=== CLD2 Language Detection Examples ===\n')
 
   // Detect single language
-  await detectMostProbableLanguage('How are you and how was your holiday? I hope you had a great time!')
-  await detectMostProbableLanguage('Bonjour, comment allez-vous? J\'espère que vous passez une bonne journée.')
+  await detectMostProbableLanguage(
+    'How are you and how was your holiday? I hope you had a great time!'
+  )
+  await detectMostProbableLanguage(
+    "Bonjour, comment allez-vous? J'espère que vous passez une bonne journée."
+  )
   await detectMostProbableLanguage('Hola, ¿cómo estás? Espero que tengas un buen día.')
 
   // Detect multiple languages
-  await detectMultipleLanguages('Hello world, this is a test. We are testing language detection.', 3)
+  await detectMultipleLanguages(
+    'Hello world, this is a test. We are testing language detection.',
+    3
+  )
   await detectMultipleLanguages('Bonjour le monde, ceci est un test de détection de langue.', 2)
 
   // Mixed language text

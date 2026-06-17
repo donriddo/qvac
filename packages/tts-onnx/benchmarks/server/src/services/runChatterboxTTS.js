@@ -21,17 +21,22 @@ let loadTimeMs = 0
  * @param {string} filePath - Path to WAV file
  * @returns {Float32Array} Audio samples normalized to [-1, 1]
  */
-function loadReferenceAudioFromFile (filePath) {
+function loadReferenceAudioFromFile(filePath) {
   const buffer = fs.readFileSync(filePath)
-  
+
   // Parse WAV header (simplified - assumes standard PCM WAV)
   // WAV header is typically 44 bytes
   const dataView = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength)
-  
+
   // Find 'data' chunk
   let dataOffset = 12
   while (dataOffset < buffer.length - 8) {
-    const chunkId = String.fromCharCode(buffer[dataOffset], buffer[dataOffset + 1], buffer[dataOffset + 2], buffer[dataOffset + 3])
+    const chunkId = String.fromCharCode(
+      buffer[dataOffset],
+      buffer[dataOffset + 1],
+      buffer[dataOffset + 2],
+      buffer[dataOffset + 3]
+    )
     const chunkSize = dataView.getUint32(dataOffset + 4, true)
     if (chunkId === 'data') {
       dataOffset += 8
@@ -39,19 +44,19 @@ function loadReferenceAudioFromFile (filePath) {
     }
     dataOffset += 8 + chunkSize
   }
-  
+
   // Get format info from 'fmt ' chunk (at offset 20-35 typically)
   const bitsPerSample = dataView.getUint16(34, true)
   const numChannels = dataView.getUint16(22, true)
-  
+
   // Read audio data
   const audioData = buffer.slice(dataOffset)
   const bytesPerSample = bitsPerSample / 8
   const numSamples = Math.floor(audioData.length / bytesPerSample / numChannels)
-  
+
   const samples = new Float32Array(numSamples)
   const audioView = new DataView(audioData.buffer, audioData.byteOffset, audioData.byteLength)
-  
+
   for (let i = 0; i < numSamples; i++) {
     // Read first channel only (mono mix)
     const offset = i * bytesPerSample * numChannels
@@ -61,7 +66,7 @@ function loadReferenceAudioFromFile (filePath) {
       samples[i] = audioView.getFloat32(offset, true)
     }
   }
-  
+
   return samples
 }
 
@@ -72,11 +77,11 @@ function loadReferenceAudioFromFile (filePath) {
  * @param {number} [frequency=440] - Frequency of sine wave in Hz
  * @returns {Float32Array} Audio samples in range [-1, 1]
  */
-function generateSyntheticReferenceAudio (durationSec = 1.0, sampleRate = 24000, frequency = 440) {
+function generateSyntheticReferenceAudio(durationSec = 1.0, sampleRate = 24000, frequency = 440) {
   const numSamples = Math.floor(sampleRate * durationSec)
   const samples = new Float32Array(numSamples)
   for (let i = 0; i < numSamples; i++) {
-    samples[i] = Math.sin(2 * Math.PI * frequency * i / sampleRate) * 0.5
+    samples[i] = Math.sin((2 * Math.PI * frequency * i) / sampleRate) * 0.5
   }
   return samples
 }
@@ -84,14 +89,14 @@ function generateSyntheticReferenceAudio (durationSec = 1.0, sampleRate = 24000,
 /**
  * Generate a cache key for model
  */
-function generateModelKey (config) {
+function generateModelKey(config) {
   return `chatterbox:${config.modelDir || 'default'}`
 }
 
 /**
  * Run Chatterbox TTS synthesis on multiple texts
  */
-async function runChatterboxTTS (payload) {
+async function runChatterboxTTS(payload) {
   const { texts, config, includeSamples = false } = payload
 
   logger.info(`[Chatterbox] Processing ${texts.length} texts`)
@@ -129,11 +134,15 @@ async function runChatterboxTTS (payload) {
     let referenceAudio
     if (fs.existsSync(refAudioPath)) {
       referenceAudio = loadReferenceAudioFromFile(refAudioPath)
-      logger.info(`[Chatterbox] Using reference audio from: ${refAudioPath} (${referenceAudio.length} samples)`)
+      logger.info(
+        `[Chatterbox] Using reference audio from: ${refAudioPath} (${referenceAudio.length} samples)`
+      )
     } else {
       // Fallback to synthetic audio
       referenceAudio = generateSyntheticReferenceAudio(1.0, 24000, 440)
-      logger.warn(`[Chatterbox] Reference audio not found, using synthetic audio (${referenceAudio.length} samples)`)
+      logger.warn(
+        `[Chatterbox] Reference audio not found, using synthetic audio (${referenceAudio.length} samples)`
+      )
     }
 
     const modelConfig = {
@@ -173,7 +182,9 @@ async function runChatterboxTTS (payload) {
     const text = texts[i]
     const textStart = process.hrtime()
 
-    logger.debug(`[Chatterbox] Synthesizing text ${i + 1}/${texts.length}: "${text.substring(0, 50)}..."`)
+    logger.debug(
+      `[Chatterbox] Synthesizing text ${i + 1}/${texts.length}: "${text.substring(0, 50)}..."`
+    )
 
     const response = await cachedModel.run({
       input: text,
@@ -183,7 +194,7 @@ async function runChatterboxTTS (payload) {
     let buffer = []
     let jobStats = null
     await response
-      .onUpdate(data => {
+      .onUpdate((data) => {
         if (data && data.outputArray) {
           buffer = buffer.concat(Array.from(data.outputArray))
         }
@@ -208,7 +219,7 @@ async function runChatterboxTTS (payload) {
     } else if (response.stats?.realTimeFactor) {
       rtf = response.stats.realTimeFactor
     } else {
-      rtf = (textGenMs / 1000) / durationSec
+      rtf = textGenMs / 1000 / durationSec
     }
 
     logger.info(`  Text: "${text.substring(0, 50)}"`)
@@ -239,7 +250,9 @@ async function runChatterboxTTS (payload) {
 
   const avgRtf = outputs.reduce((sum, o) => sum + o.rtf, 0) / outputs.length
 
-  logger.info(`[Chatterbox] Completed ${outputs.length} syntheses in ${totalGenMs.toFixed(2)}ms (avg RTF: ${avgRtf.toFixed(4)})`)
+  logger.info(
+    `[Chatterbox] Completed ${outputs.length} syntheses in ${totalGenMs.toFixed(2)}ms (avg RTF: ${avgRtf.toFixed(4)})`
+  )
 
   // Get package version
   let version = 'unknown'

@@ -11,11 +11,42 @@ const isMacCI = os.platform() === 'darwin'
 
 const arabicLangList = ['ar', 'fa', 'ug', 'ur']
 const bengaliLangList = ['bn', 'as', 'mni']
-const cyrillicLangList = ['ru', 'rs_cyrillic', 'be', 'bg', 'uk', 'mn', 'abq', 'ady', 'kbd', 'ava', 'dar', 'inh', 'che',
-  'lbe', 'lez', 'tab', 'tjk']
-const devanagariLangList = ['hi', 'mr', 'ne', 'bh', 'mai', 'ang', 'bho', 'mah', 'sck', 'new', 'gom', 'sa', 'bgc']
+const cyrillicLangList = [
+  'ru',
+  'rs_cyrillic',
+  'be',
+  'bg',
+  'uk',
+  'mn',
+  'abq',
+  'ady',
+  'kbd',
+  'ava',
+  'dar',
+  'inh',
+  'che',
+  'lbe',
+  'lez',
+  'tab',
+  'tjk'
+]
+const devanagariLangList = [
+  'hi',
+  'mr',
+  'ne',
+  'bh',
+  'mai',
+  'ang',
+  'bho',
+  'mah',
+  'sck',
+  'new',
+  'gom',
+  'sa',
+  'bgc'
+]
 
-function getRecognizerModelName (langList) {
+function getRecognizerModelName(langList) {
   const langMap = {
     th: 'thai',
     ch_tra: 'zh_tra',
@@ -76,26 +107,38 @@ test('Full OCR test suite', { timeout: 40 * 60 * 1000, skip: isMobile }, async f
     try {
       for (const test of testCase.tests) {
         const prefixStr = `[${testCase.imagePath}] `
-        const expectedOutput = (isMacCI && test.expectedOutputMacOS) ? test.expectedOutputMacOS : test.expectedOutput
+        const expectedOutput =
+          isMacCI && test.expectedOutputMacOS ? test.expectedOutputMacOS : test.expectedOutput
         t.comment('Options: ' + JSON.stringify(test.options))
         t.comment('Expected Output: ' + JSON.stringify(expectedOutput))
         t.comment('Sending OCR job...')
-        const response = await onnxOcr.run({ path: rootPath + testCase.imagePath, options: test.options })
+        const response = await onnxOcr.run({
+          path: rootPath + testCase.imagePath,
+          options: test.options
+        })
         t.comment('Job sent, waiting for results...')
         await response
-          .onUpdate(output => {
+          .onUpdate((output) => {
             t.ok(Array.isArray(output), prefixStr + 'output should be an array')
-            t.comment('Actual output: ' + JSON.stringify(output.map(o => o[1])))
-            t.comment('Actual output length: ' + output.length + ', Expected length: ' + expectedOutput.length)
+            t.comment('Actual output: ' + JSON.stringify(output.map((o) => o[1])))
+            t.comment(
+              'Actual output length: ' +
+                output.length +
+                ', Expected length: ' +
+                expectedOutput.length
+            )
             t.ok(output.length === expectedOutput.length, prefixStr + 'output length should match')
 
             for (let i = 0; i < output.length; i++) {
               if (i < expectedOutput.length && expectedOutput[i].length > 0) {
-                t.ok(output[i][1] === expectedOutput[i], prefixStr + `output at index ${i} should match expected`)
+                t.ok(
+                  output[i][1] === expectedOutput[i],
+                  prefixStr + `output at index ${i} should match expected`
+                )
               }
             }
           })
-          .onError(error => {
+          .onError((error) => {
             if (test.expectedOutput === 'error') {
               t.pass(prefixStr + 'successfully logged expected error')
             } else {
@@ -104,7 +147,7 @@ test('Full OCR test suite', { timeout: 40 * 60 * 1000, skip: isMobile }, async f
           })
           .await()
         t.comment('OCR processing complete')
-        await new Promise(resolve => setTimeout(resolve, 2000))
+        await new Promise((resolve) => setTimeout(resolve, 2000))
       }
     } catch (err) {
       t.fail(`Error sending job: ${err}`)
@@ -112,7 +155,7 @@ test('Full OCR test suite', { timeout: 40 * 60 * 1000, skip: isMobile }, async f
       try {
         if (isMacCI && onnxOcr && onnxOcr.addon) {
           await onnxOcr.addon.cancel()
-          await new Promise(resolve => setTimeout(resolve, 2000))
+          await new Promise((resolve) => setTimeout(resolve, 2000))
           t.comment('OCR Stop complete')
         }
         await onnxOcr.unload()
@@ -120,7 +163,11 @@ test('Full OCR test suite', { timeout: 40 * 60 * 1000, skip: isMobile }, async f
       } catch (err) {
         t.comment(`unload() failed: ${err.message}`)
       }
-      if (isMacCI) { await new Promise(resolve => setTimeout(resolve, 20000)) } else { await new Promise(resolve => setTimeout(resolve, 2000)) }
+      if (isMacCI) {
+        await new Promise((resolve) => setTimeout(resolve, 20000))
+      } else {
+        await new Promise((resolve) => setTimeout(resolve, 2000))
+      }
 
       if (global.gc) {
         global.gc()

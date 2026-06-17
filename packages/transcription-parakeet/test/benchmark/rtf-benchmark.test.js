@@ -41,20 +41,20 @@ const VALID_QUANTS = ['q8_0', 'q4_0', 'f16']
 const RTF_RESULTS_DIR = path.resolve(__dirname, '../../benchmarks/results')
 const RESULT_MARKER = 'QVAC_RTF_REPORT::'
 
-function getEnvBoolean (name, fallback) {
+function getEnvBoolean(name, fallback) {
   const value = process.env[name]
   if (value === undefined) return fallback
   return value === '1' || value === 'true' || value === 'TRUE' || value === 'yes'
 }
 
-function getEnvInteger (name, fallback) {
+function getEnvInteger(name, fallback) {
   const value = process.env[name]
   if (value === undefined) return fallback
   const parsed = Number.parseInt(value, 10)
   return Number.isNaN(parsed) ? fallback : parsed
 }
 
-function sanitizeTag (value) {
+function sanitizeTag(value) {
   if (!value) return ''
   return value
     .toLowerCase()
@@ -63,7 +63,7 @@ function sanitizeTag (value) {
     .replace(/-+$/, '')
 }
 
-function getBenchmarkSettings () {
+function getBenchmarkSettings() {
   const requestedModelType = (process.env.QVAC_PARAKEET_BENCHMARK_MODEL_TYPE || 'tdt').toLowerCase()
   if (!VALID_MODEL_TYPES.includes(requestedModelType)) {
     throw new Error(`Invalid benchmark model type: ${requestedModelType}`)
@@ -79,7 +79,9 @@ function getBenchmarkSettings () {
   // can sweep q8_0 vs q4_0.
   const requestedQuant = (process.env.QVAC_PARAKEET_BENCHMARK_QUANT || '').toLowerCase()
   if (requestedQuant && !VALID_QUANTS.includes(requestedQuant)) {
-    throw new Error(`Invalid benchmark quant: ${requestedQuant} (expected one of ${VALID_QUANTS.join(', ')})`)
+    throw new Error(
+      `Invalid benchmark quant: ${requestedQuant} (expected one of ${VALID_QUANTS.join(', ')})`
+    )
   }
 
   return {
@@ -97,7 +99,7 @@ function getBenchmarkSettings () {
   }
 }
 
-async function resolveModelPath (benchmarkSettings) {
+async function resolveModelPath(benchmarkSettings) {
   const modelPath = await ensureGgufForType(
     benchmarkSettings.modelType,
     null,
@@ -111,7 +113,7 @@ async function resolveModelPath (benchmarkSettings) {
   return modelPath
 }
 
-function getUpperBound (benchmarkSettings) {
+function getUpperBound(benchmarkSettings) {
   if (benchmarkSettings.requestedUpperBound !== undefined) {
     const parsed = Number.parseFloat(benchmarkSettings.requestedUpperBound)
     if (!Number.isNaN(parsed)) return parsed
@@ -126,7 +128,7 @@ function getUpperBound (benchmarkSettings) {
 //   - android:        Vulkan (Adreno: OpenCL fallback)
 // (The previous coreml/nnapi/auto-gpu names were ONNX-era and never matched
 // the GGML runtime, which reports the real backend via stats.backendId.)
-function getRequestedBackendFamily (platformName, useGPU, backendHint) {
+function getRequestedBackendFamily(platformName, useGPU, backendHint) {
   if (backendHint) return backendHint
   if (!useGPU) return 'cpu'
   if (platformName === 'darwin' || platformName === 'ios') return 'metal'
@@ -137,24 +139,27 @@ function getRequestedBackendFamily (platformName, useGPU, backendHint) {
 
 // Maps stats.backendId (surfaced by ParakeetModel::runtimeStats() after
 // Engine::backend_name()) to the GGML backend family that actually ran.
-function backendIdToName (id) {
+function backendIdToName(id) {
   switch (id) {
-    case 0: return 'cpu'
-    case 1: return 'metal'
-    case 2: return 'cuda'
-    case 3: return 'vulkan'
-    case 4: return 'opencl'
-    case 99: return 'other-gpu'
-    default: return ''
+    case 0:
+      return 'cpu'
+    case 1:
+      return 'metal'
+    case 2:
+      return 'cuda'
+    case 3:
+      return 'vulkan'
+    case 4:
+      return 'opencl'
+    case 99:
+      return 'other-gpu'
+    default:
+      return ''
   }
 }
 
-function getArtifactFileName (benchmarkSettings) {
-  const parts = [
-    'rtf-benchmark',
-    platform,
-    benchmarkSettings.modelType
-  ]
+function getArtifactFileName(benchmarkSettings) {
+  const parts = ['rtf-benchmark', platform, benchmarkSettings.modelType]
 
   // Quant goes between model type and device so multi-quant sweeps on the
   // same runner don't clobber each other's artifacts.
@@ -171,7 +176,7 @@ function getArtifactFileName (benchmarkSettings) {
   return `${parts.join('-')}.json`
 }
 
-function getTimeMs () {
+function getTimeMs() {
   const [sec, nsec] = process.hrtime()
   return sec * 1000 + nsec / 1e6
 }
@@ -180,7 +185,7 @@ function getTimeMs () {
 // label which build produced the numbers (matches the version-stamping the
 // LLM benchmark suite does). Read from package.json via bare-fs because bare
 // does not support require()-ing JSON.
-function getAddonVersion () {
+function getAddonVersion() {
   try {
     const pkgPath = path.resolve(__dirname, '../../package.json')
     return JSON.parse(fs.readFileSync(pkgPath, 'utf8')).version || ''
@@ -189,7 +194,7 @@ function getAddonVersion () {
   }
 }
 
-function percentile (sorted, p) {
+function percentile(sorted, p) {
   const idx = (p / 100) * (sorted.length - 1)
   const lo = Math.floor(idx)
   const hi = Math.ceil(idx)
@@ -197,7 +202,7 @@ function percentile (sorted, p) {
   return sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo)
 }
 
-function stats (values) {
+function stats(values) {
   const sorted = [...values].sort((a, b) => a - b)
   const sum = sorted.reduce((a, b) => a + b, 0)
   const mean = sum / sorted.length
@@ -231,9 +236,12 @@ test('RTF benchmark: collect real-time factor on CI device', { timeout: 600000 }
   console.log(`  Model type:     ${benchmarkSettings.modelType}`)
   console.log(`  Quant:          ${benchmarkSettings.resolvedQuant || 'default'}`)
   console.log(`  GPU requested:  ${benchmarkSettings.useGPU}`)
-  if (benchmarkSettings.backendHint) console.log(`  Backend hint:   ${benchmarkSettings.backendHint}`)
-  if (benchmarkSettings.deviceLabel) console.log(`  Device label:   ${benchmarkSettings.deviceLabel}`)
-  if (benchmarkSettings.runnerLabel) console.log(`  Runner label:   ${benchmarkSettings.runnerLabel}`)
+  if (benchmarkSettings.backendHint)
+    console.log(`  Backend hint:   ${benchmarkSettings.backendHint}`)
+  if (benchmarkSettings.deviceLabel)
+    console.log(`  Device label:   ${benchmarkSettings.deviceLabel}`)
+  if (benchmarkSettings.runnerLabel)
+    console.log(`  Runner label:   ${benchmarkSettings.runnerLabel}`)
   console.log(`  Mobile:         ${isMobile}`)
   console.log(`  Warmup runs:    ${benchmarkSettings.numWarmup}`)
   console.log(`  Benchmark runs: ${benchmarkSettings.numRuns}`)
@@ -271,9 +279,13 @@ test('RTF benchmark: collect real-time factor on CI device', { timeout: 600000 }
     }
   })
 
-  async function runOnce (audio) {
+  async function runOnce(audio) {
     const response = await model.run(audio)
-    await response.onUpdate(() => { /* discard segments here -- we only need stats */ }).await()
+    await response
+      .onUpdate(() => {
+        /* discard segments here -- we only need stats */
+      })
+      .await()
     return response.stats || null
   }
 
@@ -317,7 +329,7 @@ test('RTF benchmark: collect real-time factor on CI device', { timeout: 600000 }
       // measured per-call wall time and the known audio duration instead, and
       // only prefer the addon value when a future build reports a positive one.
       const statsRtf = jobStats.realTimeFactor || 0
-      const derivedRtf = audioDurationSec > 0 ? (wallMs / 1000) / audioDurationSec : 0
+      const derivedRtf = audioDurationSec > 0 ? wallMs / 1000 / audioDurationSec : 0
       const run = {
         iteration: i + 1,
         wallMs,
@@ -344,15 +356,17 @@ test('RTF benchmark: collect real-time factor on CI device', { timeout: 600000 }
 
       allResults.push(run)
 
-      console.log(`  Run ${i + 1}/${benchmarkSettings.numRuns}: ` +
-        `RTF=${run.rtf.toFixed(4)}  ` +
-        `wall=${wallMs.toFixed(0)}ms  ` +
-        `tokens/s=${run.tokensPerSecond.toFixed(1)}  ` +
-        `encoder=${run.encoderMs.toFixed(0)}ms  ` +
-        `decoder=${run.decoderMs.toFixed(0)}ms`)
+      console.log(
+        `  Run ${i + 1}/${benchmarkSettings.numRuns}: ` +
+          `RTF=${run.rtf.toFixed(4)}  ` +
+          `wall=${wallMs.toFixed(0)}ms  ` +
+          `tokens/s=${run.tokensPerSecond.toFixed(1)}  ` +
+          `encoder=${run.encoderMs.toFixed(0)}ms  ` +
+          `decoder=${run.decoderMs.toFixed(0)}ms`
+      )
 
       if (isMobile) {
-        await new Promise(resolve => setTimeout(resolve, 200))
+        await new Promise((resolve) => setTimeout(resolve, 200))
       }
     }
 
@@ -362,11 +376,11 @@ test('RTF benchmark: collect real-time factor on CI device', { timeout: 600000 }
       return
     }
 
-    const rtfValues = allResults.map(r => r.rtf)
-    const wallValues = allResults.map(r => r.wallMs)
-    const tpsValues = allResults.map(r => r.tokensPerSecond)
-    const encoderValues = allResults.map(r => r.encoderMs)
-    const decoderValues = allResults.map(r => r.decoderMs)
+    const rtfValues = allResults.map((r) => r.rtf)
+    const wallValues = allResults.map((r) => r.wallMs)
+    const tpsValues = allResults.map((r) => r.tokensPerSecond)
+    const encoderValues = allResults.map((r) => r.encoderMs)
+    const decoderValues = allResults.map((r) => r.decoderMs)
 
     const rtfStats = stats(rtfValues)
     const wallStats = stats(wallValues)
@@ -425,7 +439,11 @@ test('RTF benchmark: collect real-time factor on CI device', { timeout: 600000 }
       labels: {
         runner: benchmarkSettings.runnerLabel,
         device: benchmarkSettings.deviceLabel,
-        backend: getRequestedBackendFamily(platformName, benchmarkSettings.useGPU, benchmarkSettings.backendHint),
+        backend: getRequestedBackendFamily(
+          platformName,
+          benchmarkSettings.useGPU,
+          benchmarkSettings.backendHint
+        ),
         activeBackend: observedBackendId !== null ? backendIdToName(observedBackendId) : '',
         requestedBackend: benchmarkSettings.useGPU ? 'gpu' : 'cpu',
         label: benchmarkSettings.label
@@ -474,7 +492,11 @@ test('RTF benchmark: collect real-time factor on CI device', { timeout: 600000 }
       modelType: benchmarkSettings.modelType,
       quant: benchmarkSettings.resolvedQuant,
       useGPU: benchmarkSettings.useGPU,
-      backendHint: getRequestedBackendFamily(platformName, benchmarkSettings.useGPU, benchmarkSettings.backendHint),
+      backendHint: getRequestedBackendFamily(
+        platformName,
+        benchmarkSettings.useGPU,
+        benchmarkSettings.backendHint
+      ),
       activeBackend: observedBackendId !== null ? backendIdToName(observedBackendId) : '',
       deviceLabel: benchmarkSettings.deviceLabel,
       runnerLabel: benchmarkSettings.runnerLabel,
@@ -495,19 +517,31 @@ test('RTF benchmark: collect real-time factor on CI device', { timeout: 600000 }
     }
 
     // --- Assertions ---
-    t.ok(allResults.length === benchmarkSettings.numRuns,
-      `Completed ${benchmarkSettings.numRuns} benchmark runs`)
+    t.ok(
+      allResults.length === benchmarkSettings.numRuns,
+      `Completed ${benchmarkSettings.numRuns} benchmark runs`
+    )
 
     t.ok(rtfStats.mean > 0, 'Mean RTF should be positive')
 
     if (upperBound !== null) {
-      t.ok(rtfStats.mean <= upperBound,
-        `Mean RTF ${rtfStats.mean.toFixed(4)} should be <= ${upperBound}`)
+      t.ok(
+        rtfStats.mean <= upperBound,
+        `Mean RTF ${rtfStats.mean.toFixed(4)} should be <= ${upperBound}`
+      )
     }
 
     console.log('RTF benchmark completed successfully!\n')
   } finally {
-    try { await model.unload() } catch (_) { /* ignore */ }
-    try { loggerBinding.releaseLogger() } catch (_) { /* ignore */ }
+    try {
+      await model.unload()
+    } catch (_) {
+      /* ignore */
+    }
+    try {
+      loggerBinding.releaseLogger()
+    } catch (_) {
+      /* ignore */
+    }
   }
 })

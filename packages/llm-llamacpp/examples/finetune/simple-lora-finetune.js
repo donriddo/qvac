@@ -9,7 +9,7 @@ const MODEL = {
   url: 'https://huggingface.co/unsloth/Qwen3-0.6B-GGUF/resolve/main/Qwen3-0.6B-Q8_0.gguf'
 }
 
-async function runFinetuningTests () {
+async function runFinetuningTests() {
   let model
 
   const { logger: filteredLogger, restore: restoreConsole } = createFilteredLogger()
@@ -48,12 +48,16 @@ async function runFinetuningTests () {
     }
 
     const handle = await model.finetune(finetuneOptions)
-    handle.on('stats', stats => {
+    handle.on('stats', (stats) => {
       console.log(`  ${formatProgress(stats, finetuneOptions.numberOfEpochs)}`)
     })
     const finetuneResult = await handle.await()
     console.log('Finetune completed:', finetuneResult)
-    if (finetuneResult && typeof finetuneResult.stats === 'object' && finetuneResult.stats !== null) {
+    if (
+      finetuneResult &&
+      typeof finetuneResult.stats === 'object' &&
+      finetuneResult.stats !== null
+    ) {
       console.log('✅ Finetune terminal stats:', finetuneResult.stats)
     } else {
       console.warn('⚠️  opts.stats is enabled, but no finetune terminal stats were returned')

@@ -11,16 +11,20 @@ const MODEL = {
   url: 'https://huggingface.co/unsloth/Qwen3-0.6B-GGUF/resolve/main/Qwen3-0.6B-Q8_0.gguf'
 }
 
-const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms))
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
-function waitForProgress (handle, minSteps, timeoutMs) {
+function waitForProgress(handle, minSteps, timeoutMs) {
   minSteps = minSteps || 5
   timeoutMs = timeoutMs || 300_000
   return new Promise((resolve, reject) => {
     let count = 0
     const timer = setTimeout(() => {
       handle.removeListener('stats', onStats)
-      reject(new Error(`waitForProgress: no progress after ${timeoutMs}ms (received ${count}/${minSteps} steps)`))
+      reject(
+        new Error(
+          `waitForProgress: no progress after ${timeoutMs}ms (received ${count}/${minSteps} steps)`
+        )
+      )
     }, timeoutMs)
     const onStats = () => {
       if (++count >= minSteps) {
@@ -33,13 +37,13 @@ function waitForProgress (handle, minSteps, timeoutMs) {
   })
 }
 
-function findPauseCheckpoint (checkpointDir) {
+function findPauseCheckpoint(checkpointDir) {
   if (!fs.existsSync(checkpointDir)) {
     return null
   }
 
   const files = fs.readdirSync(checkpointDir)
-  const pauseCheckpoints = files.filter(f => f.startsWith('pause_checkpoint_step_'))
+  const pauseCheckpoints = files.filter((f) => f.startsWith('pause_checkpoint_step_'))
 
   if (pauseCheckpoints.length === 0) {
     return null
@@ -54,7 +58,7 @@ function findPauseCheckpoint (checkpointDir) {
   return path.join(checkpointDir, pauseCheckpoints[0])
 }
 
-async function runInference (client, description, messages) {
+async function runInference(client, description, messages) {
   console.log(`\n${'='.repeat(60)}`)
   console.log(`🔮 Starting inference: ${description}`)
   console.log(`${'='.repeat(60)}`)
@@ -62,14 +66,16 @@ async function runInference (client, description, messages) {
   console.log('\nResponse:')
 
   const response = await client.run(messages)
-  await response.onUpdate(token => {
-    process.stdout.write(token)
-  }).await()
+  await response
+    .onUpdate((token) => {
+      process.stdout.write(token)
+    })
+    .await()
   console.log('\n')
   console.log(`✅ Inference completed: ${description}`)
 }
 
-async function main () {
+async function main() {
   const [modelName, modelDir] = await downloadModel(MODEL.url, MODEL.name)
 
   const trainDatasetPath = './examples/input/small_train_HF.jsonl'
@@ -144,7 +150,7 @@ async function main () {
 
     console.log('🚀 Starting finetuning...')
     const finetuneHandle = await client.finetune(finetuneOptions)
-    finetuneHandle.on('stats', stats => {
+    finetuneHandle.on('stats', (stats) => {
       console.log(`  ${formatProgress(stats, finetuneOptions.numberOfEpochs)}`)
     })
 
@@ -224,7 +230,11 @@ async function main () {
       await inferenceClientWithLora.load()
       console.log('✅ Model with LoRA adapter loaded successfully\n')
 
-      await runInference(inferenceClientWithLora, 'Paused checkpoint with LoRA adapters', inferenceMessages)
+      await runInference(
+        inferenceClientWithLora,
+        'Paused checkpoint with LoRA adapters',
+        inferenceMessages
+      )
     } finally {
       if (inferenceClientWithLora) {
         console.log('Unloading inference client with LoRA...')
@@ -270,7 +280,7 @@ async function main () {
     console.log('='.repeat(60))
     console.log('▶️  Resuming finetuning...')
     const resumeHandle = await client.finetune(finetuneOptions)
-    resumeHandle.on('stats', stats => {
+    resumeHandle.on('stats', (stats) => {
       console.log(`  ${formatProgress(stats, finetuneOptions.numberOfEpochs)}`)
     })
     console.log('✅ Finetuning has RESUMED\n')
@@ -285,7 +295,7 @@ async function main () {
         console.log('✅ Pause checkpoint was cleared after completion')
       } else {
         const entries = fs.readdirSync(checkpointDir, { withFileTypes: true })
-        const hasPauseCheckpoint = entries.some(entry => {
+        const hasPauseCheckpoint = entries.some((entry) => {
           if (entry.isDirectory()) {
             return entry.name.startsWith('pause_checkpoint_step_')
           }
@@ -295,7 +305,9 @@ async function main () {
         if (!hasPauseCheckpoint) {
           console.log('✅ Pause checkpoint was cleared after completion')
         } else {
-          console.log('⚠️  Pause checkpoint still exists (may be normal if training was paused at end)')
+          console.log(
+            '⚠️  Pause checkpoint still exists (may be normal if training was paused at end)'
+          )
         }
       }
     } catch (_) {}
@@ -320,7 +332,7 @@ async function main () {
   }
 }
 
-main().catch(async error => {
+main().catch(async (error) => {
   console.error('\n❌ Fatal error:', error.message)
   console.error('Stack:', error.stack)
   process.exit(1)

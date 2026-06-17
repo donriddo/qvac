@@ -20,7 +20,7 @@ class ONNXOcr {
    * @constructor
    * @param {ONNXOcrArgs} args arguments for inference setup
    */
-  constructor ({ params, opts = {}, logger = null }) {
+  constructor({ params, opts = {}, logger = null }) {
     this.opts = opts
     this.logger = new QvacLogger(logger)
     this.addon = null
@@ -40,14 +40,14 @@ class ONNXOcr {
    * Returns the current state of the inference client.
    * @returns {{configLoaded: boolean, weightsLoaded: boolean, destroyed: boolean}}
    */
-  getState () {
+  getState() {
     return this.state
   }
 
   /**
    * Loads the model. If already loaded, unloads first.
    */
-  async load () {
+  async load() {
     if (this.state.configLoaded || this.state.weightsLoaded) {
       this.logger.info('Reload requested - unloading existing model first')
       await this.unload()
@@ -61,13 +61,17 @@ class ONNXOcr {
    * @param {{ path: string, options?: Object }} input - Image input
    * @returns {Promise<QvacResponse>}
    */
-  async run (input) {
+  async run(input) {
     return this._runInternal(input)
   }
 
-  _getDiagnosticsJSON () {
+  _getDiagnosticsJSON() {
     return JSON.stringify({
-      status: this.state.destroyed ? 'destroyed' : (this.state.configLoaded ? 'loaded' : 'not_loaded'),
+      status: this.state.destroyed
+        ? 'destroyed'
+        : this.state.configLoaded
+          ? 'loaded'
+          : 'not_loaded',
       params: this.params
     })
   }
@@ -80,31 +84,41 @@ class ONNXOcr {
    * @param {string} filePath - The file path to normalize
    * @returns {string} - The normalized file path
    */
-  _normalizePath (filePath) {
+  _normalizePath(filePath) {
     if (platform() === 'win32') {
       return '\\\\?\\' + filePath
     }
     return filePath
   }
 
-  async _load () {
+  async _load() {
     this.logger.info('Starting OCR model load')
     const isDoctr = this.params.pipelineMode === 'doctr'
 
     if (!isDoctr) {
       // EasyOCR mode: validate languages
       if (!this.params.langList) {
-        throw new QvacErrorAddonOcr({ code: ERR_CODES.MISSING_REQUIRED_PARAMETER, adds: 'langList' })
+        throw new QvacErrorAddonOcr({
+          code: ERR_CODES.MISSING_REQUIRED_PARAMETER,
+          adds: 'langList'
+        })
       }
 
       // filter out unsupported languages
-      const supported = this.params.langList.filter(l => languages.onnxOcrAllSupportedLanguages.includes(l))
-      const removed = this.params.langList.filter(l => !supported.includes(l))
+      const supported = this.params.langList.filter((l) =>
+        languages.onnxOcrAllSupportedLanguages.includes(l)
+      )
+      const removed = this.params.langList.filter((l) => !supported.includes(l))
       if (removed.length > 0) {
-        this.logger.warn(`Unsupported language(s) removed from langList: ${JSON.stringify(removed)}`)
+        this.logger.warn(
+          `Unsupported language(s) removed from langList: ${JSON.stringify(removed)}`
+        )
       }
       if (supported.length === 0) {
-        throw new QvacErrorAddonOcr({ code: ERR_CODES.UNSUPPORTED_LANGUAGE, adds: JSON.stringify(this.params.langList) })
+        throw new QvacErrorAddonOcr({
+          code: ERR_CODES.UNSUPPORTED_LANGUAGE,
+          adds: JSON.stringify(this.params.langList)
+        })
       }
       this.params.langList = supported
     } else {
@@ -115,17 +129,26 @@ class ONNXOcr {
     }
 
     if (!this.params.pathDetector) {
-      throw new QvacErrorAddonOcr({ code: ERR_CODES.MISSING_REQUIRED_PARAMETER, adds: 'pathDetector' })
+      throw new QvacErrorAddonOcr({
+        code: ERR_CODES.MISSING_REQUIRED_PARAMETER,
+        adds: 'pathDetector'
+      })
     }
 
     // If pathRecognizer is not provided, use pathRecognizerPrefix and getRecognizerModelName to construct the path.
     if (!this.params.pathRecognizer) {
       if (isDoctr) {
-        throw new QvacErrorAddonOcr({ code: ERR_CODES.MISSING_REQUIRED_PARAMETER, adds: 'pathRecognizer is required for doctr mode' })
+        throw new QvacErrorAddonOcr({
+          code: ERR_CODES.MISSING_REQUIRED_PARAMETER,
+          adds: 'pathRecognizer is required for doctr mode'
+        })
       }
       if (!this.params.pathRecognizerPrefix) {
         // If pathRecognizerPrefix is not provided, throw error.
-        throw new QvacErrorAddonOcr({ code: ERR_CODES.MISSING_REQUIRED_PARAMETER, adds: 'either pathRecognizer or pathRecognizerPrefix must be provided' })
+        throw new QvacErrorAddonOcr({
+          code: ERR_CODES.MISSING_REQUIRED_PARAMETER,
+          adds: 'either pathRecognizer or pathRecognizerPrefix must be provided'
+        })
       }
       this.params.pathRecognizer = `${this.params.pathRecognizerPrefix}${this.getRecognizerModelName(this.params.langList)}.onnx`
     }
@@ -140,10 +163,17 @@ class ONNXOcr {
 
     // Add optional parameters if provided
     const optionalFields = [
-      'pipelineMode', 'magRatio', 'defaultRotationAngles',
-      'contrastRetry', 'lowConfidenceThreshold',
-      'recognizerBatchSize', 'decodingMethod', 'straightenPages',
-      'graphOptimization', 'enableXnnpack', 'enableCpuMemArena',
+      'pipelineMode',
+      'magRatio',
+      'defaultRotationAngles',
+      'contrastRetry',
+      'lowConfidenceThreshold',
+      'recognizerBatchSize',
+      'decodingMethod',
+      'straightenPages',
+      'graphOptimization',
+      'enableXnnpack',
+      'enableCpuMemArena',
       'intraOpThreads'
     ]
     for (const field of optionalFields) {
@@ -153,13 +183,17 @@ class ONNXOcr {
     }
 
     this.logger.info('Creating OCR addon with configuration:', onnxOcrParams)
-    this.addon = new OcrFasttextInterface(onnxOcrParams, this._addonOutputCallback.bind(this), console.log)
+    this.addon = new OcrFasttextInterface(
+      onnxOcrParams,
+      this._addonOutputCallback.bind(this),
+      console.log
+    )
     await this.addon.activate()
     this.state.configLoaded = true
     this.logger.info('OCR model load completed successfully')
   }
 
-  _addonOutputCallback (addon, event, data, error) {
+  _addonOutputCallback(addon, event, data, error) {
     // Check stats FIRST (before other checks, since stats event name may contain other type names)
     if (typeof data === 'object' && data !== null && 'totalTime' in data) {
       this.logger.info('OCR inference completed. Stats:', JSON.stringify(data))
@@ -175,7 +209,7 @@ class ONNXOcr {
     }
   }
 
-  async unload () {
+  async unload() {
     if (this.addon) {
       await this.addon.destroy()
       this.addon = null
@@ -184,12 +218,12 @@ class ONNXOcr {
     this.state.weightsLoaded = false
   }
 
-  async destroy () {
+  async destroy() {
     await this.unload()
     this.state.destroyed = true
   }
 
-  async _runInternal (input) {
+  async _runInternal(input) {
     this.logger.info('Starting OCR inference')
     const response = this._job.start()
     try {
@@ -212,29 +246,37 @@ class ONNXOcr {
    * @param {string} imagePath - The path to the image file
    * @returns {Object} - The image data object
    */
-  getImage (imagePath) {
+  getImage(imagePath) {
     this.logger.debug('Reading image from path:', imagePath)
     const contents = fs.readFileSync(imagePath)
     if (!contents || contents.length < 4) {
       this.logger.error('Invalid image file or insufficient data')
-      throw new QvacErrorAddonOcr({ code: ERR_CODES.INVALID_BMP_OR_INSUFFICIENT_DATA, adds: imagePath })
+      throw new QvacErrorAddonOcr({
+        code: ERR_CODES.INVALID_BMP_OR_INSUFFICIENT_DATA,
+        adds: imagePath
+      })
     }
 
     // Detect format by magic bytes
     // JPEG: starts with 0xFF 0xD8
-    if (contents[0] === 0xFF && contents[1] === 0xD8) {
+    if (contents[0] === 0xff && contents[1] === 0xd8) {
       this.logger.debug('Detected JPEG format, passing to C++ for decoding')
       return { data: contents, isEncoded: true }
     }
 
     // PNG: starts with 0x89 0x50 0x4E 0x47 (‰PNG)
-    if (contents[0] === 0x89 && contents[1] === 0x50 && contents[2] === 0x4E && contents[3] === 0x47) {
+    if (
+      contents[0] === 0x89 &&
+      contents[1] === 0x50 &&
+      contents[2] === 0x4e &&
+      contents[3] === 0x47
+    ) {
       this.logger.debug('Detected PNG format, passing to C++ for decoding')
       return { data: contents, isEncoded: true }
     }
 
     // BMP: starts with 0x42 0x4D (BM)
-    if (contents[0] === 0x42 && contents[1] === 0x4D) {
+    if (contents[0] === 0x42 && contents[1] === 0x4d) {
       return this.getImageFromBmp(contents, imagePath)
     }
 
@@ -249,10 +291,13 @@ class ONNXOcr {
    * @param {string} imagePath - The path to the image file (for error messages)
    * @returns {Object} - The image data with width, height, and raw RGB data
    */
-  getImageFromBmp (contents, imagePath) {
+  getImageFromBmp(contents, imagePath) {
     if (contents.length < 14 + 4) {
       this.logger.error('Invalid BMP file or insufficient data')
-      throw new QvacErrorAddonOcr({ code: ERR_CODES.INVALID_BMP_OR_INSUFFICIENT_DATA, adds: imagePath })
+      throw new QvacErrorAddonOcr({
+        code: ERR_CODES.INVALID_BMP_OR_INSUFFICIENT_DATA,
+        adds: imagePath
+      })
     }
 
     const infoHeaderSize = contents.readUInt32LE(14)
@@ -314,7 +359,7 @@ class ONNXOcr {
    * @param {string[]} langList - The list of languages
    * @returns {string} - The name of the recognizer model
    */
-  getRecognizerModelName (langList) {
+  getRecognizerModelName(langList) {
     // traverse list of languages and return recognizer model name for the first supported language
     // rest of the list will have best effort recognition
     for (const lang of langList) {
@@ -350,7 +395,9 @@ class ONNXOcr {
 
       // others
       if (languages.otherLangStringMap[lang]) {
-        this.logger.info(`Using recognizer model: ${languages.otherLangStringMap[lang]} for ${lang}`)
+        this.logger.info(
+          `Using recognizer model: ${languages.otherLangStringMap[lang]} for ${lang}`
+        )
         return languages.otherLangStringMap[lang]
       }
 
@@ -368,7 +415,7 @@ class ONNXOcr {
     noAdditionalDownload: true
   }
 
-  static getModelKey (params) {
+  static getModelKey(params) {
     // Prevents loading same model multiple times
     const mode = (params && params.pipelineMode) || 'easyocr'
     return `onnx-ocr-fasttext-${mode}`

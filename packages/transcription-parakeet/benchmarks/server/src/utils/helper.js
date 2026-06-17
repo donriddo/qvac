@@ -15,7 +15,7 @@ const processJsonRequest = async (req) => {
   return new Promise((resolve, reject) => {
     const chunks = []
     let received = 0
-    req.on('data', chunk => {
+    req.on('data', (chunk) => {
       received += chunk.length
       if (received > MAX_BODY_SIZE) {
         req.destroy(new ApiError(413, 'Payload too large'))
@@ -46,7 +46,7 @@ const processJsonRequest = async (req) => {
  * @returns {string}
  */
 const formatZodError = (error) => {
-  const issues = error.issues.map(issue => {
+  const issues = error.issues.map((issue) => {
     const path = issue.path.join('.')
     return path ? `${path}: ${issue.message}` : issue.message
   })

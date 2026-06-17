@@ -12,20 +12,18 @@ const isMobile = os.platform() === 'ios' || os.platform() === 'android'
 // (writable scratch). Fall back to test/mobile/testAssets/ on disk so
 // the same code paths work when these tests are exercised from the
 // repo root (e.g. during local mobile dry-runs).
-function getMobileAssetsDir () {
+function getMobileAssetsDir() {
   if (typeof global !== 'undefined' && global.testDir) return global.testDir
   return path.join(__dirname, '..', 'mobile', 'testAssets')
 }
 
-function getModelPath (filename) {
+function getModelPath(filename) {
   if (isMobile) return path.join(getMobileAssetsDir(), filename)
   return path.join(__dirname, '..', '..', 'models', filename)
 }
 
-function getTestPaths () {
-  const fixturesDir = isMobile
-    ? getMobileAssetsDir()
-    : path.join(__dirname, '..', 'fixtures')
+function getTestPaths() {
+  const fixturesDir = isMobile ? getMobileAssetsDir() : path.join(__dirname, '..', 'fixtures')
   const manifestPath = path.join(fixturesDir, 'manifest.json')
 
   let manifest = { samples: [] }
@@ -40,7 +38,7 @@ function getTestPaths () {
   }
 }
 
-function detectPlatform () {
+function detectPlatform() {
   const os = require('bare-os')
   const arch = os.arch()
   const platform = os.platform()
@@ -51,7 +49,7 @@ function detectPlatform () {
  * Read a .bin neural signal fixture from disk as a Uint8Array view over
  * the original buffer bytes (no copy).
  */
-function readSignal (samplePath) {
+function readSignal(samplePath) {
   const buf = fs.readFileSync(samplePath)
   return new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength)
 }
@@ -60,7 +58,7 @@ function readSignal (samplePath) {
  * Parse the [T, C] header of a neural signal buffer and return the header
  * fields alongside a view over the body bytes.
  */
-function splitHeaderAndBody (signalBytes) {
+function splitHeaderAndBody(signalBytes) {
   const view = new DataView(signalBytes.buffer, signalBytes.byteOffset, signalBytes.byteLength)
   const timesteps = view.getUint32(0, true)
   const channels = view.getUint32(4, true)
@@ -73,7 +71,7 @@ function splitHeaderAndBody (signalBytes) {
  * fragments; used to synthesise longer fixtures (e.g. tile a fixture
  * body N times to force multi-window streaming).
  */
-function buildSignal (channels, bodies) {
+function buildSignal(channels, bodies) {
   const totalBodyBytes = bodies.reduce((sum, b) => sum + b.byteLength, 0)
   const totalTimesteps = totalBodyBytes / (channels * 4)
   const out = new Uint8Array(8 + totalBodyBytes)
@@ -92,7 +90,7 @@ function buildSignal (channels, bodies) {
  * Async generator that yields fixed-size slices of a Uint8Array; used by
  * streaming tests to simulate chunked input delivery.
  */
-async function * chunkify (bytes, chunkSize) {
+async function* chunkify(bytes, chunkSize) {
   for (let i = 0; i < bytes.byteLength; i += chunkSize) {
     yield bytes.subarray(i, Math.min(i + chunkSize, bytes.byteLength))
   }

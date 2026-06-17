@@ -18,7 +18,7 @@ class FilesystemDL extends BaseDL {
   /**
    * @param {FilesystemDLOptions} opts - Options object with directory path.
    */
-  constructor (opts) {
+  constructor(opts) {
     super(opts)
     this.logger.debug('FilesystemDL constructor called', { opts })
 
@@ -40,7 +40,7 @@ class FilesystemDL extends BaseDL {
    * @param {string} filePath - The relative path to the file.
    * @returns {Promise<AsyncIterable<Buffer>>} The file content as async iterable.
    */
-  async getStream (filePath) {
+  async getStream(filePath) {
     this.logger.debug('getStream called', { filePath })
     const fullPath = path.join(this.opts.dirPath, filePath)
     this.logger.debug('Resolved full path for stream', { fullPath })
@@ -63,7 +63,7 @@ class FilesystemDL extends BaseDL {
    * @param {string} [directoryPath='.'] - The directory to list files from.
    * @returns {Promise<string[]>} Array of file names in the directory.
    */
-  async list (directoryPath = '.') {
+  async list(directoryPath = '.') {
     this.logger.debug('list called', { directoryPath })
     const fullPath = path.join(this.opts.dirPath, directoryPath)
     this.logger.debug('Resolved full path for list', { fullPath })

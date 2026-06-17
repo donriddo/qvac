@@ -7,15 +7,18 @@ const { getBaseDir, isMobile, runTTS, runTTSWithSplit } = require('./runTTS')
 
 const CHATTERBOX_SAMPLE_RATE = 24000
 
-async function loadChatterboxTTS (params = {}) {
+async function loadChatterboxTTS(params = {}) {
   const baseDir = getBaseDir()
   const defaultModelDir = path.resolve(path.join(baseDir, 'models', 'chatterbox'))
 
   const tokenizerPath = params.tokenizerPath || path.join(defaultModelDir, 'tokenizer.json')
-  const speechEncoderPath = params.speechEncoderPath || path.join(defaultModelDir, 'speech_encoder.onnx')
+  const speechEncoderPath =
+    params.speechEncoderPath || path.join(defaultModelDir, 'speech_encoder.onnx')
   const embedTokensPath = params.embedTokensPath || path.join(defaultModelDir, 'embed_tokens.onnx')
-  const conditionalDecoderPath = params.conditionalDecoderPath || path.join(defaultModelDir, 'conditional_decoder.onnx')
-  const languageModelPath = params.languageModelPath || path.join(defaultModelDir, 'language_model.onnx')
+  const conditionalDecoderPath =
+    params.conditionalDecoderPath || path.join(defaultModelDir, 'conditional_decoder.onnx')
+  const languageModelPath =
+    params.languageModelPath || path.join(defaultModelDir, 'language_model.onnx')
 
   let referenceAudio
   if (params.referenceAudio) {
@@ -25,15 +28,21 @@ async function loadChatterboxTTS (params = {}) {
     try {
       const { samples, sampleRate } = readWavAsFloat32(params.refWavPath)
       referenceAudio = samples
-      console.log(`[Chatterbox] Loaded reference audio: ${params.refWavPath} (${samples.length} samples, ${sampleRate} Hz)`)
+      console.log(
+        `[Chatterbox] Loaded reference audio: ${params.refWavPath} (${samples.length} samples, ${sampleRate} Hz)`
+      )
       if (sampleRate !== CHATTERBOX_SAMPLE_RATE) {
-        console.log(`[Chatterbox] Note: Chatterbox expects ${CHATTERBOX_SAMPLE_RATE} Hz reference audio`)
+        console.log(
+          `[Chatterbox] Note: Chatterbox expects ${CHATTERBOX_SAMPLE_RATE} Hz reference audio`
+        )
       }
     } catch (err) {
       if (!params.useSyntheticAudio) {
         throw new Error(`Failed to load reference audio from ${params.refWavPath}: ${err.message}`)
       }
-      console.log(`[Chatterbox] Could not load ${params.refWavPath}, falling back to synthetic audio`)
+      console.log(
+        `[Chatterbox] Could not load ${params.refWavPath}, falling back to synthetic audio`
+      )
     }
   }
 
@@ -52,12 +61,16 @@ async function loadChatterboxTTS (params = {}) {
     }
     const { samples, sampleRate: refRate } = readWavAsFloat32(defaultRefPath)
     if (refRate !== CHATTERBOX_SAMPLE_RATE) {
-      console.log(`[Chatterbox] Resampling reference audio from ${refRate}Hz to ${CHATTERBOX_SAMPLE_RATE}Hz`)
+      console.log(
+        `[Chatterbox] Resampling reference audio from ${refRate}Hz to ${CHATTERBOX_SAMPLE_RATE}Hz`
+      )
       referenceAudio = resampleLinear(samples, refRate, CHATTERBOX_SAMPLE_RATE)
     } else {
       referenceAudio = samples
     }
-    console.log(`[Chatterbox] Using reference audio: ${defaultRefPath} (${referenceAudio.length} samples @ ${CHATTERBOX_SAMPLE_RATE / 1000}kHz)`)
+    console.log(
+      `[Chatterbox] Using reference audio: ${defaultRefPath} (${referenceAudio.length} samples @ ${CHATTERBOX_SAMPLE_RATE / 1000}kHz)`
+    )
   }
 
   const model = new ONNXTTS({
@@ -83,14 +96,14 @@ async function loadChatterboxTTS (params = {}) {
   return model
 }
 
-async function runChatterboxTTS (model, params, expectation = {}) {
+async function runChatterboxTTS(model, params, expectation = {}) {
   return runTTS(model, params, expectation, {
     sampleRate: CHATTERBOX_SAMPLE_RATE,
     engineTag: 'Chatterbox'
   })
 }
 
-async function runChatterboxTTSWithSplit (model, params, expectation = {}) {
+async function runChatterboxTTSWithSplit(model, params, expectation = {}) {
   return runTTSWithSplit(model, params, expectation, {
     sampleRate: CHATTERBOX_SAMPLE_RATE,
     engineTag: 'Chatterbox'

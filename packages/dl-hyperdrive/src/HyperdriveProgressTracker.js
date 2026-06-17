@@ -12,7 +12,7 @@ class HyperdriveProgressTracker {
    * @param {ProgressReport} [progressReport] - Optional progress reporter.
    * @param {string} [diskPath] - Optional path to save file to disk instead of cache.
    */
-  constructor (drive, file, logger, progressReport = null, diskPath = null) {
+  constructor(drive, file, logger, progressReport = null, diskPath = null) {
     this.drive = drive
     this.file = file
     this.logger = logger
@@ -32,7 +32,7 @@ class HyperdriveProgressTracker {
   /**
    * Kick off download of a single file, with progress reporting.
    */
-  async downloadStart () {
+  async downloadStart() {
     this.logger.debug('downloadStart called', { file: this.file })
     this.logger.debug('Reporting initial 0 bytes downloaded', {
       file: this.file
@@ -50,7 +50,7 @@ class HyperdriveProgressTracker {
     }
   }
 
-  async _saveFileToDisk (remotePath, diskPath) {
+  async _saveFileToDisk(remotePath, diskPath) {
     try {
       this.logger.debug('saveFileToDisk called', { remotePath, diskPath })
       const fileName = path.basename(remotePath)
@@ -102,7 +102,7 @@ class HyperdriveProgressTracker {
       await new Promise((resolve, reject) => {
         loaderStream.pipe(writeStream)
 
-        loaderStream.on('data', chunk => {
+        loaderStream.on('data', (chunk) => {
           try {
             if (this.progressReport) {
               this.progressReport.update(fileName, chunk.length)
@@ -118,10 +118,11 @@ class HyperdriveProgressTracker {
             this.logger.debug('File successfully saved', { destPath })
             resolve()
           } catch (err) {
-            this.logger.error(
-              'Failed to move file from temp to final destination',
-              { tempDestinationPath, destPath, error: err }
-            )
+            this.logger.error('Failed to move file from temp to final destination', {
+              tempDestinationPath,
+              destPath,
+              error: err
+            })
             reject(
               new QvacErrorHyperdrive({
                 code: ERR_CODES.DOWNLOAD_FAILED,
@@ -132,7 +133,7 @@ class HyperdriveProgressTracker {
           }
         })
 
-        writeStream.on('error', err => {
+        writeStream.on('error', (err) => {
           this.logger.error('Write stream error', { error: err })
           reject(
             new QvacErrorHyperdrive({
@@ -143,7 +144,7 @@ class HyperdriveProgressTracker {
           )
         })
 
-        loaderStream.on('error', err => {
+        loaderStream.on('error', (err) => {
           this.logger.error('Loader stream error', { error: err })
           reject(
             new QvacErrorHyperdrive({
@@ -187,12 +188,12 @@ class HyperdriveProgressTracker {
     }
   }
 
-  async cancel () {
+  async cancel() {
     this.logger.debug('cancel called', { file: this.file })
     this.download?.destroy()
   }
 
-  async _downloadSingleFile (file) {
+  async _downloadSingleFile(file) {
     this.logger.debug('_downloadSingleFile called', { file })
     const blobs = await this.drive.getBlobs()
     this.logger.debug('Retrieved blobs index')
@@ -208,25 +209,21 @@ class HyperdriveProgressTracker {
     const { blockOffset, blockLength, byteLength } = entry.value.blob
     const blockRange = [blockOffset, blockOffset + blockLength]
     const bytesPerBlock = byteLength / blockLength
-    this.logger.debug('File blob metadata', { file, blockOffset, blockLength, byteLength, bytesPerBlock })
+    this.logger.debug('File blob metadata', {
+      file,
+      blockOffset,
+      blockLength,
+      byteLength,
+      bytesPerBlock
+    })
 
     this.logger.debug('Initiating download via drive.download', { file })
     this.download = this.drive.download(file)
-    await this._monitorDownloadProgress(
-      file,
-      blobs,
-      blockRange,
-      bytesPerBlock
-    )
+    await this._monitorDownloadProgress(file, blobs, blockRange, bytesPerBlock)
     this.logger.debug('_downloadSingleFile complete', { file })
   }
 
-  async _monitorDownloadProgress (
-    file,
-    blobs,
-    blockRange,
-    bytesPerBlock
-  ) {
+  async _monitorDownloadProgress(file, blobs, blockRange, bytesPerBlock) {
     this.logger.debug('Start monitoring download progress', {
       file,
       blockRange,

@@ -27,7 +27,7 @@ const { ensureChatterboxMtlModels, ensureMecabDict } = require('../utils/downloa
 const platform = os.platform()
 const isMobile = platform === 'ios' || platform === 'android'
 
-function getBaseDir () {
+function getBaseDir() {
   return isMobile && global.testDir ? global.testDir : '.'
 }
 
@@ -37,7 +37,7 @@ const SAMPLE_RATE = 24000
 // would map the kanji to [UNK] and the regression would be audible.
 const JA_SENTENCE = '今日はいい天気ですね。'
 
-async function loadChatterboxJaTTS (params) {
+async function loadChatterboxJaTTS(params) {
   const refWavPath = resolveRefWavPath(params)
   if (!fs.existsSync(refWavPath)) {
     throw new Error('[Chatterbox JA] reference audio not found at ' + refWavPath)
@@ -56,38 +56,44 @@ async function loadChatterboxJaTTS (params) {
   return model
 }
 
-test('Chatterbox JA TTS (ggml): synthesizes Japanese with MeCab dictionary', { timeout: 1800000 }, async (t) => {
-  const baseDir = getBaseDir()
+test(
+  'Chatterbox JA TTS (ggml): synthesizes Japanese with MeCab dictionary',
+  { timeout: 1800000 },
+  async (t) => {
+    const baseDir = getBaseDir()
 
-  const download = await ensureChatterboxMtlModels({ targetDir: path.join(baseDir, 'models') })
-  if (!download.success) {
-    t.pass('Skipped: Chatterbox MTL GGUFs not available')
-    return
+    const download = await ensureChatterboxMtlModels({ targetDir: path.join(baseDir, 'models') })
+    if (!download.success) {
+      t.pass('Skipped: Chatterbox MTL GGUFs not available')
+      return
+    }
+
+    const mecab = await ensureMecabDict({ targetDir: path.join(baseDir, 'models', 'mecab-ipadic') })
+    if (!mecab.success) {
+      t.pass('Skipped: MeCab/IPAdic dictionary not available')
+      return
+    }
+
+    const model = await loadChatterboxJaTTS({
+      modelDir: download.targetDir,
+      mecabDictDir: mecab.dir
+    })
+    try {
+      const result = await runTTS(
+        model,
+        { text: JA_SENTENCE },
+        { minSamples: 5000, maxSamples: 5000000, minDurationMs: 200, maxDurationMs: 300000 },
+        { sampleRate: SAMPLE_RATE, engineTag: 'Chatterbox JA' }
+      )
+      console.log('    ' + result.output)
+
+      t.ok(result.passed, 'JA run passes expectations')
+      t.ok(result.data.sampleCount > 0, 'JA produced audio')
+      t.is(result.data.reportedSampleRate || SAMPLE_RATE, SAMPLE_RATE, 'JA reports 24 kHz')
+    } finally {
+      try {
+        await model.unload()
+      } catch (_e) {}
+    }
   }
-
-  const mecab = await ensureMecabDict({ targetDir: path.join(baseDir, 'models', 'mecab-ipadic') })
-  if (!mecab.success) {
-    t.pass('Skipped: MeCab/IPAdic dictionary not available')
-    return
-  }
-
-  const model = await loadChatterboxJaTTS({
-    modelDir: download.targetDir,
-    mecabDictDir: mecab.dir
-  })
-  try {
-    const result = await runTTS(
-      model,
-      { text: JA_SENTENCE },
-      { minSamples: 5000, maxSamples: 5000000, minDurationMs: 200, maxDurationMs: 300000 },
-      { sampleRate: SAMPLE_RATE, engineTag: 'Chatterbox JA' }
-    )
-    console.log('    ' + result.output)
-
-    t.ok(result.passed, 'JA run passes expectations')
-    t.ok(result.data.sampleCount > 0, 'JA produced audio')
-    t.is(result.data.reportedSampleRate || SAMPLE_RATE, SAMPLE_RATE, 'JA reports 24 kHz')
-  } finally {
-    try { await model.unload() } catch (_e) {}
-  }
-})
+)

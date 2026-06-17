@@ -10,18 +10,16 @@ const path = require('bare-path')
 
 const WHISPER_CPP_PATH = '/path/to/whisper.cpp/build/bin/whisper-cli'
 
-const ALLOWED_DIRS = [
-  path.resolve('.'),
-  path.resolve('./models'),
-  path.resolve('./examples')
-]
+const ALLOWED_DIRS = [path.resolve('.'), path.resolve('./models'), path.resolve('./examples')]
 
 const validatePath = (filePath) => {
   const resolved = path.resolve(filePath)
   if (!fs.existsSync(resolved)) {
     throw new Error('File not found')
   }
-  const isAllowed = ALLOWED_DIRS.some(dir => resolved.startsWith(dir + path.sep) || resolved === dir)
+  const isAllowed = ALLOWED_DIRS.some(
+    (dir) => resolved.startsWith(dir + path.sep) || resolved === dir
+  )
   if (!isAllowed) {
     throw new Error('File path is outside allowed directories')
   }
@@ -30,13 +28,7 @@ const validatePath = (filePath) => {
 
 const convertRawToWav = async (rawFilePath, wavFilePath) => {
   return new Promise((resolve, reject) => {
-    const args = [
-      '-f', 'f32le',
-      '-ar', '16000',
-      '-ac', '1',
-      '-i', rawFilePath,
-      wavFilePath
-    ]
+    const args = ['-f', 'f32le', '-ar', '16000', '-ac', '1', '-i', rawFilePath, wavFilePath]
 
     const proc = spawn('ffmpeg', args, { stdio: 'inherit' })
     proc.on('exit', (code) => {
@@ -60,12 +52,7 @@ const runWhisperCppCli = async (audioFilePath, modelPath) => {
     let stdout = ''
     let stderr = ''
 
-    const args = [
-      '-m', resolvedModel,
-      '-f', wavFilePath,
-      '--output-txt',
-      '--no-timestamps'
-    ]
+    const args = ['-m', resolvedModel, '-f', wavFilePath, '--output-txt', '--no-timestamps']
 
     const proc = spawn(WHISPER_CPP_PATH, args, { stdio: 'pipe' })
 
@@ -82,7 +69,8 @@ const runWhisperCppCli = async (audioFilePath, modelPath) => {
 
       if (code === 0) {
         const lines = stdout.split('\n')
-        const transcription = lines.find(line => line.trim() && !line.includes('[BLANK_AUDIO]'))?.trim() || ''
+        const transcription =
+          lines.find((line) => line.trim() && !line.includes('[BLANK_AUDIO]'))?.trim() || ''
         resolve(transcription)
       } else {
         reject(new Error(`whisper.cpp failed with code ${code}: ${stderr}`))
@@ -90,7 +78,9 @@ const runWhisperCppCli = async (audioFilePath, modelPath) => {
     })
 
     proc.on('error', (err) => {
-      try { fs.unlinkSync(wavFilePath) } catch {}
+      try {
+        fs.unlinkSync(wavFilePath)
+      } catch {}
       reject(err)
     })
   })

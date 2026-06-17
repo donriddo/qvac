@@ -21,7 +21,7 @@ const STORY_PROMPTS = [
   { id: 'winter-star', topic: 'a bright star over a winter village' }
 ]
 
-function buildPrompt (topic) {
+function buildPrompt(topic) {
   return [
     {
       role: 'system',
@@ -34,7 +34,7 @@ function buildPrompt (topic) {
   ]
 }
 
-async function main () {
+async function main() {
   console.log('Continuous Batching Example: 8 story prompts with parallel=4')
   console.log('=============================================================')
 
@@ -59,7 +59,7 @@ async function main () {
   await model.load()
 
   try {
-    const batchPrompts = STORY_PROMPTS.map(story => ({
+    const batchPrompts = STORY_PROMPTS.map((story) => ({
       id: story.id,
       prompt: buildPrompt(story.topic),
       runOptions: { generationParams: { predict: 128 } }
@@ -111,7 +111,7 @@ async function main () {
   }
 }
 
-main().catch(error => {
+main().catch((error) => {
   console.error('Fatal error in main function:', {
     error: error.message,
     stack: error.stack,

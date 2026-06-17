@@ -16,7 +16,7 @@ const fs = require('bare-fs')
  * @param {number} [options.shardSize=1024*512] - Size of each shard file in bytes
  * @returns {Object} - Information about created files and directories
  */
-function createRealisticTestData (options = {}) {
+function createRealisticTestData(options = {}) {
   const {
     basePath,
     createModel = true,
@@ -48,13 +48,20 @@ function createRealisticTestData (options = {}) {
     }
 
     const configPath = path.join(modelDir, 'config.json')
-    fs.writeFileSync(configPath, JSON.stringify({
-      model_type: 'whisper',
-      vocab_size: 51865,
-      max_sequence_length: 1024,
-      num_layers: 12,
-      hidden_size: 768
-    }, null, 2))
+    fs.writeFileSync(
+      configPath,
+      JSON.stringify(
+        {
+          model_type: 'whisper',
+          vocab_size: 51865,
+          max_sequence_length: 1024,
+          num_layers: 12,
+          hidden_size: 768
+        },
+        null,
+        2
+      )
+    )
     createdFiles.push(configPath)
 
     const tokenizerPath = path.join(modelDir, 'tokenizer.json')
@@ -119,7 +126,10 @@ function createRealisticTestData (options = {}) {
     }
 
     const deepFilePath = path.join(currentPath, 'deep_file.txt')
-    fs.writeFileSync(deepFilePath, 'deeply nested content with some additional text to make it more realistic')
+    fs.writeFileSync(
+      deepFilePath,
+      'deeply nested content with some additional text to make it more realistic'
+    )
     createdFiles.push(deepFilePath)
 
     for (let i = 0; i < Math.min(deepLevels, 5); i++) {
@@ -138,7 +148,10 @@ function createRealisticTestData (options = {}) {
       { name: '.env', content: 'NODE_ENV=test\nDEBUG=true' },
       { name: 'файл.txt', content: 'unicode content with cyrillic' },
       { name: '🎉test.txt', content: 'emoji content 🚀' },
-      { name: 'very-long-filename-that-tests-filesystem-limits-and-edge-cases.txt', content: 'long filename content' }
+      {
+        name: 'very-long-filename-that-tests-filesystem-limits-and-edge-cases.txt',
+        content: 'long filename content'
+      }
     ]
 
     for (const file of specialFiles) {
@@ -148,7 +161,10 @@ function createRealisticTestData (options = {}) {
     }
 
     const largePath = path.join(basePath, 'large.txt')
-    const largeContent = Array.from({ length: 10000 }, (_, i) => `Line ${i}: This is a large file for testing streaming capabilities.`).join('\n')
+    const largeContent = Array.from(
+      { length: 10000 },
+      (_, i) => `Line ${i}: This is a large file for testing streaming capabilities.`
+    ).join('\n')
     fs.writeFileSync(largePath, largeContent)
     createdFiles.push(largePath)
 
@@ -179,7 +195,7 @@ function createRealisticTestData (options = {}) {
  * Removes all test data created by createRealisticTestData
  * @param {string} basePath - Base directory path to remove
  */
-function cleanupTestData (basePath) {
+function cleanupTestData(basePath) {
   if (!basePath) {
     throw new Error('basePath is required')
   }

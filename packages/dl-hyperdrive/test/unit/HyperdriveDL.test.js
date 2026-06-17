@@ -10,10 +10,7 @@ const HYPERDRIVE_PROTOCOL_PREFIX = 'hd://'
 test('Constructor - Valid Hyperdrive Key', async (t) => {
   const validKey = `${HYPERDRIVE_PROTOCOL_PREFIX}abcdef1234567890abcdef1234567890`
 
-  t.execution(
-    () => new HyperDriveDL({ key: validKey }),
-    'Should not throw with a valid key'
-  )
+  t.execution(() => new HyperDriveDL({ key: validKey }), 'Should not throw with a valid key')
   t.pass('Constructor initialized with valid key')
 })
 
@@ -43,12 +40,12 @@ test('Constructor - Missing Key', async (t) => {
 
 test('Constructor - Direct Drive Usage', async (t) => {
   const mockDrive = {
-    createReadStream: () => { },
-    has: () => { },
-    entry: () => { },
-    list: () => { },
-    clear: () => { },
-    clearAll: () => { }
+    createReadStream: () => {},
+    has: () => {},
+    entry: () => {},
+    list: () => {},
+    clear: () => {},
+    clearAll: () => {}
   }
 
   t.execution(
@@ -70,7 +67,7 @@ test('Stream Handling - Get Stream', async (t) => {
 
   let calledPath = null
   hyperDriveDL.drive = {
-    download: () => { },
+    download: () => {},
     createReadStream: (p) => {
       calledPath = p
       return 'stream'
@@ -157,8 +154,8 @@ test('Download Handling', async (t) => {
     download: (p) => {
       downloadCalled = true
       return {
-        done: async () => await new Promise(resolve => setTimeout(resolve, 20)),
-        destroy: async () => await new Promise(resolve => setTimeout(resolve, 20))
+        done: async () => await new Promise((resolve) => setTimeout(resolve, 20)),
+        destroy: async () => await new Promise((resolve) => setTimeout(resolve, 20))
       }
     },
     entry: async () => ({
@@ -183,7 +180,7 @@ test('Download Handling', async (t) => {
   t.ok(download.trackers.length > 0, 'Should return at least one tracker')
 
   // Wait for the async downloadStart to complete
-  await new Promise(resolve => setTimeout(resolve, 150))
+  await new Promise((resolve) => setTimeout(resolve, 150))
   t.ok(downloadCalled, 'Download should be called')
 
   hyperDriveDL.cached = async () => true
@@ -197,13 +194,22 @@ test('Download Handling', async (t) => {
   hyperDriveDL.cached = async () => false
 
   const downloadWithProgress = await hyperDriveDL.download(path, progressReport)
-  t.ok(Array.isArray(downloadWithProgress.trackers), 'Should return array of trackers with progress')
+  t.ok(
+    Array.isArray(downloadWithProgress.trackers),
+    'Should return array of trackers with progress'
+  )
 
   // Wait a bit for the async operations to complete
-  await new Promise(resolve => setTimeout(resolve, 200))
+  await new Promise((resolve) => setTimeout(resolve, 200))
 
-  t.ok(progressCalls.some(call => call.action === 'loadingFile'), 'Should report progress updates')
-  t.ok(progressCalls.some(call => call.action === 'completeFile'), 'Should report file completion')
+  t.ok(
+    progressCalls.some((call) => call.action === 'loadingFile'),
+    'Should report progress updates'
+  )
+  t.ok(
+    progressCalls.some((call) => call.action === 'completeFile'),
+    'Should report file completion'
+  )
 })
 
 test('Download Progress Tracking', async (t) => {
@@ -213,7 +219,11 @@ test('Download Progress Tracking', async (t) => {
 
   let hasCallCount = 0
   hyperDriveDL.drive = {
-    download: () => ({ done: async () => { await new Promise(resolve => setTimeout(resolve, 20)) } }),
+    download: () => ({
+      done: async () => {
+        await new Promise((resolve) => setTimeout(resolve, 20))
+      }
+    }),
     has: async () => false,
     entry: async () => ({
       value: {
@@ -242,25 +252,37 @@ test('Download Progress Tracking', async (t) => {
   t.ok(Array.isArray(downloadWithProgress.trackers), 'Should return array of trackers')
 
   // Wait a bit for the async operations to complete
-  await new Promise(resolve => setTimeout(resolve, 200))
+  await new Promise((resolve) => setTimeout(resolve, 200))
 
-  t.ok(progressCalls.some(call =>
-    call.action === 'loadingFile' &&
-    call.currentFile === path &&
-    call.currentFileProgress === '0.00'
-  ), 'Should report 0% progress')
+  t.ok(
+    progressCalls.some(
+      (call) =>
+        call.action === 'loadingFile' &&
+        call.currentFile === path &&
+        call.currentFileProgress === '0.00'
+    ),
+    'Should report 0% progress'
+  )
 
-  t.ok(progressCalls.some(call =>
-    call.action === 'loadingFile' &&
-    call.currentFile === path &&
-    call.currentFileProgress === '25.00'
-  ), 'Should report 25% progress')
+  t.ok(
+    progressCalls.some(
+      (call) =>
+        call.action === 'loadingFile' &&
+        call.currentFile === path &&
+        call.currentFileProgress === '25.00'
+    ),
+    'Should report 25% progress'
+  )
 
-  t.ok(progressCalls.some(call =>
-    call.action === 'completeFile' &&
-    call.currentFile === path &&
-    call.currentFileProgress === '100.00'
-  ), 'Should report 100% progress')
+  t.ok(
+    progressCalls.some(
+      (call) =>
+        call.action === 'completeFile' &&
+        call.currentFile === path &&
+        call.currentFileProgress === '100.00'
+    ),
+    'Should report 100% progress'
+  )
 })
 
 test('Delete Local Handling', async (t) => {
@@ -314,8 +336,12 @@ test('Download Cancellation - Individual Tracker', async (t) => {
   hyperDriveDL.drive = {
     download: () => {
       return {
-        done: async () => { await new Promise(resolve => setTimeout(resolve, 100)) },
-        destroy: () => { downloadDestroyed = true }
+        done: async () => {
+          await new Promise((resolve) => setTimeout(resolve, 100))
+        },
+        destroy: () => {
+          downloadDestroyed = true
+        }
       }
     },
     entry: async () => ({
@@ -338,7 +364,7 @@ test('Download Cancellation - Individual Tracker', async (t) => {
   t.ok(Array.isArray(download.trackers), 'Should return array of trackers')
   t.ok(download.trackers.length > 0, 'Should return at least one tracker')
 
-  await new Promise(resolve => setTimeout(resolve, 10))
+  await new Promise((resolve) => setTimeout(resolve, 10))
 
   // Cancel the download
   await download.cancel()
@@ -359,8 +385,12 @@ test('Download Cancellation - Multiple Trackers', async (t) => {
   hyperDriveDL.drive = {
     download: () => {
       return {
-        done: async () => { await new Promise(resolve => setTimeout(resolve, 100)) },
-        destroy: () => { destroyedCount++ }
+        done: async () => {
+          await new Promise((resolve) => setTimeout(resolve, 100))
+        },
+        destroy: () => {
+          destroyedCount++
+        }
       }
     },
     entry: async () => ({
@@ -388,7 +418,7 @@ test('Download Cancellation - Multiple Trackers', async (t) => {
   t.ok(Array.isArray(download.trackers), 'Should return array of trackers')
   t.ok(download.trackers.length > 1, 'Should return multiple trackers for directory')
 
-  await new Promise(resolve => setTimeout(resolve, 200))
+  await new Promise((resolve) => setTimeout(resolve, 200))
 
   // Cancel the download
   await download.cancel()
@@ -411,9 +441,11 @@ test('Download Cancellation - During Active Download', async (t) => {
       downloadStarted = true
       return {
         done: async () => {
-          await new Promise(resolve => setTimeout(resolve, 200))
+          await new Promise((resolve) => setTimeout(resolve, 200))
         },
-        destroy: () => { downloadDestroyed = true }
+        destroy: () => {
+          downloadDestroyed = true
+        }
       }
     },
     entry: async () => ({
@@ -442,16 +474,16 @@ test('Download Cancellation - During Active Download', async (t) => {
   }
 
   const download = await hyperDriveDL.download(path, mockProgressReport)
-  await new Promise(resolve => setTimeout(resolve, 100))
+  await new Promise((resolve) => setTimeout(resolve, 100))
   t.ok(downloadStarted, 'Download should have started')
 
   // Wait a bit for download to be active, then cancel
-  await new Promise(resolve => setTimeout(resolve, 50))
+  await new Promise((resolve) => setTimeout(resolve, 50))
   await download.cancel()
 
   t.ok(downloadDestroyed, 'Download should be destroyed when cancelled during active download')
 
-  const completeFileCalls = progressCalls.filter(call => call.action === 'completeFile')
+  const completeFileCalls = progressCalls.filter((call) => call.action === 'completeFile')
   t.is(completeFileCalls.length, 0, 'No completeFile callback should be called after cancellation')
 })
 
@@ -464,8 +496,12 @@ test('Download Cancellation - Error Handling', async (t) => {
   hyperDriveDL.drive = {
     download: () => {
       return {
-        done: async () => { await new Promise(resolve => setTimeout(resolve, 100)) },
-        destroy: () => { throw new Error('Destroy failed') }
+        done: async () => {
+          await new Promise((resolve) => setTimeout(resolve, 100))
+        },
+        destroy: () => {
+          throw new Error('Destroy failed')
+        }
       }
     },
     entry: async () => ({
@@ -487,7 +523,7 @@ test('Download Cancellation - Error Handling', async (t) => {
   const download = await hyperDriveDL.download(path)
   t.ok(Array.isArray(download.trackers), 'Should return array of trackers')
 
-  await new Promise(resolve => setTimeout(resolve, 200))
+  await new Promise((resolve) => setTimeout(resolve, 200))
 
   // Test that cancellation errors are handled gracefully
   await t.exception(
@@ -538,8 +574,12 @@ test('Download Cancellation - After Completion', async (t) => {
   hyperDriveDL.drive = {
     download: () => {
       return {
-        done: async () => { await new Promise(resolve => setTimeout(resolve, 50)) },
-        destroy: () => { /* No-op for this test */ }
+        done: async () => {
+          await new Promise((resolve) => setTimeout(resolve, 50))
+        },
+        destroy: () => {
+          /* No-op for this test */
+        }
       }
     },
     entry: async () => ({
@@ -562,7 +602,7 @@ test('Download Cancellation - After Completion', async (t) => {
   t.ok(Array.isArray(download.trackers), 'Should return array of trackers')
 
   // Wait for download to complete
-  await new Promise(resolve => setTimeout(resolve, 100))
+  await new Promise((resolve) => setTimeout(resolve, 100))
 
   // Try to cancel after completion
   await download.cancel()

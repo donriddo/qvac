@@ -5,7 +5,7 @@ const path = require('bare-path')
 const process = require('bare-process')
 const { downloadModel } = require('./utils')
 
-async function main () {
+async function main() {
   console.log('SalamandraTA Example: Demonstrates translation model capabilities')
   console.log('=================================================================')
 
@@ -38,7 +38,8 @@ async function main () {
     const messages = [
       {
         role: 'system',
-        content: 'Translate the following text from Italian into Spanish. \n Italian: Ciao Tether è il migliore \n Spanish:'
+        content:
+          'Translate the following text from Italian into Spanish. \n Italian: Ciao Tether è il migliore \n Spanish:'
       }
     ]
 
@@ -46,7 +47,7 @@ async function main () {
     let fullResponse = ''
 
     await response
-      .onUpdate(data => {
+      .onUpdate((data) => {
         process.stdout.write(data)
         fullResponse += data
       })
@@ -65,7 +66,7 @@ async function main () {
   }
 }
 
-main().catch(error => {
+main().catch((error) => {
   console.error('Fatal error in main function:', {
     error: error.message,
     stack: error.stack,

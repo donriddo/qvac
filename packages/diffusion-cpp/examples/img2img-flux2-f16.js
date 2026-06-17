@@ -11,7 +11,7 @@ const ImgStableDiffusion = require('../index')
  * This should have much less quantization bias.
  */
 
-async function main () {
+async function main() {
   const modelDir = path.join(__dirname, '../models')
   const inputImagePath = path.join(__dirname, '../assets/von-neumann.jpg')
   const outputImagePath = path.join(__dirname, '../temp/von-neumann_transformed_f16.png')
@@ -62,7 +62,9 @@ async function main () {
     console.log('  Model    : flux-2-klein-4b-F16.gguf (16-bit)')
     console.log('  Steps    : ' + STEPS)
     console.log('  Strength : ' + STRENGTH + ' (EXPLICIT - addon defaults to 0.75!)')
-    console.log('  Effective: ' + Math.round(STEPS * STRENGTH) + " steps (matches Iris's 20 full steps)")
+    console.log(
+      '  Effective: ' + Math.round(STEPS * STRENGTH) + " steps (matches Iris's 20 full steps)"
+    )
     console.log('  Guidance : ' + GUIDANCE)
     console.log('  Seed     : ' + SEED + '\n')
 

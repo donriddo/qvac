@@ -2,7 +2,7 @@
 
 const { QvacErrorBase, addCodes } = require('@qvac/error')
 
-class QvacErrorAddonOcr extends QvacErrorBase { }
+class QvacErrorAddonOcr extends QvacErrorBase {}
 
 // This library has error code range from 9001 to 10000
 const ERR_CODES = Object.freeze({

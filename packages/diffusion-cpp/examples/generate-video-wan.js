@@ -23,11 +23,9 @@ const T5XXL_MODEL = 'umt5_xxl_fp16.safetensors'
 // "a dancing robot", "dynamic motion", "a lovely cat" — short and verb-led.
 // Avoid words like "standing", "still", "portrait" in the positive prompt.
 // ---------------------------------------------------------------------------
-const PROMPT = process.env.PROMPT ||
-  'a colorful bird flapping its wings'
+const PROMPT = process.env.PROMPT || 'a colorful bird flapping its wings'
 
-const NEG_PROMPT = process.env.NEG_PROMPT ||
-  'blurry, low quality, static, jittery, watermark'
+const NEG_PROMPT = process.env.NEG_PROMPT || 'blurry, low quality, static, jittery, watermark'
 
 const WIDTH = parseInt(process.env.WIDTH || '480', 10)
 const HEIGHT = parseInt(process.env.HEIGHT || '832', 10)
@@ -52,7 +50,7 @@ const CFG_SCALE = parseFloat(process.env.CFG_SCALE || '6.0')
 const FLOW_SHIFT = parseFloat(process.env.FLOW_SHIFT || '3.0')
 const SEED = parseInt(process.env.SEED || '42', 10)
 
-async function main () {
+async function main() {
   fs.mkdirSync(OUTPUT_DIR, { recursive: true })
 
   // Sanity-check the (4*k + 1) rule before loading 8 GB of weights.
@@ -137,7 +135,7 @@ async function main () {
               const bar = '█'.repeat(Math.floor(pct / 5)).padEnd(20, '░')
               process.stdout.write(
                 `\r  [${bar}] ${tick.step}/${tick.total} | ` +
-                `step ${(stepMs / 1000).toFixed(1)}s | wall ${(wallMs / 1000).toFixed(1)}s  `
+                  `step ${(stepMs / 1000).toFixed(1)}s | wall ${(wallMs / 1000).toFixed(1)}s  `
               )
             }
           } catch (_) {}
@@ -163,7 +161,7 @@ async function main () {
   }
 }
 
-main().catch(err => {
+main().catch((err) => {
   console.error('Fatal:', err.message || err)
   process.exit(1)
 })

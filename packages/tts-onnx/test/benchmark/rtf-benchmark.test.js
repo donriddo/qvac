@@ -58,7 +58,7 @@ const RTF_RESULTS_DIR = path.resolve(__dirname, '../../benchmarks/results')
 // [PERF_REPORT_START]<json>[PERF_REPORT_END] markers carrying this shape.
 // Schema must satisfy isValidReport() in extract-from-log.js (string
 // schema_version + results array).
-function buildCanonicalReport (settings, summary, backend) {
+function buildCanonicalReport(settings, summary, backend) {
   const useGPU = !!settings.useGPU
   const ep = useGPU ? 'gpu' : 'cpu'
   const engine = settings.engine
@@ -81,20 +81,23 @@ function buildCanonicalReport (settings, summary, backend) {
       arch,
       runner: settings.runnerLabel || (isMobile ? 'device-farm' : 'github-actions')
     },
-    results: [{
-      test: testLabel,
-      execution_provider: ep,
-      metrics: {
-        real_time_factor: typeof rtf.mean === 'number' ? rtf.mean : null,
-        rtf_p50: typeof rtf.p50 === 'number' ? rtf.p50 : null,
-        rtf_p95: typeof rtf.p95 === 'number' ? rtf.p95 : null,
-        wall_time_ms: typeof wallMs.mean === 'number' ? Math.round(wallMs.mean) : null,
-        cold_rtf: typeof summary.coldRtf === 'number' ? summary.coldRtf : null,
-        model_load_ms: typeof summary.modelLoadMs === 'number' ? Math.round(summary.modelLoadMs) : null,
-        tps: typeof tps.mean === 'number' ? tps.mean : null,
-        sample_count: typeof rtf.count === 'number' ? rtf.count : null
+    results: [
+      {
+        test: testLabel,
+        execution_provider: ep,
+        metrics: {
+          real_time_factor: typeof rtf.mean === 'number' ? rtf.mean : null,
+          rtf_p50: typeof rtf.p50 === 'number' ? rtf.p50 : null,
+          rtf_p95: typeof rtf.p95 === 'number' ? rtf.p95 : null,
+          wall_time_ms: typeof wallMs.mean === 'number' ? Math.round(wallMs.mean) : null,
+          cold_rtf: typeof summary.coldRtf === 'number' ? summary.coldRtf : null,
+          model_load_ms:
+            typeof summary.modelLoadMs === 'number' ? Math.round(summary.modelLoadMs) : null,
+          tps: typeof tps.mean === 'number' ? tps.mean : null,
+          sample_count: typeof rtf.count === 'number' ? rtf.count : null
+        }
       }
-    }]
+    ]
   }
 }
 
@@ -103,27 +106,31 @@ const arch = os.arch()
 const platformArch = `${platform}-${arch}`
 const isMobile = platform === 'ios' || platform === 'android'
 
-function getEnv (name) {
+function getEnv(name) {
   if (typeof os.getEnv === 'function') {
-    try { return os.getEnv(name) || '' } catch (_) { return '' }
+    try {
+      return os.getEnv(name) || ''
+    } catch (_) {
+      return ''
+    }
   }
   return (process.env && process.env[name]) || ''
 }
 
-function getEnvBoolean (name, fallback) {
+function getEnvBoolean(name, fallback) {
   const value = getEnv(name)
   if (value === undefined || value === '') return fallback
   return value === '1' || value.toLowerCase() === 'true' || value.toLowerCase() === 'yes'
 }
 
-function getEnvInteger (name, fallback) {
+function getEnvInteger(name, fallback) {
   const value = getEnv(name)
   if (value === undefined || value === '') return fallback
   const parsed = Number.parseInt(value, 10)
   return Number.isNaN(parsed) ? fallback : parsed
 }
 
-function sanitizeTag (value) {
+function sanitizeTag(value) {
   if (!value) return ''
   return String(value)
     .toLowerCase()
@@ -131,7 +138,7 @@ function sanitizeTag (value) {
     .replace(/^-+|-+$/g, '')
 }
 
-function getSettings () {
+function getSettings() {
   const engine = (getEnv('QVAC_ONNX_TTS_BENCHMARK_ENGINE') || 'chatterbox-en').toLowerCase()
   if (!VALID_ENGINES.includes(engine)) {
     throw new Error(`Invalid benchmark engine: ${engine}. Valid: ${VALID_ENGINES.join(', ')}`)
@@ -144,7 +151,8 @@ function getSettings () {
 
   const numThreadsRaw = getEnv('QVAC_ONNX_TTS_BENCHMARK_NUM_THREADS') || ''
   const numThreadsParsed = Number.parseInt(numThreadsRaw, 10)
-  const numThreads = Number.isFinite(numThreadsParsed) && numThreadsParsed > 0 ? numThreadsParsed : undefined
+  const numThreads =
+    Number.isFinite(numThreadsParsed) && numThreadsParsed > 0 ? numThreadsParsed : undefined
 
   return {
     engine,
@@ -170,7 +178,7 @@ function getSettings () {
   }
 }
 
-function resolveBackend (platformName, useGPU, backendHint) {
+function resolveBackend(platformName, useGPU, backendHint) {
   const hint = String(backendHint || '').toLowerCase()
   if (hint) return hint
   if (!useGPU) return 'cpu'
@@ -181,7 +189,7 @@ function resolveBackend (platformName, useGPU, backendHint) {
   return 'gpu'
 }
 
-function getArtifactFileName (settings) {
+function getArtifactFileName(settings) {
   const parts = [
     'rtf-benchmark',
     platformArch,
@@ -193,12 +201,12 @@ function getArtifactFileName (settings) {
   return `${parts.join('-')}.json`
 }
 
-function nowMs () {
+function nowMs() {
   const [sec, nsec] = process.hrtime()
   return sec * 1000 + nsec / 1e6
 }
 
-function percentile (sorted, p) {
+function percentile(sorted, p) {
   if (sorted.length === 0) return 0
   const idx = (p / 100) * (sorted.length - 1)
   const lo = Math.floor(idx)
@@ -207,7 +215,7 @@ function percentile (sorted, p) {
   return sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo)
 }
 
-function computeStats (values) {
+function computeStats(values) {
   if (values.length === 0) {
     return { mean: 0, min: 0, max: 0, stddev: 0, p50: 0, p95: 0, count: 0 }
   }
@@ -226,25 +234,37 @@ function computeStats (values) {
   }
 }
 
-function getRssBytes () {
+function getRssBytes() {
   if (process && typeof process.memoryUsage === 'function') {
-    try { return process.memoryUsage().rss || 0 } catch (_) { return 0 }
+    try {
+      return process.memoryUsage().rss || 0
+    } catch (_) {
+      return 0
+    }
   }
   return 0
 }
 
-function collectModelSizeBytes (modelDir) {
+function collectModelSizeBytes(modelDir) {
   if (!modelDir || !fs.existsSync(modelDir)) return 0
   let total = 0
   const stack = [modelDir]
   while (stack.length > 0) {
     const current = stack.pop()
     let entries = []
-    try { entries = fs.readdirSync(current) } catch (_) { continue }
+    try {
+      entries = fs.readdirSync(current)
+    } catch (_) {
+      continue
+    }
     for (const name of entries) {
       const full = path.join(current, name)
       let stat
-      try { stat = fs.statSync(full) } catch (_) { continue }
+      try {
+        stat = fs.statSync(full)
+      } catch (_) {
+        continue
+      }
       if (stat.isDirectory()) {
         stack.push(full)
       } else if (stat.isFile()) {
@@ -273,31 +293,34 @@ const CORPUS_ES = [
   'Los avances en tecnologia continuan mejorando la calidad de vida de las personas en todo el mundo.'
 ]
 
-function getCorpus (engine) {
+function getCorpus(engine) {
   return engine === 'chatterbox-multi' ? CORPUS_ES : CORPUS_EN
 }
 
-function getBaseDir () {
+function getBaseDir() {
   return isMobile && global.testDir ? global.testDir : '.'
 }
 
-function chatterboxPath (modelDir, baseName, isMultilingual, variantSuffix) {
+function chatterboxPath(modelDir, baseName, isMultilingual, variantSuffix) {
   const suffix = isMultilingual ? '' : variantSuffix
   return path.join(modelDir, `${baseName}${suffix}.onnx`)
 }
 
-function chatterboxLmPath (modelDir, variantSuffix) {
+function chatterboxLmPath(modelDir, variantSuffix) {
   return path.join(modelDir, `language_model${variantSuffix}.onnx`)
 }
 
-async function loadModelForEngine (settings) {
+async function loadModelForEngine(settings) {
   const baseDir = getBaseDir()
   const variantSuffix = settings.variant === 'fp32' ? '' : `_${settings.variant}`
   const threadOpts = settings.numThreads !== undefined ? { numThreads: settings.numThreads } : {}
 
   if (settings.engine === 'chatterbox-en') {
     const modelDir = path.join(baseDir, 'models', 'chatterbox')
-    const downloadResult = await ensureChatterboxModels({ targetDir: modelDir, variant: settings.variant })
+    const downloadResult = await ensureChatterboxModels({
+      targetDir: modelDir,
+      variant: settings.variant
+    })
     if (!downloadResult.success) throw new Error('Chatterbox English models unavailable')
 
     const model = await loadChatterboxTTS({
@@ -315,7 +338,11 @@ async function loadModelForEngine (settings) {
 
   if (settings.engine === 'chatterbox-multi') {
     const modelDir = path.join(baseDir, 'models', 'chatterbox-multilingual')
-    const downloadResult = await ensureChatterboxModels({ targetDir: modelDir, language: 'multilingual', variant: settings.variant })
+    const downloadResult = await ensureChatterboxModels({
+      targetDir: modelDir,
+      language: 'multilingual',
+      variant: settings.variant
+    })
     if (!downloadResult.success) throw new Error('Chatterbox multilingual models unavailable')
 
     const model = await loadChatterboxTTS({
@@ -346,12 +373,12 @@ async function loadModelForEngine (settings) {
   return { model, modelDir }
 }
 
-async function runSynthesis (engine, model, text) {
+async function runSynthesis(engine, model, text) {
   const runner = engine === 'supertonic' ? runSupertonicTTS : runChatterboxTTS
   return runner(model, { text }, {})
 }
 
-function getUpperBound (settings) {
+function getUpperBound(settings) {
   if (!settings.requestedUpperBound) return null
   const parsed = Number.parseFloat(settings.requestedUpperBound)
   return Number.isNaN(parsed) ? null : parsed
@@ -379,7 +406,9 @@ test('RTF benchmark: ONNX TTS on CI device', { timeout: 1800000 }, async (t) => 
   console.log(`  Measured runs:  ${settings.numRuns}`)
   console.log(`  Corpus:         ${corpus.length} sentence(s)`)
   if (settings.correlation.githubRunId) {
-    console.log(`  GitHub run:     ${settings.correlation.githubWorkflow || ''} #${settings.correlation.githubRunId}`)
+    console.log(
+      `  GitHub run:     ${settings.correlation.githubWorkflow || ''} #${settings.correlation.githubRunId}`
+    )
   }
   console.log('='.repeat(70) + '\n')
 
@@ -399,7 +428,9 @@ test('RTF benchmark: ONNX TTS on CI device', { timeout: 1800000 }, async (t) => 
   const loadMs = nowMs() - loadStart
   const rssAfterLoad = getRssBytes()
   const modelSizeBytes = collectModelSizeBytes(modelDir)
-  console.log(`Model loaded in ${loadMs.toFixed(0)}ms (rss +${((rssAfterLoad - rssBeforeLoad) / 1024 / 1024).toFixed(1)}MB, model ${(modelSizeBytes / 1024 / 1024).toFixed(1)}MB on disk)\n`)
+  console.log(
+    `Model loaded in ${loadMs.toFixed(0)}ms (rss +${((rssAfterLoad - rssBeforeLoad) / 1024 / 1024).toFixed(1)}MB, model ${(modelSizeBytes / 1024 / 1024).toFixed(1)}MB on disk)\n`
+  )
 
   const runs = []
   const warmupRuns = []
@@ -418,8 +449,11 @@ test('RTF benchmark: ONNX TTS on CI device', { timeout: 1800000 }, async (t) => 
       const stats = result.data && result.data.stats
       const durationMs = (result.data && result.data.durationMs) || 0
       const rtfFromStats = stats && stats.realTimeFactor
-      const rtfFromWall = durationMs > 0 ? (wallMs / 1000) / (durationMs / 1000) : 0
-      const rtf = (rtfFromStats !== undefined && rtfFromStats !== null && rtfFromStats > 0) ? rtfFromStats : rtfFromWall
+      const rtfFromWall = durationMs > 0 ? wallMs / 1000 / (durationMs / 1000) : 0
+      const rtf =
+        rtfFromStats !== undefined && rtfFromStats !== null && rtfFromStats > 0
+          ? rtfFromStats
+          : rtfFromWall
 
       const currentRss = getRssBytes()
       if (currentRss > peakRssBytes) peakRssBytes = currentRss
@@ -433,7 +467,9 @@ test('RTF benchmark: ONNX TTS on CI device', { timeout: 1800000 }, async (t) => 
     }
 
     // --- Measured runs ---
-    console.log(`\nRunning ${settings.numRuns} measured iteration(s) over ${corpus.length} sentence(s)...\n`)
+    console.log(
+      `\nRunning ${settings.numRuns} measured iteration(s) over ${corpus.length} sentence(s)...\n`
+    )
     for (let i = 0; i < settings.numRuns; i++) {
       const text = corpus[i % corpus.length]
       const runStart = nowMs()
@@ -452,8 +488,11 @@ test('RTF benchmark: ONNX TTS on CI device', { timeout: 1800000 }, async (t) => 
       const durationMs = result.data ? result.data.durationMs : 0
       const sampleCount = result.data ? result.data.sampleCount : 0
       const rtfFromStats = stats.realTimeFactor
-      const rtfFromWall = durationMs > 0 ? (wallMs / 1000) / (durationMs / 1000) : 0
-      const rtf = (rtfFromStats !== undefined && rtfFromStats !== null && rtfFromStats > 0) ? rtfFromStats : rtfFromWall
+      const rtfFromWall = durationMs > 0 ? wallMs / 1000 / (durationMs / 1000) : 0
+      const rtf =
+        rtfFromStats !== undefined && rtfFromStats !== null && rtfFromStats > 0
+          ? rtfFromStats
+          : rtfFromWall
 
       const run = {
         iteration: i + 1,
@@ -470,12 +509,14 @@ test('RTF benchmark: ONNX TTS on CI device', { timeout: 1800000 }, async (t) => 
       }
       runs.push(run)
 
-      console.log(`  Run ${i + 1}/${settings.numRuns}: ` +
-        `RTF=${rtf.toFixed(4)}  ` +
-        `wall=${wallMs.toFixed(0)}ms  ` +
-        `audio=${(durationMs / 1000).toFixed(2)}s  ` +
-        `tokens/s=${(run.tokensPerSecond || 0).toFixed(1)}  ` +
-        `rss=${(currentRss / 1024 / 1024).toFixed(0)}MB`)
+      console.log(
+        `  Run ${i + 1}/${settings.numRuns}: ` +
+          `RTF=${rtf.toFixed(4)}  ` +
+          `wall=${wallMs.toFixed(0)}ms  ` +
+          `audio=${(durationMs / 1000).toFixed(2)}s  ` +
+          `tokens/s=${(run.tokensPerSecond || 0).toFixed(1)}  ` +
+          `rss=${(currentRss / 1024 / 1024).toFixed(0)}MB`
+      )
     }
 
     if (runs.length === 0) {
@@ -484,9 +525,9 @@ test('RTF benchmark: ONNX TTS on CI device', { timeout: 1800000 }, async (t) => 
     }
 
     // --- Aggregate stats ---
-    const rtfStats = computeStats(runs.map(r => r.rtf))
-    const wallStats = computeStats(runs.map(r => r.wallMs))
-    const tpsStats = computeStats(runs.map(r => r.tokensPerSecond).filter(v => v > 0))
+    const rtfStats = computeStats(runs.map((r) => r.rtf))
+    const wallStats = computeStats(runs.map((r) => r.wallMs))
+    const tpsStats = computeStats(runs.map((r) => r.tokensPerSecond).filter((v) => v > 0))
     const stddevOverMean = rtfStats.mean > 0 ? rtfStats.stddev / rtfStats.mean : 0
     const noisy = stddevOverMean > 0.15
 
@@ -503,7 +544,9 @@ test('RTF benchmark: ONNX TTS on CI device', { timeout: 1800000 }, async (t) => 
     console.log(`    Mean:   ${rtfStats.mean.toFixed(4)}`)
     console.log(`    Min:    ${rtfStats.min.toFixed(4)}`)
     console.log(`    Max:    ${rtfStats.max.toFixed(4)}`)
-    console.log(`    Stddev: ${rtfStats.stddev.toFixed(4)} (${(stddevOverMean * 100).toFixed(1)}% of mean${noisy ? ' ⚠ noisy' : ''})`)
+    console.log(
+      `    Stddev: ${rtfStats.stddev.toFixed(4)} (${(stddevOverMean * 100).toFixed(1)}% of mean${noisy ? ' ⚠ noisy' : ''})`
+    )
     console.log(`    P50:    ${rtfStats.p50.toFixed(4)}`)
     console.log(`    P95:    ${rtfStats.p95.toFixed(4)}`)
     if (coldRtf !== null) {
@@ -524,7 +567,9 @@ test('RTF benchmark: ONNX TTS on CI device', { timeout: 1800000 }, async (t) => 
     console.log('')
     console.log('  Memory / size:')
     console.log(`    Peak RSS:    ${(peakRssBytes / 1024 / 1024).toFixed(0)}MB`)
-    console.log(`    RSS @load:   ${(rssAfterLoad / 1024 / 1024).toFixed(0)}MB (pre-load ${(rssBeforeLoad / 1024 / 1024).toFixed(0)}MB)`)
+    console.log(
+      `    RSS @load:   ${(rssAfterLoad / 1024 / 1024).toFixed(0)}MB (pre-load ${(rssBeforeLoad / 1024 / 1024).toFixed(0)}MB)`
+    )
     console.log(`    Model size:  ${(modelSizeBytes / 1024 / 1024).toFixed(1)}MB`)
     console.log('='.repeat(70) + '\n')
 
@@ -623,18 +668,25 @@ test('RTF benchmark: ONNX TTS on CI device', { timeout: 1800000 }, async (t) => 
     }
 
     // --- Assertions ---
-    t.ok(runs.length === settings.numRuns, `Completed ${settings.numRuns} benchmark runs (got ${runs.length})`)
+    t.ok(
+      runs.length === settings.numRuns,
+      `Completed ${settings.numRuns} benchmark runs (got ${runs.length})`
+    )
     t.ok(rtfStats.mean > 0, 'Mean RTF should be positive')
 
     if (upperBound !== null) {
-      t.ok(rtfStats.mean <= upperBound,
-        `Mean RTF ${rtfStats.mean.toFixed(4)} should be <= ${upperBound}`)
+      t.ok(
+        rtfStats.mean <= upperBound,
+        `Mean RTF ${rtfStats.mean.toFixed(4)} should be <= ${upperBound}`
+      )
     }
 
     console.log('RTF benchmark completed successfully.\n')
   } finally {
     if (model) {
-      try { await model.unload() } catch (_) {}
+      try {
+        await model.unload()
+      } catch (_) {}
     }
   }
 })

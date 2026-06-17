@@ -6,7 +6,7 @@ const MockONNXOcr = require('../MockONNXOcr.js')
 /**
  * Test that the OCR inference process returns the expected output.
  */
-test('OCR inference returns correct output', async t => {
+test('OCR inference returns correct output', async (t) => {
   const args = {
     params: {
       langList: ['en'],
@@ -23,10 +23,19 @@ test('OCR inference returns correct output', async t => {
   }
   const response = await model.run(input)
 
-  response.onUpdate(output => {
+  response.onUpdate((output) => {
     console.log('output: ', output)
     const outputData = [
-      [[[25, 61], [62, 6], [82, 20], [46, 75]], 'tilted', 0.7302044630050659]
+      [
+        [
+          [25, 61],
+          [62, 6],
+          [82, 20],
+          [46, 75]
+        ],
+        'tilted',
+        0.7302044630050659
+      ]
     ]
     t.alike(output, outputData, 'Output should be an image')
   })
@@ -37,7 +46,7 @@ test('OCR inference returns correct output', async t => {
 /**
  * Test that the model correctly handles state transitions.
  */
-test('OCR model state transitions are handled correctly', async t => {
+test('OCR model state transitions are handled correctly', async (t) => {
   const args = {
     params: {
       langList: ['en'],
@@ -64,7 +73,7 @@ test('OCR model state transitions are handled correctly', async t => {
 /**
  * Test that the model correctly validates BMP image input.
  */
-test('OCR model validates BMP image input', async t => {
+test('OCR model validates BMP image input', async (t) => {
   const args = {
     params: {
       langList: ['en'],
@@ -89,7 +98,7 @@ test('OCR model validates BMP image input', async t => {
 /**
  * Test that the model correctly determines recognizer model name based on language list.
  */
-test('OCR model determines correct recognizer model name', async t => {
+test('OCR model determines correct recognizer model name', async (t) => {
   const args = {
     params: {
       langList: ['en'],

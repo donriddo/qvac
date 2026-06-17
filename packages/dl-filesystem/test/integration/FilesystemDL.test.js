@@ -36,12 +36,18 @@ test.hook('setup', (t) => {
   t.ok(fs.existsSync(path.join(modelPath, 'weights')), 'Weights directory should exist')
   t.ok(fs.existsSync(path.join(modelPath, 'vocab.txt')), 'Vocab file should exist')
 
-  const deepPath = path.join(INTEGRATION_TEST_DIR, 'deep/level0/level1/level2/level3/level4/level5/level6/level7/level8/level9')
+  const deepPath = path.join(
+    INTEGRATION_TEST_DIR,
+    'deep/level0/level1/level2/level3/level4/level5/level6/level7/level8/level9'
+  )
   t.ok(fs.existsSync(deepPath), 'Deep directory structure should exist')
   t.ok(fs.existsSync(path.join(deepPath, 'deep_file.txt')), 'Deep file should exist')
 
   t.ok(fs.existsSync(path.join(INTEGRATION_TEST_DIR, 'empty.bin')), 'Empty file should exist')
-  t.ok(fs.existsSync(path.join(INTEGRATION_TEST_DIR, 'special chars & spaces.txt')), 'Special chars file should exist')
+  t.ok(
+    fs.existsSync(path.join(INTEGRATION_TEST_DIR, 'special chars & spaces.txt')),
+    'Special chars file should exist'
+  )
   t.ok(fs.existsSync(path.join(INTEGRATION_TEST_DIR, '.hidden')), 'Hidden file should exist')
   t.ok(fs.existsSync(path.join(INTEGRATION_TEST_DIR, 'large.txt')), 'Large file should exist')
   t.ok(fs.existsSync(path.join(INTEGRATION_TEST_DIR, 'binary.bin')), 'Binary file should exist')
@@ -102,7 +108,11 @@ test('FilesystemDL Integration: should handle real filesystem edge cases', async
   for await (const chunk of specialStream) {
     specialContent += chunk.toString()
   }
-  t.is(specialContent, 'special content with symbols !@#$%^&*()', 'Correctly reads files with special names')
+  t.is(
+    specialContent,
+    'special content with symbols !@#$%^&*()',
+    'Correctly reads files with special names'
+  )
 
   t.ok(specialFiles.includes('.hidden'), 'Can access hidden files')
 
@@ -127,7 +137,11 @@ test('FilesystemDL Integration: should handle deep directory traversal', async (
   for await (const chunk of deepStream) {
     deepContent += chunk.toString()
   }
-  t.is(deepContent, 'deeply nested content with some additional text to make it more realistic', 'Can read deeply nested file content')
+  t.is(
+    deepContent,
+    'deeply nested content with some additional text to make it more realistic',
+    'Can read deeply nested file content'
+  )
 })
 
 test('FilesystemDL Integration: should handle concurrent access to real files', async (t) => {
@@ -245,7 +259,10 @@ test('FilesystemDL Integration: should handle complex directory structures', asy
 
   const weightsFiles = await fsDL.list('model/weights')
   t.is(weightsFiles.length, 3, 'Weights directory contains correct number of shards')
-  t.ok(weightsFiles.every(file => file.startsWith('shard_')), 'All weight files follow expected naming pattern')
+  t.ok(
+    weightsFiles.every((file) => file.startsWith('shard_')),
+    'All weight files follow expected naming pattern'
+  )
 })
 
 test.hook('teardown', (t) => {

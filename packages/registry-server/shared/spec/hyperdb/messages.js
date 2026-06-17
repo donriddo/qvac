@@ -95,7 +95,7 @@ const encoding2 = {
       (m.deprecatedAt ? 64 : 0) |
       (m.replacedBy ? 128 : 0) |
       (m.deprecationReason ? 256 : 0) |
-      ((version >= 2 && m.ggufMetadata) ? 512 : 0)
+      (version >= 2 && m.ggufMetadata ? 512 : 0)
 
     c.string.preencode(state, m.path)
     c.string.preencode(state, m.source)
@@ -125,7 +125,7 @@ const encoding2 = {
       (m.deprecatedAt ? 64 : 0) |
       (m.replacedBy ? 128 : 0) |
       (m.deprecationReason ? 256 : 0) |
-      ((version >= 2 && m.ggufMetadata) ? 512 : 0)
+      (version >= 2 && m.ggufMetadata ? 512 : 0)
 
     c.string.encode(state, m.path)
     c.string.encode(state, m.source)
@@ -167,7 +167,7 @@ const encoding2 = {
       deprecatedAt: (flags & 64) !== 0 ? c.string.decode(state) : null,
       replacedBy: (flags & 128) !== 0 ? c.string.decode(state) : null,
       deprecationReason: (flags & 256) !== 0 ? c.string.decode(state) : null,
-      ggufMetadata: (version >= 2 && (flags & 512) !== 0) ? c.string.decode(state) : null
+      ggufMetadata: version >= 2 && (flags & 512) !== 0 ? c.string.decode(state) : null
     }
   }
 }
@@ -254,7 +254,7 @@ const encoding6 = {
       (m.deprecatedAt ? 64 : 0) |
       (m.replacedBy ? 128 : 0) |
       (m.deprecationReason ? 256 : 0) |
-      ((version >= 2 && m.ggufMetadata) ? 512 : 0)
+      (version >= 2 && m.ggufMetadata ? 512 : 0)
 
     c.string.preencode(state, m.engine)
     c.string.preencode(state, m.licenseId)
@@ -282,7 +282,7 @@ const encoding6 = {
       (m.deprecatedAt ? 64 : 0) |
       (m.replacedBy ? 128 : 0) |
       (m.deprecationReason ? 256 : 0) |
-      ((version >= 2 && m.ggufMetadata) ? 512 : 0)
+      (version >= 2 && m.ggufMetadata ? 512 : 0)
 
     c.string.encode(state, m.engine)
     c.string.encode(state, m.licenseId)
@@ -320,7 +320,7 @@ const encoding6 = {
       deprecatedAt: (flags & 64) !== 0 ? c.string.decode(state) : null,
       replacedBy: (flags & 128) !== 0 ? c.string.decode(state) : null,
       deprecationReason: (flags & 256) !== 0 ? c.string.decode(state) : null,
-      ggufMetadata: (version >= 2 && (flags & 512) !== 0) ? c.string.decode(state) : null
+      ggufMetadata: version >= 2 && (flags & 512) !== 0 ? c.string.decode(state) : null
     }
   }
 }

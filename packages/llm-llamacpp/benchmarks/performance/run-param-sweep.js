@@ -4,7 +4,7 @@
 const { spawnSync } = require('node:child_process')
 const path = require('node:path')
 
-function parseArgs (argv) {
+function parseArgs(argv) {
   const out = {}
   for (let i = 0; i < argv.length; i++) {
     const token = argv[i]
@@ -26,7 +26,7 @@ function parseArgs (argv) {
   return out
 }
 
-function runOrExit (command, args) {
+function runOrExit(command, args) {
   const result = spawnSync(command, args, {
     cwd: __dirname,
     stdio: 'inherit',

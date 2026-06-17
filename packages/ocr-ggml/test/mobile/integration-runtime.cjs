@@ -23,7 +23,7 @@ const { pathToFileURL } = require('bare-url')
 let __filterLoaded = false
 let __filterRe = null
 
-function tryLoadFilter (filePath) {
+function tryLoadFilter(filePath) {
   try {
     if (fs.existsSync(filePath)) {
       const raw = fs.readFileSync(filePath, 'utf-8').trim()
@@ -31,7 +31,9 @@ function tryLoadFilter (filePath) {
         __filterRe = new RegExp(raw)
         console.log('[TestFilter] loaded pattern from ' + filePath + ': ' + raw)
       }
-      try { fs.unlinkSync(filePath) } catch (_) {}
+      try {
+        fs.unlinkSync(filePath)
+      } catch (_) {}
       return true
     }
   } catch (e) {
@@ -40,7 +42,7 @@ function tryLoadFilter (filePath) {
   return false
 }
 
-global.__shouldRunTest = function shouldRunTest (testName) {
+global.__shouldRunTest = function shouldRunTest(testName) {
   if (!__filterLoaded) {
     __filterLoaded = true
 
@@ -55,7 +57,7 @@ global.__shouldRunTest = function shouldRunTest (testName) {
   return __filterRe.test(testName)
 }
 
-async function runIntegrationModule (relativeModulePath, options = {}) {
+async function runIntegrationModule(relativeModulePath, options = {}) {
   const modulePath = path.join(__dirname, relativeModulePath)
 
   if (!fs.existsSync(modulePath)) {

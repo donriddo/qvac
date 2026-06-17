@@ -18,7 +18,7 @@ const TRAIN_DATASET = './examples/input/smart_home_specialist_train.jsonl'
 const CHECKPOINT_DIR = './smart-home-lora-checkpoints'
 const OUTPUT_DIR = './smart-home-lora'
 
-async function main () {
+async function main() {
   let client
 
   const { logger: filteredLogger, restore: restoreConsole } = createFilteredLogger()
@@ -81,7 +81,7 @@ async function main () {
     const startTime = Date.now()
 
     const handle = await client.finetune(finetuneOptions)
-    handle.on('stats', stats => {
+    handle.on('stats', (stats) => {
       console.log(`  ${formatProgress(stats, finetuneOptions.numberOfEpochs)}`)
     })
 
@@ -118,7 +118,7 @@ async function main () {
   }
 }
 
-main().catch(error => {
+main().catch((error) => {
   console.error('\nFatal error:', error.message)
   process.exit(1)
 })

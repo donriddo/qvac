@@ -7,7 +7,7 @@ const path = require('bare-path')
 const HYPERDRIVE_KEY = 'hd://yourhyperdrivekey'
 const TARGET_DIR = 'target'
 
-async function ensureTargetDirExists (dir) {
+async function ensureTargetDirExists(dir) {
   try {
     const stat = await fs.promises.stat(dir)
     if (!stat.isDirectory()) {
@@ -23,7 +23,7 @@ async function ensureTargetDirExists (dir) {
   }
 }
 
-async function listAndLoadFiles () {
+async function listAndLoadFiles() {
   const hyperdriveDL = new HyperDriveDL({
     key: HYPERDRIVE_KEY
   })

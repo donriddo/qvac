@@ -7,7 +7,7 @@ const { version, getEncoding, setVersion } = require('./messages.js')
 const defaultVersion = version
 
 class Router {
-  constructor () {
+  constructor() {
     this._handler0 = null
     this._handler1 = null
     this._handler2 = null
@@ -17,7 +17,7 @@ class Router {
     this._missing = 5
   }
 
-  add (name, handler) {
+  add(name, handler) {
     switch (name) {
       case '@qvac-main-registry/put-model':
         this._handler0 = handler
@@ -40,7 +40,7 @@ class Router {
     this._missing--
   }
 
-  _checkAll () {
+  _checkAll() {
     assert(this._handler0 !== null, 'Missing handler for "@qvac-main-registry/put-model"')
     assert(this._handler1 !== null, 'Missing handler for "@qvac-main-registry/put-license"')
     assert(this._handler2 !== null, 'Missing handler for "@qvac-main-registry/add-indexer"')
@@ -48,7 +48,7 @@ class Router {
     assert(this._handler4 !== null, 'Missing handler for "@qvac-main-registry/delete-model"')
   }
 
-  async dispatch (message, context) {
+  async dispatch(message, context) {
     if (this._missing > 0) {
       this._checkAll()
     }
@@ -74,7 +74,7 @@ class Router {
   }
 }
 
-function encode (name, message, { version = defaultVersion } = {}) {
+function encode(name, message, { version = defaultVersion } = {}) {
   const state = { buffer: null, start: 0, end: 0 }
 
   const route = getRouteByName(name)
@@ -90,7 +90,7 @@ function encode (name, message, { version = defaultVersion } = {}) {
   return state.buffer
 }
 
-function decode (buffer, { version = defaultVersion } = {}) {
+function decode(buffer, { version = defaultVersion } = {}) {
   const state = { buffer, start: 0, end: buffer.length }
 
   const id = c.uint.decode(state)
@@ -131,7 +131,7 @@ const route4 = {
   enc: getEncoding('@qvac-main-registry/model-key')
 }
 
-function getRouteByName (name) {
+function getRouteByName(name) {
   switch (name) {
     case '@qvac-main-registry/put-model':
       return route0
@@ -148,7 +148,7 @@ function getRouteByName (name) {
   }
 }
 
-function getRouteById (id) {
+function getRouteById(id) {
   switch (id) {
     case 0:
       return route0

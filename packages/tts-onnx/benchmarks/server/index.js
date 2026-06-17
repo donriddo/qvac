@@ -19,7 +19,7 @@ server.on('error', (error) => {
  */
 const shutdown = () => {
   logger.info('Shutting down server...')
-  server.close(err => {
+  server.close((err) => {
     if (err) {
       logger.error('Error during shutdown', err)
       process.exit(1)

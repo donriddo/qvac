@@ -27,13 +27,15 @@ const { scoreAnswer } = require('./accuracy')
 const { parseStdoutMetrics } = require('./stdout-parser')
 const { truncate } = require('./utils')
 
-function readSpec (specPath) {
+function readSpec(specPath) {
   return JSON.parse(fs.readFileSync(specPath, 'utf8'))
 }
 
-function sleep (ms) {
+function sleep(ms) {
   const end = Date.now() + ms
-  while (Date.now() < end) { /* busy-wait — no async in this runner */ }
+  while (Date.now() < end) {
+    /* busy-wait — no async in this runner */
+  }
 }
 
 // Extract the chat template from a GGUF file using pure Node.js.
@@ -43,7 +45,7 @@ let _cachedPatchedTemplate = null
 
 const GGUF_VALUE_TYPE_STRING = 8
 
-function readGgufChatTemplate (ggufPath) {
+function readGgufChatTemplate(ggufPath) {
   const fd = fs.openSync(ggufPath, 'r')
   try {
     const headerBuf = Buffer.alloc(24)
@@ -61,30 +63,66 @@ function readGgufChatTemplate (ggufPath) {
       offset += len
       return buf
     }
-    const readU32 = () => { const b = read(4); return b.readUInt32LE(0) }
-    const readU64 = () => { const b = read(8); return Number(b.readBigUInt64LE(0)) }
-    const readStr = () => { const len = readU64(); const b = read(len); return b.toString('utf8') }
+    const readU32 = () => {
+      const b = read(4)
+      return b.readUInt32LE(0)
+    }
+    const readU64 = () => {
+      const b = read(8)
+      return Number(b.readBigUInt64LE(0))
+    }
+    const readStr = () => {
+      const len = readU64()
+      const b = read(len)
+      return b.toString('utf8')
+    }
     const skipValue = (type) => {
       switch (type) {
-        case 0: read(1); break // u8
-        case 1: read(1); break // i8
-        case 2: read(2); break // u16
-        case 3: read(2); break // i16
-        case 4: read(4); break // u32
-        case 5: read(4); break // i32
-        case 6: read(4); break // f32
-        case 7: read(1); break // bool
-        case 8: readStr(); break // string
-        case 9: { // array
+        case 0:
+          read(1)
+          break // u8
+        case 1:
+          read(1)
+          break // i8
+        case 2:
+          read(2)
+          break // u16
+        case 3:
+          read(2)
+          break // i16
+        case 4:
+          read(4)
+          break // u32
+        case 5:
+          read(4)
+          break // i32
+        case 6:
+          read(4)
+          break // f32
+        case 7:
+          read(1)
+          break // bool
+        case 8:
+          readStr()
+          break // string
+        case 9: {
+          // array
           const arrType = readU32()
           const arrLen = readU64()
           for (let j = 0; j < arrLen; j++) skipValue(arrType)
           break
         }
-        case 10: read(8); break // u64
-        case 11: read(8); break // i64
-        case 12: read(8); break // f64
-        default: throw new Error(`unknown GGUF value type ${type}`)
+        case 10:
+          read(8)
+          break // u64
+        case 11:
+          read(8)
+          break // i64
+        case 12:
+          read(8)
+          break // f64
+        default:
+          throw new Error(`unknown GGUF value type ${type}`)
       }
     }
 
@@ -102,9 +140,10 @@ function readGgufChatTemplate (ggufPath) {
   return null
 }
 
-function getPatchedTemplate (ggufPath, thinkingEnabled) {
+function getPatchedTemplate(ggufPath, thinkingEnabled) {
   const cacheKey = thinkingEnabled ? 'on' : 'off'
-  if (_cachedPatchedTemplate && _cachedPatchedTemplate._key === cacheKey) return _cachedPatchedTemplate.value
+  if (_cachedPatchedTemplate && _cachedPatchedTemplate._key === cacheKey)
+    return _cachedPatchedTemplate.value
   try {
     const raw = readGgufChatTemplate(ggufPath)
     if (!raw || !raw.includes('{%')) return null
@@ -120,17 +159,26 @@ function getPatchedTemplate (ggufPath, thinkingEnabled) {
   }
 }
 
-function buildCliArgs (spec) {
+function buildCliArgs(spec) {
   const args = [
-    '--model', spec.llmPath,
-    '--mmproj', spec.mmprojPath,
-    '--image', spec.imagePath,
-    '--ctx-size', String(spec.ctxSize),
-    '--predict', String(spec.nPredict),
-    '--gpu-layers', spec.backend === 'cpu' ? '0' : '99',
-    '--threads', String(os.cpus().length),
-    '--temp', String(spec.temperature ?? 0),
-    '--seed', String(spec.seed ?? 42),
+    '--model',
+    spec.llmPath,
+    '--mmproj',
+    spec.mmprojPath,
+    '--image',
+    spec.imagePath,
+    '--ctx-size',
+    String(spec.ctxSize),
+    '--predict',
+    String(spec.nPredict),
+    '--gpu-layers',
+    spec.backend === 'cpu' ? '0' : '99',
+    '--threads',
+    String(os.cpus().length),
+    '--temp',
+    String(spec.temperature ?? 0),
+    '--seed',
+    String(spec.seed ?? 42),
     '--jinja'
   ]
 
@@ -151,30 +199,36 @@ function buildCliArgs (spec) {
   return args
 }
 
-function stripAnsi (s) {
+function stripAnsi(s) {
   let out = ''
   let inEsc = false
   for (let i = 0; i < s.length; i++) {
-    if (s.charCodeAt(i) === 0x1b) { inEsc = true; continue }
-    if (inEsc) { if (s[i] === 'm') inEsc = false; continue }
+    if (s.charCodeAt(i) === 0x1b) {
+      inEsc = true
+      continue
+    }
+    if (inEsc) {
+      if (s[i] === 'm') inEsc = false
+      continue
+    }
     out += s[i]
   }
   return out
 }
 
-function extractGeneratedText (stdout) {
+function extractGeneratedText(stdout) {
   if (!stdout) return ''
   return stripAnsi(stdout).trim()
 }
 
-function parseMaxRssFromTimeV (stderr) {
+function parseMaxRssFromTimeV(stderr) {
   // GNU /usr/bin/time -v outputs "Maximum resident set size (kbytes): NNN"
   const match = stderr.match(/Maximum resident set size \(kbytes\):\s*(\d+)/)
   if (match) return Number(match[1]) / 1024
   return null
 }
 
-function runOnceCli (spec) {
+function runOnceCli(spec) {
   const args = buildCliArgs(spec)
   const timeout = spec.perRunTimeoutMs || 5 * 60 * 1000
 
@@ -182,9 +236,7 @@ function runOnceCli (spec) {
   // On other platforms, skip RSS collection (no portable equivalent).
   const useTimeWrapper = os.platform() === 'linux' && fs.existsSync('/usr/bin/time')
   const spawnCmd = useTimeWrapper ? '/usr/bin/time' : spec.cliBinaryPath
-  const spawnArgs = useTimeWrapper
-    ? ['-v', spec.cliBinaryPath, ...args]
-    : args
+  const spawnArgs = useTimeWrapper ? ['-v', spec.cliBinaryPath, ...args] : args
 
   const t0 = Date.now()
   const result = spawnSync(spawnCmd, spawnArgs, {
@@ -210,7 +262,7 @@ function runOnceCli (spec) {
   return { text, wallMs, stderr, peakRssMb }
 }
 
-function main () {
+function main() {
   const specPath = process.env.VLM_CASE_SPEC_PATH
   const resultPath = process.env.VLM_RESULT_PATH
   if (!specPath || !resultPath) {

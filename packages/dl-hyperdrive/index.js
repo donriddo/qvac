@@ -29,7 +29,7 @@ class HyperDriveDL extends BaseDL {
    * @param {HyperDriveOptions} opts - Options for the Hyperdrive downloader.
    * @throws {QvacErrorHyperdrive} If opts is not an object, doesn't contain a key, or if the key is invalid.
    */
-  constructor (opts) {
+  constructor(opts) {
     super(opts)
 
     const { key, drive } = opts || {}
@@ -42,20 +42,24 @@ class HyperDriveDL extends BaseDL {
       this.logger.debug('Using key prefix', { prefix: this.opts.prefix })
 
       if (!key.startsWith(this.opts.prefix)) {
-        this.logger.error('Key does not start with prefix', { key: opts.key, prefix: this.opts.prefix })
-        throw new QvacErrorHyperdrive({ code: ERR_CODES.KEY_INVALID, adds: 'Key must start with ' + this.opts.prefix })
+        this.logger.error('Key does not start with prefix', {
+          key: opts.key,
+          prefix: this.opts.prefix
+        })
+        throw new QvacErrorHyperdrive({
+          code: ERR_CODES.KEY_INVALID,
+          adds: 'Key must start with ' + this.opts.prefix
+        })
       }
     }
 
     this.logger.debug('HyperDriveDL initialized', { key: opts.key })
   }
 
-  _validateAndDecodeKey (key) {
+  _validateAndDecodeKey(key) {
     this.logger.debug('Validating and decoding key', { key })
     try {
-      const decoded = key.startsWith('0x')
-        ? decode(key.slice(2))
-        : decode(key)
+      const decoded = key.startsWith('0x') ? decode(key.slice(2)) : decode(key)
 
       this.logger.debug('Key decoded successfully', { decodedKey: decoded })
       return decoded
@@ -70,7 +74,7 @@ class HyperDriveDL extends BaseDL {
    * After initialization data loader guarantees to have the latest known snapshot of available file records.
    * @returns {Promise<void>}
    */
-  async _open () {
+  async _open() {
     try {
       if (this.opts.drive) {
         this.drive = this.opts.drive
@@ -104,7 +108,7 @@ class HyperDriveDL extends BaseDL {
           this.swarm.destroy()
         })
       }
-      this.swarm.on('connection', conn => {
+      this.swarm.on('connection', (conn) => {
         this.logger.debug('New swarm connection, replicating store')
         store.replicate(conn)
       })
@@ -128,9 +132,7 @@ class HyperDriveDL extends BaseDL {
         version = this.opts.version
         this.logger.debug('Using provided version', { version })
       } else {
-        this.logger.debug(
-          'No version provided, fetching blobs and waiting for peers'
-        )
+        this.logger.debug('No version provided, fetching blobs and waiting for peers')
         const done = store.findingPeers()
         // Awaiting this promise is unnecessary and slow
         this.swarm.flush().then(done, done)
@@ -145,9 +147,7 @@ class HyperDriveDL extends BaseDL {
       this.logger.debug('Checked out drive at version', { version })
     } catch (err) {
       this.logger.error('Failed to open Hyperdrive client', { error: err })
-      if (
-        Object.getPrototypeOf(err)?.constructor?.name === QvacErrorBase.name
-      ) {
+      if (Object.getPrototypeOf(err)?.constructor?.name === QvacErrorBase.name) {
         throw err
       }
       throw new QvacErrorHyperdrive({ code: ERR_CODES.CONNECTION_FAILED, cause: err })
@@ -158,7 +158,7 @@ class HyperDriveDL extends BaseDL {
    * Stop the Hyperdrive client.
    * @returns {Promise<void>}
    */
-  async _close () {
+  async _close() {
     this.logger.info('Closing Hyperdrive client')
     if (this.drive) {
       this.logger.debug('Closing drive')
@@ -177,7 +177,7 @@ class HyperDriveDL extends BaseDL {
    * @param {string} filePath - The file path inside the Hyperdrive.
    * @returns {Promise<AsyncIterable<Buffer>>} The file content as async iterable.
    */
-  async getStream (filePath, opts = {}) {
+  async getStream(filePath, opts = {}) {
     try {
       if (!this.drive) {
         throw new QvacErrorHyperdrive({ code: ERR_CODES.DRIVE_NOT_READY })
@@ -191,7 +191,11 @@ class HyperDriveDL extends BaseDL {
       if (err instanceof QvacErrorHyperdrive) {
         throw err
       }
-      throw new QvacErrorHyperdrive({ code: ERR_CODES.FILE_NOT_FOUND, adds: `${filePath}: ${err.message}`, cause: err })
+      throw new QvacErrorHyperdrive({
+        code: ERR_CODES.FILE_NOT_FOUND,
+        adds: `${filePath}: ${err.message}`,
+        cause: err
+      })
     }
   }
 
@@ -200,7 +204,7 @@ class HyperDriveDL extends BaseDL {
    * @param {string} filePath - The file path inside the Hyperdrive.
    * @returns {Promise<number>} The size of the file in bytes.
    */
-  async getFileSize (path, opts = {}) {
+  async getFileSize(path, opts = {}) {
     try {
       if (!this.drive) {
         throw new QvacErrorHyperdrive({ code: ERR_CODES.DRIVE_NOT_READY })
@@ -231,7 +235,7 @@ class HyperDriveDL extends BaseDL {
    * @param {string} [directoryPath='/'] - The directory to check.
    * @returns {Promise<boolean>} True if all files are cached, false otherwise.
    */
-  async cached (path = '/') {
+  async cached(path = '/') {
     try {
       this.logger.debug('Checking if path is cached', { path })
       this._checkDrive()
@@ -240,9 +244,7 @@ class HyperDriveDL extends BaseDL {
       this.logger.debug('Cache status', { path, cached: result })
       return result
     } catch (err) {
-      if (
-        Object.getPrototypeOf(err)?.constructor?.name === QvacErrorBase.name
-      ) {
+      if (Object.getPrototypeOf(err)?.constructor?.name === QvacErrorBase.name) {
         throw err
       }
       throw new QvacErrorHyperdrive({ code: ERR_CODES.CONNECTION_FAILED, cause: err })
@@ -254,7 +256,7 @@ class HyperDriveDL extends BaseDL {
    * @param {string} [directoryPath='/'] - The directory to list files from.
    * @returns {Promise<Array<{key: string, cached?: boolean}>>} A list of files with their keys and cache status.
    */
-  async list (directoryPath = '/', opts = {}) {
+  async list(directoryPath = '/', opts = {}) {
     try {
       this._checkDrive()
       this.logger.debug('Listing files in directory', { directoryPath, opts })
@@ -286,9 +288,7 @@ class HyperDriveDL extends BaseDL {
         error: err
       })
 
-      if (
-        Object.getPrototypeOf(err)?.constructor?.name === QvacErrorBase.name
-      ) {
+      if (Object.getPrototypeOf(err)?.constructor?.name === QvacErrorBase.name) {
         throw err
       }
       throw new QvacErrorHyperdrive({ code: ERR_CODES.CONNECTION_FAILED, cause: err })
@@ -305,7 +305,7 @@ class HyperDriveDL extends BaseDL {
    * @param {Function} [opts.progressCallback] - Progress callback function.
    * @returns {Promise<HyperDriveDownload>} Download object with trackers, await function that returns download results, and cancel function.
    */
-  async download (remotePath = '/', opts = null) {
+  async download(remotePath = '/', opts = null) {
     let progressReport = null
     let diskPath = null
 
@@ -316,8 +316,14 @@ class HyperDriveDL extends BaseDL {
       diskPath = opts?.diskPath
       progressReport = opts?.progressReporter
 
-      if (opts.progressCallback && typeof opts.progressCallback === 'function' && opts.progressReporter) {
-        this.logger.warn('Progress report provided, but progress callback is also provided. Ignoring progress report.')
+      if (
+        opts.progressCallback &&
+        typeof opts.progressCallback === 'function' &&
+        opts.progressReporter
+      ) {
+        this.logger.warn(
+          'Progress report provided, but progress callback is also provided. Ignoring progress report.'
+        )
       }
     }
 
@@ -325,7 +331,7 @@ class HyperDriveDL extends BaseDL {
       this.logger.debug('download called', { remotePath })
       this._checkDrive()
 
-      if (await this.cached(remotePath) && !diskPath) {
+      if ((await this.cached(remotePath)) && !diskPath) {
         this.logger.debug('Path already cached, skipping download', { remotePath })
         return false
       }
@@ -349,16 +355,18 @@ class HyperDriveDL extends BaseDL {
           progressReport,
           diskPath
         )
-        downloadPromises.push(tracker
-          .downloadStart()
-          .then(() => {
-            this.logger.debug('Download completed', { file })
-            return { file, error: null, cached: false }
-          })
-          .catch(err => {
-            this.logger.error('Download failed', { file, error: err })
-            return { file, error: err, cached: false }
-          }))
+        downloadPromises.push(
+          tracker
+            .downloadStart()
+            .then(() => {
+              this.logger.debug('Download completed', { file })
+              return { file, error: null, cached: false }
+            })
+            .catch((err) => {
+              this.logger.error('Download failed', { file, error: err })
+              return { file, error: err, cached: false }
+            })
+        )
         trackers.push(tracker)
       }
 
@@ -377,9 +385,7 @@ class HyperDriveDL extends BaseDL {
       }
     } catch (err) {
       this.logger.error('Download failed', { path, error: err })
-      if (
-        Object.getPrototypeOf(err)?.constructor?.name === QvacErrorBase.name
-      ) {
+      if (Object.getPrototypeOf(err)?.constructor?.name === QvacErrorBase.name) {
         throw err
       }
       throw new QvacErrorHyperdrive({
@@ -390,13 +396,13 @@ class HyperDriveDL extends BaseDL {
     }
   }
 
-  async _getFilesToDownload (path) {
+  async _getFilesToDownload(path) {
     try {
       this.logger.debug('_getFilesToDownload called', { path })
 
       if (path.endsWith('/')) {
         const fileList = await this.list(path)
-        const files = fileList.map(file => file.key)
+        const files = fileList.map((file) => file.key)
         this.logger.debug('Determined files to download', { files })
 
         return files
@@ -412,22 +418,20 @@ class HyperDriveDL extends BaseDL {
     }
   }
 
-  async initProgressReport (filePaths, progressCallback) {
+  async initProgressReport(filePaths, progressCallback) {
     if (typeof progressCallback !== 'function') {
       this.logger?.warn('Progress report skipped - no callback provided')
       return null
     }
     const filesizeMapping = {}
     await Promise.all(
-      filePaths.map(async fp => {
+      filePaths.map(async (fp) => {
         const name = path.basename(fp)
         const size = await this.getFileSize(fp)
         filesizeMapping[name] = size
       })
     )
-    this.logger?.info(
-      `Progress report initialized for ${filePaths.length} file(s)`
-    )
+    this.logger?.info(`Progress report initialized for ${filePaths.length} file(s)`)
     return new ProgressReport(filesizeMapping, progressCallback)
   }
 
@@ -437,7 +441,7 @@ class HyperDriveDL extends BaseDL {
    * @param {string} path - The path to delete the file from.
    * @returns {Promise<boolean>} True if deleted, false if no file found.
    */
-  async deleteLocal (path = '/', opts = {}) {
+  async deleteLocal(path = '/', opts = {}) {
     try {
       this.logger.debug('deleteLocal called', { path, opts })
       this._checkDrive()
@@ -471,7 +475,7 @@ class HyperDriveDL extends BaseDL {
   /**
    * Check if the drive is ready.
    */
-  _checkDrive () {
+  _checkDrive() {
     if (!this.drive) {
       throw new QvacErrorHyperdrive({ code: ERR_CODES.DRIVE_NOT_READY })
     }

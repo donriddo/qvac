@@ -5,7 +5,7 @@ const GGMLBert = require('../index.js')
 const { setLogger, releaseLogger } = require('../addonLogging.js')
 const { downloadModel } = require('./utils')
 
-async function main () {
+async function main() {
   console.log('Native Logger Example: C++ logging demonstration')
   console.log('================================================')
 

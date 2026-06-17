@@ -19,23 +19,29 @@ const handleError = (error, res) => {
 
   if (error instanceof ZodError) {
     res.statusCode = 400
-    return res.end(JSON.stringify({
-      error: formatZodError(error)
-    }))
+    return res.end(
+      JSON.stringify({
+        error: formatZodError(error)
+      })
+    )
   }
 
   if (error instanceof ApiError) {
     res.statusCode = error.status
-    return res.end(JSON.stringify({
-      error: error.message
-    }))
+    return res.end(
+      JSON.stringify({
+        error: error.message
+      })
+    )
   }
 
   res.statusCode = 500
-  res.end(JSON.stringify({
-    error: ERRORS.UNEXPECTED_ERROR,
-    details: error.message
-  }))
+  res.end(
+    JSON.stringify({
+      error: ERRORS.UNEXPECTED_ERROR,
+      details: error.message
+    })
+  )
 }
 
 /**
@@ -46,15 +52,7 @@ const logRequest = (req, res, method, url, body) => {
   const contentLength = res.getHeader('content-length') || '(unknown)'
   const userAgent = req.headers['user-agent'] || ''
 
-  const log = [
-    '[API]',
-    method,
-    url.pathname,
-    statusCode,
-    contentLength,
-    '-',
-    userAgent
-  ].join(' ')
+  const log = ['[API]', method, url.pathname, statusCode, contentLength, '-', userAgent].join(' ')
 
   if (statusCode >= 400) {
     logger.error(log)
@@ -90,16 +88,19 @@ const handleRequest = async (req, res) => {
         logger.warn('Could not determine package version')
       }
 
-      return res.end(JSON.stringify({
-        message: 'TTS Addon Benchmark Server is running',
-        implementation: 'addon',
-        version,
-        endpoints: {
-          '/': 'Health check',
-          '/synthesize-chatterbox': 'POST - Run Chatterbox TTS synthesis',
-          '/synthesize-supertonic': 'POST - Run Supertone Supertonic ONNX TTS (English or multilingual weights per request)'
-        }
-      }))
+      return res.end(
+        JSON.stringify({
+          message: 'TTS Addon Benchmark Server is running',
+          implementation: 'addon',
+          version,
+          endpoints: {
+            '/': 'Health check',
+            '/synthesize-chatterbox': 'POST - Run Chatterbox TTS synthesis',
+            '/synthesize-supertonic':
+              'POST - Run Supertone Supertonic ONNX TTS (English or multilingual weights per request)'
+          }
+        })
+      )
     }
 
     if (pathname === '/synthesize-chatterbox' && method === HTTP_METHODS.POST) {

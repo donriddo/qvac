@@ -9,11 +9,9 @@ const versions = { schema: version, db: 0 }
 const helpers0 = require('../../db-helpers.js')
 
 // '@qvac-main-registry/license' collection key
-const collection0_key = new IndexEncoder([
-  IndexEncoder.STRING
-], { prefix: 0 })
+const collection0_key = new IndexEncoder([IndexEncoder.STRING], { prefix: 0 })
 
-function collection0_indexify (record) {
+function collection0_indexify(record) {
   const a = record.spdxId
   return a === undefined ? [] : [a]
 }
@@ -22,7 +20,7 @@ function collection0_indexify (record) {
 const collection0_enc = getEncoding('@qvac-main-registry/license/hyperdb#0')
 
 // '@qvac-main-registry/license' reconstruction function
-function collection0_reconstruct (schemaVersion, keyBuf, valueBuf) {
+function collection0_reconstruct(schemaVersion, keyBuf, valueBuf) {
   const key = collection0_key.decode(keyBuf)
   setVersion(schemaVersion)
   const state = { start: 0, end: valueBuf.byteLength, buffer: valueBuf }
@@ -31,7 +29,7 @@ function collection0_reconstruct (schemaVersion, keyBuf, valueBuf) {
   return record
 }
 // '@qvac-main-registry/license' key reconstruction function
-function collection0_reconstruct_key (keyBuf) {
+function collection0_reconstruct_key(keyBuf) {
   const key = collection0_key.decode(keyBuf)
   return {
     spdxId: key[0]
@@ -43,11 +41,11 @@ const collection0 = {
   name: '@qvac-main-registry/license',
   id: 0,
   version: 0,
-  encodeKey (record) {
+  encodeKey(record) {
     const key = [record.spdxId]
     return collection0_key.encode(key)
   },
-  encodeKeyRange ({ gt, lt, gte, lte } = {}) {
+  encodeKeyRange({ gt, lt, gte, lte } = {}) {
     return collection0_key.encodeRange({
       gt: gt ? collection0_indexify(gt) : null,
       lt: lt ? collection0_indexify(lt) : null,
@@ -55,7 +53,7 @@ const collection0 = {
       lte: lte ? collection0_indexify(lte) : null
     })
   },
-  encodeValue (schemaVersion, collectionVersion, record) {
+  encodeValue(schemaVersion, collectionVersion, record) {
     setVersion(schemaVersion)
     const state = { start: 0, end: 0, buffer: null }
     collection0_enc.preencode(state, record)
@@ -71,12 +69,9 @@ const collection0 = {
 }
 
 // '@qvac-main-registry/model' collection key
-const collection1_key = new IndexEncoder([
-  IndexEncoder.STRING,
-  IndexEncoder.STRING
-], { prefix: 1 })
+const collection1_key = new IndexEncoder([IndexEncoder.STRING, IndexEncoder.STRING], { prefix: 1 })
 
-function collection1_indexify (record) {
+function collection1_indexify(record) {
   const arr = []
 
   const a0 = record.path
@@ -94,7 +89,7 @@ function collection1_indexify (record) {
 const collection1_enc = getEncoding('@qvac-main-registry/model/hyperdb#1')
 
 // '@qvac-main-registry/model' reconstruction function
-function collection1_reconstruct (schemaVersion, keyBuf, valueBuf) {
+function collection1_reconstruct(schemaVersion, keyBuf, valueBuf) {
   const key = collection1_key.decode(keyBuf)
   setVersion(schemaVersion)
   const state = { start: 0, end: valueBuf.byteLength, buffer: valueBuf }
@@ -104,7 +99,7 @@ function collection1_reconstruct (schemaVersion, keyBuf, valueBuf) {
   return record
 }
 // '@qvac-main-registry/model' key reconstruction function
-function collection1_reconstruct_key (keyBuf) {
+function collection1_reconstruct_key(keyBuf) {
   const key = collection1_key.decode(keyBuf)
   return {
     path: key[0],
@@ -117,11 +112,11 @@ const collection1 = {
   name: '@qvac-main-registry/model',
   id: 1,
   version: 0,
-  encodeKey (record) {
+  encodeKey(record) {
     const key = [record.path, record.source]
     return collection1_key.encode(key)
   },
-  encodeKeyRange ({ gt, lt, gte, lte } = {}) {
+  encodeKeyRange({ gt, lt, gte, lte } = {}) {
     return collection1_key.encodeRange({
       gt: gt ? collection1_indexify(gt) : null,
       lt: lt ? collection1_indexify(lt) : null,
@@ -129,7 +124,7 @@ const collection1 = {
       lte: lte ? collection1_indexify(lte) : null
     })
   },
-  encodeValue (schemaVersion, collectionVersion, record) {
+  encodeValue(schemaVersion, collectionVersion, record) {
     setVersion(schemaVersion)
     const state = { start: 0, end: 0, buffer: null }
     collection1_enc.preencode(state, record)
@@ -145,13 +140,12 @@ const collection1 = {
 }
 
 // '@qvac-main-registry/models-by-engine' collection key
-const index2_key = new IndexEncoder([
-  IndexEncoder.STRING,
-  IndexEncoder.STRING,
-  IndexEncoder.STRING
-], { prefix: 2 })
+const index2_key = new IndexEncoder(
+  [IndexEncoder.STRING, IndexEncoder.STRING, IndexEncoder.STRING],
+  { prefix: 2 }
+)
 
-function index2_indexify (record) {
+function index2_indexify(record) {
   const arr = []
 
   const a0 = record.engine
@@ -174,10 +168,10 @@ const index2 = {
   name: '@qvac-main-registry/models-by-engine',
   version: 0,
   id: 2,
-  encodeKey (record) {
+  encodeKey(record) {
     return index2_key.encode(index2_indexify(record))
   },
-  encodeKeyRange ({ gt, lt, gte, lte } = {}) {
+  encodeKeyRange({ gt, lt, gte, lte } = {}) {
     return index2_key.encodeRange({
       gt: gt ? index2_indexify(gt) : null,
       lt: lt ? index2_indexify(lt) : null,
@@ -186,7 +180,7 @@ const index2 = {
     })
   },
   encodeValue: (record) => index2.collection.encodeKey(record),
-  encodeIndexKeys (record, context) {
+  encodeIndexKeys(record, context) {
     return [index2_key.encode([record.engine, record.path, record.source])]
   },
   reconstruct: (keyBuf, valueBuf) => valueBuf,
@@ -196,16 +190,15 @@ const index2 = {
 collection1.indexes.push(index2)
 
 // '@qvac-main-registry/models-by-name' collection key
-const index3_key = new IndexEncoder([
-  IndexEncoder.STRING,
-  IndexEncoder.STRING,
-  IndexEncoder.STRING
-], { prefix: 3 })
+const index3_key = new IndexEncoder(
+  [IndexEncoder.STRING, IndexEncoder.STRING, IndexEncoder.STRING],
+  { prefix: 3 }
+)
 
 // '@qvac-main-registry/models-by-name' has the following schema defined key map
 const index3_map = helpers0.mapPathToName
 
-function index3_indexify (record) {
+function index3_indexify(record) {
   const a = record
   return a === undefined ? [] : [a]
 }
@@ -215,19 +208,19 @@ const index3 = {
   name: '@qvac-main-registry/models-by-name',
   version: 0,
   id: 3,
-  encodeKey (record) {
+  encodeKey(record) {
     return index3_key.encode(index3_indexify(record))
   },
-  encodeKeyRange ({ gt, lt, gte, lte } = {}) {
+  encodeKeyRange({ gt, lt, gte, lte } = {}) {
     return index3_key.encodeRange({
-      gt: (gt || gt === '') ? index3_indexify(gt) : null,
-      lt: (lt || lt === '') ? index3_indexify(lt) : null,
-      gte: (gte || gte === '') ? index3_indexify(gte) : null,
-      lte: (lte || lte === '') ? index3_indexify(lte) : null
+      gt: gt || gt === '' ? index3_indexify(gt) : null,
+      lt: lt || lt === '' ? index3_indexify(lt) : null,
+      gte: gte || gte === '' ? index3_indexify(gte) : null,
+      lte: lte || lte === '' ? index3_indexify(lte) : null
     })
   },
   encodeValue: (record) => index3.collection.encodeKey(record),
-  encodeIndexKeys (record, context) {
+  encodeIndexKeys(record, context) {
     const mapped = index3_map(record, context)
     const keys = new Array(mapped.length)
     for (let i = 0; i < mapped.length; i++) {
@@ -243,13 +236,12 @@ const index3 = {
 collection1.indexes.push(index3)
 
 // '@qvac-main-registry/models-by-quantization' collection key
-const index4_key = new IndexEncoder([
-  IndexEncoder.STRING,
-  IndexEncoder.STRING,
-  IndexEncoder.STRING
-], { prefix: 4 })
+const index4_key = new IndexEncoder(
+  [IndexEncoder.STRING, IndexEncoder.STRING, IndexEncoder.STRING],
+  { prefix: 4 }
+)
 
-function index4_indexify (record) {
+function index4_indexify(record) {
   const arr = []
 
   const a0 = record.quantization
@@ -272,10 +264,10 @@ const index4 = {
   name: '@qvac-main-registry/models-by-quantization',
   version: 0,
   id: 4,
-  encodeKey (record) {
+  encodeKey(record) {
     return index4_key.encode(index4_indexify(record))
   },
-  encodeKeyRange ({ gt, lt, gte, lte } = {}) {
+  encodeKeyRange({ gt, lt, gte, lte } = {}) {
     return index4_key.encodeRange({
       gt: gt ? index4_indexify(gt) : null,
       lt: lt ? index4_indexify(lt) : null,
@@ -284,7 +276,7 @@ const index4 = {
     })
   },
   encodeValue: (record) => index4.collection.encodeKey(record),
-  encodeIndexKeys (record, context) {
+  encodeIndexKeys(record, context) {
     return [index4_key.encode([record.quantization, record.path, record.source])]
   },
   reconstruct: (keyBuf, valueBuf) => valueBuf,
@@ -294,14 +286,12 @@ const index4 = {
 collection1.indexes.push(index4)
 
 // '@qvac-main-registry/models-by-engine-quantization' collection key
-const index5_key = new IndexEncoder([
-  IndexEncoder.STRING,
-  IndexEncoder.STRING,
-  IndexEncoder.STRING,
-  IndexEncoder.STRING
-], { prefix: 5 })
+const index5_key = new IndexEncoder(
+  [IndexEncoder.STRING, IndexEncoder.STRING, IndexEncoder.STRING, IndexEncoder.STRING],
+  { prefix: 5 }
+)
 
-function index5_indexify (record) {
+function index5_indexify(record) {
   const arr = []
 
   const a0 = record.engine
@@ -328,10 +318,10 @@ const index5 = {
   name: '@qvac-main-registry/models-by-engine-quantization',
   version: 0,
   id: 5,
-  encodeKey (record) {
+  encodeKey(record) {
     return index5_key.encode(index5_indexify(record))
   },
-  encodeKeyRange ({ gt, lt, gte, lte } = {}) {
+  encodeKeyRange({ gt, lt, gte, lte } = {}) {
     return index5_key.encodeRange({
       gt: gt ? index5_indexify(gt) : null,
       lt: lt ? index5_indexify(lt) : null,
@@ -340,7 +330,7 @@ const index5 = {
     })
   },
   encodeValue: (record) => index5.collection.encodeKey(record),
-  encodeIndexKeys (record, context) {
+  encodeIndexKeys(record, context) {
     return [index5_key.encode([record.engine, record.quantization, record.path, record.source])]
   },
   reconstruct: (keyBuf, valueBuf) => valueBuf,
@@ -349,34 +339,34 @@ const index5 = {
 }
 collection1.indexes.push(index5)
 
-const collections = [
-  collection0,
-  collection1
-]
+const collections = [collection0, collection1]
 
-const indexes = [
-  index2,
-  index3,
-  index4,
-  index5
-]
+const indexes = [index2, index3, index4, index5]
 
 module.exports = { versions, collections, indexes, resolveCollection, resolveIndex }
 
-function resolveCollection (name) {
+function resolveCollection(name) {
   switch (name) {
-    case '@qvac-main-registry/license': return collection0
-    case '@qvac-main-registry/model': return collection1
-    default: return null
+    case '@qvac-main-registry/license':
+      return collection0
+    case '@qvac-main-registry/model':
+      return collection1
+    default:
+      return null
   }
 }
 
-function resolveIndex (name) {
+function resolveIndex(name) {
   switch (name) {
-    case '@qvac-main-registry/models-by-engine': return index2
-    case '@qvac-main-registry/models-by-name': return index3
-    case '@qvac-main-registry/models-by-quantization': return index4
-    case '@qvac-main-registry/models-by-engine-quantization': return index5
-    default: return null
+    case '@qvac-main-registry/models-by-engine':
+      return index2
+    case '@qvac-main-registry/models-by-name':
+      return index3
+    case '@qvac-main-registry/models-by-quantization':
+      return index4
+    case '@qvac-main-registry/models-by-engine-quantization':
+      return index5
+    default:
+      return null
   }
 }

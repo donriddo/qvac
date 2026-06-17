@@ -11,15 +11,17 @@ const levels = {
 
 const log = (level, ...args) => {
   const timestamp = new Date().toISOString()
-  const message = args.map(arg => {
-    if (arg instanceof Error) {
-      return arg.stack || arg.message
-    }
-    if (typeof arg === 'object') {
-      return JSON.stringify(arg)
-    }
-    return String(arg)
-  }).join(' ')
+  const message = args
+    .map((arg) => {
+      if (arg instanceof Error) {
+        return arg.stack || arg.message
+      }
+      if (typeof arg === 'object') {
+        return JSON.stringify(arg)
+      }
+      return String(arg)
+    })
+    .join(' ')
   const logMessage = `[${timestamp}] [${level}] ${message}\n`
   process.stdout.write(logMessage)
 }

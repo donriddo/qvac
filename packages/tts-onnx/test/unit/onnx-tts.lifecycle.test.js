@@ -9,7 +9,7 @@ const process = require('bare-process')
 
 global.process = process
 
-function createStubbedModel () {
+function createStubbedModel() {
   const model = new ONNXTTS({
     files: { modelDir: './models/chatterbox' },
     engine: 'chatterbox',

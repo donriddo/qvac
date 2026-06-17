@@ -5,11 +5,11 @@ const MockAddon = require('../MockAddon.js')
 const MockONNXOcr = require('../MockONNXOcr.js')
 const { wait } = require('../utils.js')
 
-function createAddon (outputCb = () => {}, transitionCb = null) {
+function createAddon(outputCb = () => {}, transitionCb = null) {
   return new MockAddon({}, outputCb, transitionCb)
 }
 
-function createModel () {
+function createModel() {
   return new MockONNXOcr({
     params: {
       langList: ['en'],
@@ -22,48 +22,48 @@ function createModel () {
 
 // --- Initial state ---
 
-test('MockAddon starts in loading state', async t => {
+test('MockAddon starts in loading state', async (t) => {
   const addon = createAddon()
   t.is(await addon.status(), 'loading', 'Initial state should be loading')
 })
 
 // --- State transitions ---
 
-test('activate() transitions to listening', async t => {
+test('activate() transitions to listening', async (t) => {
   const addon = createAddon()
   await addon.activate()
   t.is(await addon.status(), 'listening', 'State should be listening after activate')
 })
 
-test('pause() transitions to paused', async t => {
+test('pause() transitions to paused', async (t) => {
   const addon = createAddon()
   await addon.activate()
   await addon.pause()
   t.is(await addon.status(), 'paused', 'State should be paused after pause')
 })
 
-test('stop() transitions to stopped', async t => {
+test('stop() transitions to stopped', async (t) => {
   const addon = createAddon()
   await addon.activate()
   await addon.stop()
   t.is(await addon.status(), 'stopped', 'State should be stopped after stop')
 })
 
-test('destroy() transitions to idle', async t => {
+test('destroy() transitions to idle', async (t) => {
   const addon = createAddon()
   await addon.activate()
   await addon.destroy()
   t.is(await addon.status(), 'idle', 'State should be idle after destroy')
 })
 
-test('cancel() transitions to stopped', async t => {
+test('cancel() transitions to stopped', async (t) => {
   const addon = createAddon()
   await addon.activate()
   await addon.cancel(1)
   t.is(await addon.status(), 'stopped', 'State should be stopped after cancel')
 })
 
-test('activate after pause resumes to listening', async t => {
+test('activate after pause resumes to listening', async (t) => {
   const addon = createAddon()
   await addon.activate()
   await addon.pause()
@@ -72,7 +72,7 @@ test('activate after pause resumes to listening', async t => {
   t.is(await addon.status(), 'listening', 'Should be listening after resume from pause')
 })
 
-test('activate after stop resumes to listening', async t => {
+test('activate after stop resumes to listening', async (t) => {
   const addon = createAddon()
   await addon.activate()
   await addon.stop()
@@ -83,7 +83,7 @@ test('activate after stop resumes to listening', async t => {
 
 // --- Transition callbacks ---
 
-test('Transition callback is called on state changes', async t => {
+test('Transition callback is called on state changes', async (t) => {
   const transitions = []
   const transitionCb = (instance, newState) => {
     transitions.push(newState)
@@ -96,13 +96,16 @@ test('Transition callback is called on state changes', async t => {
   await addon.stop()
   await addon.destroy()
 
-  t.alike(transitions, ['listening', 'paused', 'listening', 'stopped', 'idle'],
-    'Should record all state transitions in order')
+  t.alike(
+    transitions,
+    ['listening', 'paused', 'listening', 'stopped', 'idle'],
+    'Should record all state transitions in order'
+  )
 })
 
 // --- Appending data in wrong state ---
 
-test('Append in loading state emits error', async t => {
+test('Append in loading state emits error', async (t) => {
   const events = []
   const outputCb = (addon, event, jobId, data, error) => {
     events.push({ event, data })
@@ -118,7 +121,7 @@ test('Append in loading state emits error', async t => {
   t.ok(events[0].data.error.includes('Invalid state'), 'Error should mention invalid state')
 })
 
-test('Append in stopped state emits error', async t => {
+test('Append in stopped state emits error', async (t) => {
   const events = []
   const outputCb = (addon, event, jobId, data, error) => {
     events.push({ event, data })
@@ -134,7 +137,7 @@ test('Append in stopped state emits error', async t => {
   t.is(events[0].event, 'Error', 'Event should be an Error')
 })
 
-test('Append in paused state emits error', async t => {
+test('Append in paused state emits error', async (t) => {
   const events = []
   const outputCb = (addon, event, jobId, data, error) => {
     events.push({ event, data })
@@ -152,7 +155,7 @@ test('Append in paused state emits error', async t => {
 
 // --- Unknown data type ---
 
-test('Append with unknown type emits error', async t => {
+test('Append with unknown type emits error', async (t) => {
   const events = []
   const outputCb = (addon, event, jobId, data, error) => {
     events.push({ event, data })
@@ -170,7 +173,7 @@ test('Append with unknown type emits error', async t => {
 
 // --- Job ID management ---
 
-test('Job IDs increment after end-of-job marker', async t => {
+test('Job IDs increment after end-of-job marker', async (t) => {
   const events = []
   const outputCb = (addon, event, jobId, data, error) => {
     events.push({ event, jobId })
@@ -193,7 +196,7 @@ test('Job IDs increment after end-of-job marker', async t => {
 
 // --- Progress ---
 
-test('progress() returns processed and total', async t => {
+test('progress() returns processed and total', async (t) => {
   const addon = createAddon()
   const progress = await addon.progress()
 
@@ -204,7 +207,7 @@ test('progress() returns processed and total', async t => {
 
 // --- Full lifecycle via MockONNXOcr ---
 
-test('MockONNXOcr full lifecycle: load, run, stop', async t => {
+test('MockONNXOcr full lifecycle: load, run, stop', async (t) => {
   const model = createModel()
   await model.load()
 
@@ -220,13 +223,15 @@ test('MockONNXOcr full lifecycle: load, run, stop', async t => {
   t.is(await model.status(), 'stopped', 'Should be stopped')
 })
 
-test('MockONNXOcr can run multiple jobs sequentially', async t => {
+test('MockONNXOcr can run multiple jobs sequentially', async (t) => {
   const model = createModel()
   await model.load()
 
   const response1 = await model.run({ path: 'test/images/basic_test.bmp' })
   let output1Received = false
-  response1.onUpdate(() => { output1Received = true })
+  response1.onUpdate(() => {
+    output1Received = true
+  })
   await response1.await()
   t.ok(output1Received, 'First job should produce output')
 
@@ -234,7 +239,9 @@ test('MockONNXOcr can run multiple jobs sequentially', async t => {
 
   const response2 = await model.run({ path: 'test/images/basic_test.bmp' })
   let output2Received = false
-  response2.onUpdate(() => { output2Received = true })
+  response2.onUpdate(() => {
+    output2Received = true
+  })
   await response2.await()
   t.ok(output2Received, 'Second job should also produce output')
 })

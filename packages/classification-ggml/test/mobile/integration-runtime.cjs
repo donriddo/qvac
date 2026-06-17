@@ -13,7 +13,7 @@ const { pathToFileURL } = require('bare-url')
 
 const GC_PAUSE_MS = 3000
 
-async function runIntegrationModule (relativeModulePath, options = {}) {
+async function runIntegrationModule(relativeModulePath, options = {}) {
   const modulePath = path.join(__dirname, relativeModulePath)
 
   if (!fs.existsSync(modulePath)) {
@@ -28,7 +28,7 @@ async function runIntegrationModule (relativeModulePath, options = {}) {
     global.gc()
     console.log(`[integration-runner] GC triggered after ${relativeModulePath}`)
   }
-  await new Promise(resolve => setTimeout(resolve, options.gcPauseMs || GC_PAUSE_MS))
+  await new Promise((resolve) => setTimeout(resolve, options.gcPauseMs || GC_PAUSE_MS))
   console.log(`[integration-runner] ${GC_PAUSE_MS}ms cooldown complete`)
 
   return modulePath

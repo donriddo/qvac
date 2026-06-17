@@ -8,7 +8,7 @@ const process = require('bare-process')
 
 global.process = process
 
-function createMockedSupertonicModel ({ onOutput = () => { }, binding = undefined } = {}) {
+function createMockedSupertonicModel({ onOutput = () => {}, binding = undefined } = {}) {
   const model = new ONNXTTS({
     files: {
       modelDir: './models/supertonic'
@@ -46,10 +46,13 @@ test('Supertonic: Inference returns correct output for text input', async (t) =>
 
   const response = await model.run({ type: 'text', input: 'Hello world' })
   const outputs = []
-  await response.onUpdate(data => outputs.push(data)).await()
+  await response.onUpdate((data) => outputs.push(data)).await()
 
   t.ok(outputs.length > 0, 'Response should emit at least one output event')
-  t.ok(outputs.some(d => d.outputArray), 'Output should contain audio samples')
+  t.ok(
+    outputs.some((d) => d.outputArray),
+    'Output should contain audio samples'
+  )
   t.ok(response.stats.totalSamples > 0, 'Stats should include total samples')
   t.ok(events.length > 0, 'Raw callbacks should be captured')
   await model.unload()
@@ -60,7 +63,11 @@ test('Supertonic: Static methods return expected values', async (t) => {
   t.is(modelKey, 'onnx-tts', 'getModelKey should return "onnx-tts"')
 
   t.ok(ONNXTTS.inferenceManagerConfig, 'inferenceManagerConfig should exist')
-  t.is(ONNXTTS.inferenceManagerConfig.noAdditionalDownload, true, 'noAdditionalDownload should be true')
+  t.is(
+    ONNXTTS.inferenceManagerConfig.noAdditionalDownload,
+    true,
+    'noAdditionalDownload should be true'
+  )
 })
 
 test('Supertonic: Engine type is detected correctly', async (t) => {
@@ -68,7 +75,11 @@ test('Supertonic: Engine type is detected correctly', async (t) => {
     files: { modelDir: './models/supertonic' },
     voiceName: 'F1'
   })
-  t.is(modelFromDir._engineType, 'supertonic', 'Should detect Supertonic engine when modelDir + voiceName are provided')
+  t.is(
+    modelFromDir._engineType,
+    'supertonic',
+    'Should detect Supertonic engine when modelDir + voiceName are provided'
+  )
 
   const modelFromDirOnly = new ONNXTTS({
     files: { modelDir: './models/supertonic' }
@@ -100,7 +111,11 @@ test('Supertonic: Engine type is detected correctly', async (t) => {
       vocoder: './onnx/vocoder.onnx'
     }
   })
-  t.is(modelFromPaths._engineType, 'supertonic', 'Should detect Supertonic engine when textEncoder path is provided')
+  t.is(
+    modelFromPaths._engineType,
+    'supertonic',
+    'Should detect Supertonic engine when textEncoder path is provided'
+  )
 })
 
 test('Supertonic: cancel propagates as job failure', async (t) => {

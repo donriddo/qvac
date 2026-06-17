@@ -6,12 +6,12 @@ const platform = os.platform()
 const isMobile = platform === 'ios' || platform === 'android'
 
 // Returns base directory for models - uses global.testDir on mobile, current dir otherwise
-function getBaseDir () {
+function getBaseDir() {
   return isMobile && global.testDir ? global.testDir : '.'
 }
 
 /** Returns true if file exists and is valid JSON; false if missing, wrong size, or invalid. */
-function isValidJsonCache (filepath) {
+function isValidJsonCache(filepath) {
   try {
     if (!fs.existsSync(filepath)) return false
     const stats = fs.statSync(filepath)
@@ -30,7 +30,7 @@ function isValidJsonCache (filepath) {
  * Mobile-friendly HTTPS download using bare-https
  * Handles redirects and writes directly to file
  */
-async function downloadWithHttp (url, filepath, maxRedirects = 10) {
+async function downloadWithHttp(url, filepath, maxRedirects = 10) {
   return new Promise((resolve, reject) => {
     const https = require('bare-https')
     const { URL } = require('bare-url')
@@ -94,7 +94,9 @@ async function downloadWithHttp (url, filepath, maxRedirects = 10) {
         downloadedBytes += chunk.length
         if (contentLength > 0 && downloadedBytes % (1024 * 1024) < chunk.length) {
           const percent = ((downloadedBytes / contentLength) * 100).toFixed(1)
-          console.log(` [HTTPS] Progress: ${percent}% (${downloadedBytes} / ${contentLength} bytes)`)
+          console.log(
+            ` [HTTPS] Progress: ${percent}% (${downloadedBytes} / ${contentLength} bytes)`
+          )
         }
       })
 
@@ -119,15 +121,25 @@ async function downloadWithHttp (url, filepath, maxRedirects = 10) {
   })
 }
 
-function getFileSizeFromUrl (url) {
+function getFileSizeFromUrl(url) {
   try {
     const { spawnSync } = require('bare-subprocess')
-    const result = spawnSync('curl', [
-      '-I', '-L', url,
-      '--fail', '--silent', '--show-error',
-      '--connect-timeout', '10',
-      '--max-time', '30'
-    ], { stdio: ['inherit', 'pipe', 'pipe'] })
+    const result = spawnSync(
+      'curl',
+      [
+        '-I',
+        '-L',
+        url,
+        '--fail',
+        '--silent',
+        '--show-error',
+        '--connect-timeout',
+        '10',
+        '--max-time',
+        '30'
+      ],
+      { stdio: ['inherit', 'pipe', 'pipe'] }
+    )
 
     if (result.status === 0 && result.stdout) {
       const output = result.stdout.toString()
@@ -142,7 +154,7 @@ function getFileSizeFromUrl (url) {
   return null
 }
 
-async function ensureFileDownloaded (url, filepath) {
+async function ensureFileDownloaded(url, filepath) {
   const isJson = filepath.endsWith('.json')
 
   // Ensure the directory exists
@@ -153,7 +165,7 @@ async function ensureFileDownloaded (url, filepath) {
 
   // Get expected file size from URL (skip on mobile - no curl)
   const expectedSize = isMobile ? null : getFileSizeFromUrl(url)
-  const minSize = expectedSize ? Math.floor(expectedSize * 0.9) : (isJson ? 100 : 1000000)
+  const minSize = expectedSize ? Math.floor(expectedSize * 0.9) : isJson ? 100 : 1000000
 
   if (fs.existsSync(filepath)) {
     const stats = fs.statSync(filepath)
@@ -205,12 +217,21 @@ async function ensureFileDownloaded (url, filepath) {
 
       // For JSON files, fetch content and write to file
       if (isJson) {
-        const result = spawnSync('curl', [
-          '-L', url,
-          '--fail', '--silent', '--show-error',
-          '--connect-timeout', '30',
-          '--max-time', '300'
-        ], { stdio: ['inherit', 'pipe', 'pipe'] })
+        const result = spawnSync(
+          'curl',
+          [
+            '-L',
+            url,
+            '--fail',
+            '--silent',
+            '--show-error',
+            '--connect-timeout',
+            '30',
+            '--max-time',
+            '300'
+          ],
+          { stdio: ['inherit', 'pipe', 'pipe'] }
+        )
 
         if (result.status === 0 && result.stdout) {
           fs.writeFileSync(filepath, result.stdout)
@@ -231,12 +252,23 @@ async function ensureFileDownloaded (url, filepath) {
         }
       } else {
         // For binary files (.onnx), download directly to file
-        const result = spawnSync('curl', [
-          '-L', '-o', filepath, url,
-          '--fail', '--silent', '--show-error',
-          '--connect-timeout', '30',
-          '--max-time', '1000'
-        ], { stdio: ['inherit', 'inherit', 'pipe'] })
+        const result = spawnSync(
+          'curl',
+          [
+            '-L',
+            '-o',
+            filepath,
+            url,
+            '--fail',
+            '--silent',
+            '--show-error',
+            '--connect-timeout',
+            '30',
+            '--max-time',
+            '1000'
+          ],
+          { stdio: ['inherit', 'inherit', 'pipe'] }
+        )
 
         if (result.status === 0 && fs.existsSync(filepath)) {
           const stats = fs.statSync(filepath)
@@ -268,11 +300,17 @@ async function ensureFileDownloaded (url, filepath) {
 
 // Download Whisper model (ggml format). Supports ggml-small.bin and ggml-medium.bin via targetPath.
 const WHISPER_MODELS = {
-  'ggml-small.bin': { url: 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin', minSize: 460000000 },
-  'ggml-medium.bin': { url: 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-medium.bin', minSize: 1400000000 }
+  'ggml-small.bin': {
+    url: 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin',
+    minSize: 460000000
+  },
+  'ggml-medium.bin': {
+    url: 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-medium.bin',
+    minSize: 1400000000
+  }
 }
 
-async function ensureWhisperModel (targetPath = null) {
+async function ensureWhisperModel(targetPath = null) {
   if (!targetPath) {
     targetPath = path.join(getBaseDir(), 'models', 'whisper', 'ggml-medium.bin')
   }
@@ -315,12 +353,22 @@ async function ensureWhisperModel (targetPath = null) {
   } else {
     try {
       const { spawnSync } = require('bare-subprocess')
-      const downloadResult = spawnSync('curl', [
-        '-L', '-o', targetPath, url,
-        '--fail', '--show-error',
-        '--connect-timeout', '30',
-        '--max-time', '1000'
-      ], { stdio: ['inherit', 'inherit', 'pipe'] })
+      const downloadResult = spawnSync(
+        'curl',
+        [
+          '-L',
+          '-o',
+          targetPath,
+          url,
+          '--fail',
+          '--show-error',
+          '--connect-timeout',
+          '30',
+          '--max-time',
+          '1000'
+        ],
+        { stdio: ['inherit', 'inherit', 'pipe'] }
+      )
       downloadSuccess = downloadResult.status === 0 && fs.existsSync(targetPath)
       if (!downloadSuccess) {
         console.log(` Download failed with exit code: ${downloadResult.status}`)
@@ -356,7 +404,7 @@ async function ensureWhisperModel (targetPath = null) {
 
 const CANGJIE_TSV_MIN_BYTES = 400000
 
-function extractCangjieEntries (raw) {
+function extractCangjieEntries(raw) {
   const str = typeof raw === 'string' ? raw : Buffer.from(raw).toString('utf8')
   const entries = []
   const re = /"([^"\\]*(?:\\.[^"\\]*)*)"/g
@@ -373,7 +421,7 @@ function extractCangjieEntries (raw) {
   return entries
 }
 
-function writeCangjieJsonArrayToTsv (jsonBody, tsvPath) {
+function writeCangjieJsonArrayToTsv(jsonBody, tsvPath) {
   const data = extractCangjieEntries(jsonBody)
   if (data.length === 0) {
     throw new Error('Cangjie JSON: no entries extracted')
@@ -394,7 +442,7 @@ function writeCangjieJsonArrayToTsv (jsonBody, tsvPath) {
   fs.writeFileSync(tsvPath, lines.join('\n') + '\n', 'utf8')
 }
 
-async function ensureCangjieTsvForMultilingual (targetDir) {
+async function ensureCangjieTsvForMultilingual(targetDir) {
   const tsvPath = path.join(targetDir, 'Cangjie5_TC.tsv')
 
   if (fs.existsSync(tsvPath)) {
@@ -445,10 +493,12 @@ async function ensureCangjieTsvForMultilingual (targetDir) {
  * @param {string} [options.targetDir] - Target directory for models
  * @returns {Promise<Object>} Download result with success status and paths
  */
-async function ensureChatterboxModels (options = {}) {
+async function ensureChatterboxModels(options = {}) {
   const variant = options.variant || 'fp32'
   const language = options.language || 'en'
-  const targetDir = options.targetDir || path.join(getBaseDir(), 'models', language === 'en' ? 'chatterbox' : 'chatterbox-multilingual')
+  const targetDir =
+    options.targetDir ||
+    path.join(getBaseDir(), 'models', language === 'en' ? 'chatterbox' : 'chatterbox-multilingual')
 
   console.log(`Ensuring Chatterbox models (variant: ${variant}, language: ${language})...`)
 
@@ -457,7 +507,9 @@ async function ensureChatterboxModels (options = {}) {
   }
 
   const isMultilingual = language !== 'en'
-  const repositoryName = isMultilingual ? 'onnx-community/chatterbox-multilingual-ONNX' : 'ResembleAI/chatterbox-turbo-ONNX'
+  const repositoryName = isMultilingual
+    ? 'onnx-community/chatterbox-multilingual-ONNX'
+    : 'ResembleAI/chatterbox-turbo-ONNX'
   const baseUrl = `https://huggingface.co/${repositoryName}/resolve/main/onnx`
 
   const suffix = variant === 'fp32' ? '' : `_${variant}`
@@ -538,12 +590,22 @@ async function ensureChatterboxModels (options = {}) {
     } else {
       try {
         const { spawnSync } = require('bare-subprocess')
-        const downloadResult = spawnSync('curl', [
-          '-L', '-o', targetPath, url,
-          '--fail', '--show-error',
-          '--connect-timeout', '30',
-          '--max-time', '1800'
-        ], { stdio: ['inherit', 'inherit', 'pipe'] })
+        const downloadResult = spawnSync(
+          'curl',
+          [
+            '-L',
+            '-o',
+            targetPath,
+            url,
+            '--fail',
+            '--show-error',
+            '--connect-timeout',
+            '30',
+            '--max-time',
+            '1800'
+          ],
+          { stdio: ['inherit', 'inherit', 'pipe'] }
+        )
         downloadSuccess = downloadResult.status === 0 && fs.existsSync(targetPath)
         if (!downloadSuccess) {
           console.log(` Download failed with exit code: ${downloadResult.status}`)
@@ -578,12 +640,14 @@ async function ensureChatterboxModels (options = {}) {
     }
   }
 
-  const cachedCount = Object.values(results).filter(r => r.cached).length
-  const downloadedCount = Object.values(results).filter(r => r.success && !r.cached).length
-  const failedCount = Object.values(results).filter(r => !r.success).length
+  const cachedCount = Object.values(results).filter((r) => r.cached).length
+  const downloadedCount = Object.values(results).filter((r) => r.success && !r.cached).length
+  const failedCount = Object.values(results).filter((r) => !r.success).length
 
   if (failedCount > 0) {
-    console.log(`Chatterbox models: ${failedCount} failed, ${downloadedCount} downloaded, ${cachedCount} cached`)
+    console.log(
+      `Chatterbox models: ${failedCount} failed, ${downloadedCount} downloaded, ${cachedCount} cached`
+    )
     for (const [name, result] of Object.entries(results)) {
       if (!result.success) console.log(` FAILED: ${name}`)
     }
@@ -605,7 +669,7 @@ async function ensureChatterboxModels (options = {}) {
  * @param {string} url - URL to fetch
  * @returns {Promise<{ success: boolean, body?: string, error?: string }>}
  */
-async function fetchUrlBody (url) {
+async function fetchUrlBody(url) {
   if (isMobile) {
     const https = require('bare-https')
     const { URL } = require('bare-url')
@@ -627,10 +691,15 @@ async function fetchUrlBody (url) {
           } else if (location.startsWith('/')) {
             redirectUrl = `${parsedUrl.protocol}//${parsedUrl.host}${location}`
           } else {
-            const basePath = parsedUrl.pathname.substring(0, parsedUrl.pathname.lastIndexOf('/') + 1)
+            const basePath = parsedUrl.pathname.substring(
+              0,
+              parsedUrl.pathname.lastIndexOf('/') + 1
+            )
             redirectUrl = `${parsedUrl.protocol}//${parsedUrl.host}${basePath}${location}`
           }
-          fetchUrlBody(redirectUrl).then(resolve).catch((e) => resolve({ success: false, error: e.message }))
+          fetchUrlBody(redirectUrl)
+            .then(resolve)
+            .catch((e) => resolve({ success: false, error: e.message }))
           return
         }
         if (res.statusCode !== 200) {
@@ -639,7 +708,9 @@ async function fetchUrlBody (url) {
         }
         const chunks = []
         res.on('data', (chunk) => chunks.push(chunk))
-        res.on('end', () => resolve({ success: true, body: Buffer.concat(chunks).toString('utf8') }))
+        res.on('end', () =>
+          resolve({ success: true, body: Buffer.concat(chunks).toString('utf8') })
+        )
         res.on('error', (err) => resolve({ success: false, error: err.message }))
       })
       req.on('error', (err) => resolve({ success: false, error: err.message }))
@@ -647,12 +718,21 @@ async function fetchUrlBody (url) {
     })
   }
   const { spawnSync } = require('bare-subprocess')
-  const result = spawnSync('curl', [
-    '-L', url,
-    '--fail', '--silent', '--show-error',
-    '--connect-timeout', '30',
-    '--max-time', '300'
-  ], { encoding: 'utf8', stdio: ['inherit', 'pipe', 'pipe'] })
+  const result = spawnSync(
+    'curl',
+    [
+      '-L',
+      url,
+      '--fail',
+      '--silent',
+      '--show-error',
+      '--connect-timeout',
+      '30',
+      '--max-time',
+      '300'
+    ],
+    { encoding: 'utf8', stdio: ['inherit', 'pipe', 'pipe'] }
+  )
   if (result.status === 0 && result.stdout) {
     return { success: true, body: result.stdout }
   }
@@ -668,7 +748,7 @@ async function fetchUrlBody (url) {
  * @param {string[]} [options.voiceNames=['F1']] - Voice files to download (e.g. F1.bin, M1.bin)
  * @returns {Promise<Object>} { success, results, targetDir }
  */
-function downloadOnnxFile (url, targetPath, minSize, label) {
+function downloadOnnxFile(url, targetPath, minSize, label) {
   return new Promise((resolve) => {
     if (fs.existsSync(targetPath)) {
       const stats = fs.statSync(targetPath)
@@ -684,27 +764,41 @@ function downloadOnnxFile (url, targetPath, minSize, label) {
     let downloadSuccess = false
     if (isMobile) {
       downloadWithHttp(url, targetPath)
-        .then((result) => { downloadSuccess = result.success && fs.existsSync(targetPath) })
-        .catch((e) => { console.log(` HTTP download error: ${e.message}`) })
+        .then((result) => {
+          downloadSuccess = result.success && fs.existsSync(targetPath)
+        })
+        .catch((e) => {
+          console.log(` HTTP download error: ${e.message}`)
+        })
         .finally(() => finalize())
       return
     }
 
     try {
       const { spawnSync } = require('bare-subprocess')
-      const downloadResult = spawnSync('curl', [
-        '-L', '-o', targetPath, url,
-        '--fail', '--show-error',
-        '--connect-timeout', '30',
-        '--max-time', '1800'
-      ], { stdio: ['inherit', 'inherit', 'pipe'] })
+      const downloadResult = spawnSync(
+        'curl',
+        [
+          '-L',
+          '-o',
+          targetPath,
+          url,
+          '--fail',
+          '--show-error',
+          '--connect-timeout',
+          '30',
+          '--max-time',
+          '1800'
+        ],
+        { stdio: ['inherit', 'inherit', 'pipe'] }
+      )
       downloadSuccess = downloadResult.status === 0 && fs.existsSync(targetPath)
     } catch (e) {
       console.log(` Curl error: ${e.message}`)
     }
     finalize()
 
-    function finalize () {
+    function finalize() {
       if (downloadSuccess) {
         const stats = fs.statSync(targetPath)
         if (stats.size >= minSize) {
@@ -719,7 +813,7 @@ function downloadOnnxFile (url, targetPath, minSize, label) {
   })
 }
 
-async function downloadJsonConfig (url, targetPath, label) {
+async function downloadJsonConfig(url, targetPath, label) {
   if (fs.existsSync(targetPath) && isValidJsonCache(targetPath)) {
     return { success: true, path: targetPath, cached: true }
   }
@@ -748,7 +842,7 @@ async function downloadJsonConfig (url, targetPath, label) {
   }
 }
 
-async function ensureSupertonicModels (options = {}) {
+async function ensureSupertonicModels(options = {}) {
   const targetDir = options.targetDir || path.join(getBaseDir(), 'models', 'supertonic')
   const voiceNames = options.voiceNames || ['F1']
 
@@ -804,12 +898,14 @@ async function ensureSupertonicModels (options = {}) {
     if (!r.success) allSuccess = false
   }
 
-  const cachedCount = Object.values(results).filter(r => r.cached).length
-  const downloadedCount = Object.values(results).filter(r => r.success && !r.cached).length
-  const failedCount = Object.values(results).filter(r => !r.success).length
+  const cachedCount = Object.values(results).filter((r) => r.cached).length
+  const downloadedCount = Object.values(results).filter((r) => r.success && !r.cached).length
+  const failedCount = Object.values(results).filter((r) => !r.success).length
 
   if (failedCount > 0) {
-    console.log(`Supertonic models: ${failedCount} failed, ${downloadedCount} downloaded, ${cachedCount} cached`)
+    console.log(
+      `Supertonic models: ${failedCount} failed, ${downloadedCount} downloaded, ${cachedCount} cached`
+    )
     for (const [name, result] of Object.entries(results)) {
       if (!result.success) console.log(` FAILED: ${name}`)
     }
@@ -826,8 +922,9 @@ async function ensureSupertonicModels (options = {}) {
   }
 }
 
-async function ensureSupertonicModelsMultilingual (options = {}) {
-  const targetDir = options.targetDir || path.join(getBaseDir(), 'models', 'supertonic-multilingual')
+async function ensureSupertonicModelsMultilingual(options = {}) {
+  const targetDir =
+    options.targetDir || path.join(getBaseDir(), 'models', 'supertonic-multilingual')
   const voiceNames = options.voiceNames || ['F1']
 
   console.log('Ensuring Supertonic TTS models...')
@@ -882,12 +979,14 @@ async function ensureSupertonicModelsMultilingual (options = {}) {
     if (!r.success) allSuccess = false
   }
 
-  const cachedCount = Object.values(results).filter(r => r.cached).length
-  const downloadedCount = Object.values(results).filter(r => r.success && !r.cached).length
-  const failedCount = Object.values(results).filter(r => !r.success).length
+  const cachedCount = Object.values(results).filter((r) => r.cached).length
+  const downloadedCount = Object.values(results).filter((r) => r.success && !r.cached).length
+  const failedCount = Object.values(results).filter((r) => !r.success).length
 
   if (failedCount > 0) {
-    console.log(`Supertonic models: ${failedCount} failed, ${downloadedCount} downloaded, ${cachedCount} cached`)
+    console.log(
+      `Supertonic models: ${failedCount} failed, ${downloadedCount} downloaded, ${cachedCount} cached`
+    )
     for (const [name, result] of Object.entries(results)) {
       if (!result.success) console.log(` FAILED: ${name}`)
     }
@@ -912,7 +1011,7 @@ async function ensureSupertonicModelsMultilingual (options = {}) {
  * @param {string} [options.targetDir] - Target directory (default: getBaseDir()/models/lavasr)
  * @returns {Promise<Object>} { success, results, targetDir }
  */
-async function ensureLavaSRModels (options = {}) {
+async function ensureLavaSRModels(options = {}) {
   const targetDir = options.targetDir || path.join(getBaseDir(), 'models', 'lavasr')
 
   console.log('\nEnsuring LavaSR enhancement models...')
@@ -961,12 +1060,22 @@ async function ensureLavaSRModels (options = {}) {
     } else {
       try {
         const { spawnSync } = require('bare-subprocess')
-        const downloadResult = spawnSync('curl', [
-          '-L', '-o', targetPath, url,
-          '--fail', '--show-error',
-          '--connect-timeout', '30',
-          '--max-time', '600'
-        ], { stdio: ['inherit', 'inherit', 'pipe'] })
+        const downloadResult = spawnSync(
+          'curl',
+          [
+            '-L',
+            '-o',
+            targetPath,
+            url,
+            '--fail',
+            '--show-error',
+            '--connect-timeout',
+            '30',
+            '--max-time',
+            '600'
+          ],
+          { stdio: ['inherit', 'inherit', 'pipe'] }
+        )
         downloadSuccess = downloadResult.status === 0 && fs.existsSync(targetPath)
       } catch (e) {
         console.log(` Curl error: ${e.message}`)
@@ -979,7 +1088,9 @@ async function ensureLavaSRModels (options = {}) {
         console.log(` ✓ Downloaded: ${file.name} (${stats.size} bytes)`)
         results[file.name] = { success: true, path: targetPath, cached: false }
       } else {
-        console.log(` ✗ File too small: ${file.name} (${stats.size} bytes, expected >= ${file.minSize})`)
+        console.log(
+          ` ✗ File too small: ${file.name} (${stats.size} bytes, expected >= ${file.minSize})`
+        )
         results[file.name] = { success: false, error: 'File too small' }
         allSuccess = false
       }
@@ -1019,7 +1130,7 @@ const MECAB_IPADIC_FILES = [
   registrySource: MECAB_REGISTRY_SOURCE
 }))
 
-function mecabDictComplete (dir) {
+function mecabDictComplete(dir) {
   for (const file of MECAB_IPADIC_FILES) {
     const filePath = path.join(dir, file.name)
     if (!fs.existsSync(filePath)) return false
@@ -1032,7 +1143,7 @@ function mecabDictComplete (dir) {
   return true
 }
 
-function loadRegistryClient () {
+function loadRegistryClient() {
   try {
     return require('@qvac/registry-client').QVACRegistryClient
   } catch (err) {
@@ -1041,7 +1152,7 @@ function loadRegistryClient () {
   }
 }
 
-async function downloadDictFileFromRegistry (file, destPath) {
+async function downloadDictFileFromRegistry(file, destPath) {
   const QVACRegistryClient = loadRegistryClient()
   if (!QVACRegistryClient) return false
 
@@ -1054,12 +1165,18 @@ async function downloadDictFileFromRegistry (file, destPath) {
   try {
     client = new QVACRegistryClient()
     await client.ready()
-    const result = await client.downloadModel(file.registryPath, file.registrySource, { outputFile: destPath })
+    const result = await client.downloadModel(file.registryPath, file.registrySource, {
+      outputFile: destPath
+    })
     if (result && result.artifact && result.artifact.path) {
       const stats = fs.statSync(result.artifact.path)
       if (stats.size < file.minSize) {
-        console.log(` Registry download too small: ${stats.size} bytes (expected >=${file.minSize})`)
-        try { fs.unlinkSync(destPath) } catch (_e) {}
+        console.log(
+          ` Registry download too small: ${stats.size} bytes (expected >=${file.minSize})`
+        )
+        try {
+          fs.unlinkSync(destPath)
+        } catch (_e) {}
         return false
       }
       console.log(` ✓ Registry download: ${file.name} (${stats.size} bytes)`)
@@ -1069,16 +1186,20 @@ async function downloadDictFileFromRegistry (file, destPath) {
     return false
   } catch (err) {
     console.log(` Registry download failed: ${err && err.message ? err.message : String(err)}`)
-    try { fs.unlinkSync(destPath) } catch (_e) {}
+    try {
+      fs.unlinkSync(destPath)
+    } catch (_e) {}
     return false
   } finally {
     if (client) {
-      try { await client.close() } catch (_e) {}
+      try {
+        await client.close()
+      } catch (_e) {}
     }
   }
 }
 
-async function fetchMecabDictFromRegistry (targetDir) {
+async function fetchMecabDictFromRegistry(targetDir) {
   if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true })
 
   let allOk = true
@@ -1088,7 +1209,9 @@ async function fetchMecabDictFromRegistry (targetDir) {
       try {
         if (fs.statSync(dest).size >= file.minSize) continue
       } catch (_e) {}
-      try { fs.unlinkSync(dest) } catch (_e) {}
+      try {
+        fs.unlinkSync(dest)
+      } catch (_e) {}
     }
     const ok = await downloadDictFileFromRegistry(file, dest)
     if (!ok) allOk = false
@@ -1096,7 +1219,7 @@ async function fetchMecabDictFromRegistry (targetDir) {
   return allOk
 }
 
-async function ensureMecabDict (options = {}) {
+async function ensureMecabDict(options = {}) {
   const targetDir = options.targetDir || path.join(getBaseDir(), 'models', MECAB_IPADIC_DIRNAME)
   console.log(`Ensuring MeCab/IPAdic dictionary (dir: ${targetDir})...`)
 
@@ -1115,4 +1238,12 @@ async function ensureMecabDict (options = {}) {
   return { success: false, dir: targetDir }
 }
 
-module.exports = { ensureFileDownloaded, ensureWhisperModel, ensureChatterboxModels, ensureSupertonicModels, ensureSupertonicModelsMultilingual, ensureLavaSRModels, ensureMecabDict }
+module.exports = {
+  ensureFileDownloaded,
+  ensureWhisperModel,
+  ensureChatterboxModels,
+  ensureSupertonicModels,
+  ensureSupertonicModelsMultilingual,
+  ensureLavaSRModels,
+  ensureMecabDict
+}

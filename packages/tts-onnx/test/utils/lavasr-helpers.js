@@ -2,7 +2,7 @@
 
 const path = require('bare-path')
 
-function lavasrEnhancerConfig (lavasrDir, opts = {}) {
+function lavasrEnhancerConfig(lavasrDir, opts = {}) {
   return {
     type: 'lavasr',
     enhance: opts.enhance !== false,
@@ -13,7 +13,7 @@ function lavasrEnhancerConfig (lavasrDir, opts = {}) {
   }
 }
 
-function loadReferenceAudio () {
+function loadReferenceAudio() {
   const { readWavAsFloat32, resampleLinear } = require('./wav-helper')
   const refPath = path.join(__dirname, '..', 'reference-audio', 'jfk.wav')
   const { samples, sampleRate } = readWavAsFloat32(refPath)

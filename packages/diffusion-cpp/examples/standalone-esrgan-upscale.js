@@ -30,7 +30,7 @@ const OUTPUT_DIR = path.resolve(__dirname, '../output')
 const ESRGAN_MODEL_NAME = 'RealESRGAN_x4plus_anime_6B.pth'
 const INPUT_PATH = process.env.INPUT_PATH || path.join(ASSETS_DIR, 'von-neumann.jpg')
 
-async function runUpscale (upscaler, label, repeats, filenameSuffix, inputBytes) {
+async function runUpscale(upscaler, label, repeats, filenameSuffix, inputBytes) {
   console.log(`Starting ${label}...`)
 
   const images = []
@@ -38,19 +38,18 @@ async function runUpscale (upscaler, label, repeats, filenameSuffix, inputBytes)
   const response = await upscaler.upscale(inputBytes, { repeats })
 
   await response
-    .onUpdate(data => {
+    .onUpdate((data) => {
       if (data instanceof Uint8Array) images.push(data)
     })
     .await()
 
-  console.log(`Upscaled in ${((Date.now() - t0) / 1000).toFixed(1)}s — got ${images.length} image(s)`)
+  console.log(
+    `Upscaled in ${((Date.now() - t0) / 1000).toFixed(1)}s — got ${images.length} image(s)`
+  )
 
   for (let i = 0; i < images.length; i++) {
     const baseName = path.basename(INPUT_PATH, path.extname(INPUT_PATH))
-    const outPath = path.join(
-      OUTPUT_DIR,
-      `${baseName}_esrgan_${filenameSuffix}_${i}.png`
-    )
+    const outPath = path.join(OUTPUT_DIR, `${baseName}_esrgan_${filenameSuffix}_${i}.png`)
     fs.writeFileSync(outPath, images[i])
     console.log(`Saved: ${outPath}`)
   }
@@ -58,12 +57,14 @@ async function runUpscale (upscaler, label, repeats, filenameSuffix, inputBytes)
   console.log()
 }
 
-async function main () {
+async function main() {
   fs.mkdirSync(OUTPUT_DIR, { recursive: true })
 
   if (!fs.existsSync(INPUT_PATH)) {
     console.error(`Input image not found: ${INPUT_PATH}`)
-    console.error('Override with INPUT_PATH env var, e.g. INPUT_PATH=/path/to/image.png node examples/standalone-esrgan-upscale.js')
+    console.error(
+      'Override with INPUT_PATH env var, e.g. INPUT_PATH=/path/to/image.png node examples/standalone-esrgan-upscale.js'
+    )
     process.exit(1)
   }
 
@@ -74,7 +75,9 @@ async function main () {
   console.log('ESRGAN :', ESRGAN_MODEL_NAME)
   console.log('Input  :', INPUT_PATH, `(${inputBytes.length} bytes)`)
   console.log()
-  console.log('Each ESRGAN repeat multiplies output dimensions by the model scale factor (typically 4×).')
+  console.log(
+    'Each ESRGAN repeat multiplies output dimensions by the model scale factor (typically 4×).'
+  )
   console.log()
 
   // Native C++ logs are process-global; configure them once via addonLogging.
@@ -109,7 +112,7 @@ async function main () {
   }
 }
 
-main().catch(err => {
+main().catch((err) => {
   console.error('Fatal:', err.message || err)
   process.exit(1)
 })

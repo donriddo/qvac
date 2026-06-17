@@ -20,7 +20,7 @@ const ImgStableDiffusion = require('../index')
  * Model downloaded via:  ./scripts/download-model-sd3.sh
  */
 
-async function main () {
+async function main() {
   const modelDir = path.join(__dirname, '../models')
   // const inputImagePath = path.join(__dirname, '../temp/headshot.jpeg')
   // const outputImagePath = path.join(__dirname, '../assets/headshot_transformed_sd3.jpeg')
@@ -65,7 +65,9 @@ async function main () {
   console.log('\n=== SD3 Medium img2img ===')
   console.log('  Model    : ' + MODEL_NAME)
   console.log('  Steps    : ' + STEPS)
-  console.log('  CFG      : ' + CFG + '  (4.5 = sd.cpp SD3 recommended; 7.0 default is for SD1/SD2 only)')
+  console.log(
+    '  CFG      : ' + CFG + '  (4.5 = sd.cpp SD3 recommended; 7.0 default is for SD1/SD2 only)'
+  )
   console.log('  Strength : ' + STRENGTH + '  (0=no change → 1=ignore input)')
   console.log('  Seed     : ' + SEED)
   console.log('  Note     : VAE encode runs first (no progress tick) — please wait...\n')
@@ -101,7 +103,8 @@ async function main () {
 
     const response = await model.run({
       prompt: 'anime portrait, same pose, comic-book style, professional illustration',
-      negative_prompt: 'photorealistic, blurry, low quality, 3d render, deformed, girl, different person, asian, girl',
+      negative_prompt:
+        'photorealistic, blurry, low quality, 3d render, deformed, girl, different person, asian, girl',
       init_image: initImage,
 
       // SD3 uses standard classifier-free guidance via cfg_scale.

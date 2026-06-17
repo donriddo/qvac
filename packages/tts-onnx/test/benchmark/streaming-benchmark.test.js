@@ -46,7 +46,7 @@ const SCHEMA_VERSION = 1
 // (extract-from-log.js -> aggregate.js -> render-step-summary.js). One result
 // per (engine, variant, backend, useGPU) configuration. Schema must satisfy
 // isValidReport() in extract-from-log.js (string schema_version + results array).
-function buildCanonicalStreamingReport (settings, summary, backend) {
+function buildCanonicalStreamingReport(settings, summary, backend) {
   const useGPU = !!settings.useGPU
   const ep = useGPU ? 'gpu' : 'cpu'
   const testLabel = `[${ep.toUpperCase()}] streaming ${settings.engine} ${settings.variant} ${backend}`
@@ -68,16 +68,20 @@ function buildCanonicalStreamingReport (settings, summary, backend) {
       arch,
       runner: settings.runnerLabel || (isMobile ? 'device-farm' : 'github-actions')
     },
-    results: [{
-      test: testLabel,
-      execution_provider: ep,
-      metrics: {
-        ttfa_ms: typeof ttfa.mean === 'number' ? Math.round(ttfa.mean) : null,
-        inter_chunk_p95_ms: typeof interChunk.p95 === 'number' ? Math.round(interChunk.p95) : null,
-        wall_time_ms: typeof totalWall.mean === 'number' ? Math.round(totalWall.mean) : null,
-        chunks_per_run_mean: typeof chunkCount.mean === 'number' ? Math.round(chunkCount.mean * 10) / 10 : null
+    results: [
+      {
+        test: testLabel,
+        execution_provider: ep,
+        metrics: {
+          ttfa_ms: typeof ttfa.mean === 'number' ? Math.round(ttfa.mean) : null,
+          inter_chunk_p95_ms:
+            typeof interChunk.p95 === 'number' ? Math.round(interChunk.p95) : null,
+          wall_time_ms: typeof totalWall.mean === 'number' ? Math.round(totalWall.mean) : null,
+          chunks_per_run_mean:
+            typeof chunkCount.mean === 'number' ? Math.round(chunkCount.mean * 10) / 10 : null
+        }
       }
-    }]
+    ]
   }
 }
 
@@ -86,37 +90,44 @@ const arch = os.arch()
 const platformArch = `${platform}-${arch}`
 const isMobile = platform === 'ios' || platform === 'android'
 
-function getEnv (name) {
+function getEnv(name) {
   if (typeof os.getEnv === 'function') {
-    try { return os.getEnv(name) || '' } catch (_) { return '' }
+    try {
+      return os.getEnv(name) || ''
+    } catch (_) {
+      return ''
+    }
   }
   return (process.env && process.env[name]) || ''
 }
 
-function getEnvBoolean (name, fallback) {
+function getEnvBoolean(name, fallback) {
   const value = getEnv(name)
   if (value === undefined || value === '') return fallback
   return value === '1' || value.toLowerCase() === 'true' || value.toLowerCase() === 'yes'
 }
 
-function getEnvInteger (name, fallback) {
+function getEnvInteger(name, fallback) {
   const value = getEnv(name)
   if (value === undefined || value === '') return fallback
   const parsed = Number.parseInt(value, 10)
   return Number.isNaN(parsed) ? fallback : parsed
 }
 
-function sanitizeTag (value) {
+function sanitizeTag(value) {
   if (!value) return ''
-  return String(value).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+  return String(value)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
 }
 
-function nowMs () {
+function nowMs() {
   const [sec, nsec] = process.hrtime()
   return sec * 1000 + nsec / 1e6
 }
 
-function percentile (sorted, p) {
+function percentile(sorted, p) {
   if (sorted.length === 0) return 0
   const idx = (p / 100) * (sorted.length - 1)
   const lo = Math.floor(idx)
@@ -125,7 +136,7 @@ function percentile (sorted, p) {
   return sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo)
 }
 
-function computeStats (values) {
+function computeStats(values) {
   if (values.length === 0) return { mean: 0, min: 0, max: 0, stddev: 0, p50: 0, p95: 0, count: 0 }
   const sorted = [...values].sort((a, b) => a - b)
   const sum = sorted.reduce((a, b) => a + b, 0)
@@ -142,7 +153,7 @@ function computeStats (values) {
   }
 }
 
-function getSettings () {
+function getSettings() {
   const engine = (getEnv('QVAC_ONNX_TTS_BENCHMARK_ENGINE') || 'chatterbox-en').toLowerCase()
   if (!VALID_ENGINES.includes(engine)) {
     throw new Error(`Invalid benchmark engine: ${engine}. Valid: ${VALID_ENGINES.join(', ')}`)
@@ -173,7 +184,7 @@ function getSettings () {
   }
 }
 
-function resolveBackend (platformName, useGPU, backendHint) {
+function resolveBackend(platformName, useGPU, backendHint) {
   const hint = String(backendHint || '').toLowerCase()
   if (hint) return hint
   if (!useGPU) return 'cpu'
@@ -184,7 +195,7 @@ function resolveBackend (platformName, useGPU, backendHint) {
   return 'gpu'
 }
 
-function getArtifactFileName (settings) {
+function getArtifactFileName(settings) {
   const parts = [
     'streaming-benchmark',
     platformArch,
@@ -196,26 +207,29 @@ function getArtifactFileName (settings) {
   return `${parts.join('-')}.json`
 }
 
-function getBaseDir () {
+function getBaseDir() {
   return isMobile && global.testDir ? global.testDir : '.'
 }
 
-function chatterboxPath (modelDir, baseName, isMultilingual, variantSuffix) {
+function chatterboxPath(modelDir, baseName, isMultilingual, variantSuffix) {
   const suffix = isMultilingual ? '' : variantSuffix
   return path.join(modelDir, `${baseName}${suffix}.onnx`)
 }
 
-function chatterboxLmPath (modelDir, variantSuffix) {
+function chatterboxLmPath(modelDir, variantSuffix) {
   return path.join(modelDir, `language_model${variantSuffix}.onnx`)
 }
 
-async function loadModelForEngine (settings) {
+async function loadModelForEngine(settings) {
   const baseDir = getBaseDir()
   const variantSuffix = settings.variant === 'fp32' ? '' : `_${settings.variant}`
 
   if (settings.engine === 'chatterbox-en') {
     const modelDir = path.join(baseDir, 'models', 'chatterbox')
-    const downloadResult = await ensureChatterboxModels({ targetDir: modelDir, variant: settings.variant })
+    const downloadResult = await ensureChatterboxModels({
+      targetDir: modelDir,
+      variant: settings.variant
+    })
     if (!downloadResult.success) throw new Error('Chatterbox English models unavailable')
     return loadChatterboxTTS({
       tokenizerPath: path.join(modelDir, 'tokenizer.json'),
@@ -230,7 +244,11 @@ async function loadModelForEngine (settings) {
 
   if (settings.engine === 'chatterbox-multi') {
     const modelDir = path.join(baseDir, 'models', 'chatterbox-multilingual')
-    const downloadResult = await ensureChatterboxModels({ targetDir: modelDir, language: 'multilingual', variant: settings.variant })
+    const downloadResult = await ensureChatterboxModels({
+      targetDir: modelDir,
+      language: 'multilingual',
+      variant: settings.variant
+    })
     if (!downloadResult.success) throw new Error('Chatterbox multilingual models unavailable')
     return loadChatterboxTTS({
       tokenizerPath: path.join(modelDir, 'tokenizer.json'),
@@ -257,21 +275,23 @@ async function loadModelForEngine (settings) {
 
 // Text long enough that output-only streaming will produce >=2 chunks.
 const STREAMING_CORPUS = {
-  en: 'The quick brown fox jumps over the lazy dog. ' +
-      'Artificial intelligence is transforming the world in unprecedented ways. ' +
-      'The weather forecast calls for sunny skies and temperatures around seventy degrees. ' +
-      'In a quiet village nestled between rolling hills, a young inventor dreamed of building machines that could think and learn.',
-  es: 'Hola mundo. Esta es una prueba del sistema de texto a voz. ' +
-      'El clima de hoy sera soleado con temperaturas agradables. ' +
-      'La inteligencia artificial esta transformando el mundo de maneras sin precedentes. ' +
-      'En un pequeno pueblo entre colinas, un joven inventor sonaba con construir maquinas que pudieran pensar.'
+  en:
+    'The quick brown fox jumps over the lazy dog. ' +
+    'Artificial intelligence is transforming the world in unprecedented ways. ' +
+    'The weather forecast calls for sunny skies and temperatures around seventy degrees. ' +
+    'In a quiet village nestled between rolling hills, a young inventor dreamed of building machines that could think and learn.',
+  es:
+    'Hola mundo. Esta es una prueba del sistema de texto a voz. ' +
+    'El clima de hoy sera soleado con temperaturas agradables. ' +
+    'La inteligencia artificial esta transformando el mundo de maneras sin precedentes. ' +
+    'En un pequeno pueblo entre colinas, un joven inventor sonaba con construir maquinas que pudieran pensar.'
 }
 
-function getCorpusText (engine) {
+function getCorpusText(engine) {
   return engine === 'chatterbox-multi' ? STREAMING_CORPUS.es : STREAMING_CORPUS.en
 }
 
-async function measureStreamingRun (model, text) {
+async function measureStreamingRun(model, text) {
   const startMs = nowMs()
   let firstChunkAtMs = null
   const chunkTimes = []
@@ -281,7 +301,7 @@ async function measureStreamingRun (model, text) {
   const response = await model.run({ input: text, streamOutput: true })
 
   await response
-    .onUpdate(data => {
+    .onUpdate((data) => {
       if (data && data.outputArray) {
         const now = nowMs()
         if (firstChunkAtMs === null) firstChunkAtMs = now
@@ -352,8 +372,10 @@ test('Streaming benchmark: TTFA + inter-chunk latency', { timeout: 1800000 }, as
     for (let w = 0; w < settings.numWarmup; w++) {
       console.log(`[streaming warmup ${w + 1}/${settings.numWarmup}]`)
       const r = await measureStreamingRun(model, text)
-      console.log(`  ttfa=${r.ttfaMs !== null ? r.ttfaMs.toFixed(0) + 'ms' : 'n/a'}  ` +
-        `chunks=${r.chunkCount}  totalWall=${r.totalWallMs.toFixed(0)}ms`)
+      console.log(
+        `  ttfa=${r.ttfaMs !== null ? r.ttfaMs.toFixed(0) + 'ms' : 'n/a'}  ` +
+          `chunks=${r.chunkCount}  totalWall=${r.totalWallMs.toFixed(0)}ms`
+      )
     }
 
     console.log(`\nRunning ${settings.numRuns} measured streaming iteration(s)...\n`)
@@ -361,15 +383,18 @@ test('Streaming benchmark: TTFA + inter-chunk latency', { timeout: 1800000 }, as
       const r = await measureStreamingRun(model, text)
       runs.push({ iteration: i + 1, ...r })
 
-      const interChunkMean = r.interChunkGapsMs.length > 0
-        ? r.interChunkGapsMs.reduce((a, b) => a + b, 0) / r.interChunkGapsMs.length
-        : 0
-      console.log(`  Run ${i + 1}/${settings.numRuns}: ` +
-        `ttfa=${r.ttfaMs !== null ? r.ttfaMs.toFixed(0) + 'ms' : 'n/a'}  ` +
-        `chunks=${r.chunkCount}  ` +
-        `interChunkMean=${interChunkMean.toFixed(0)}ms  ` +
-        `totalWall=${r.totalWallMs.toFixed(0)}ms  ` +
-        `audio=${(r.audioDurationMs / 1000).toFixed(2)}s`)
+      const interChunkMean =
+        r.interChunkGapsMs.length > 0
+          ? r.interChunkGapsMs.reduce((a, b) => a + b, 0) / r.interChunkGapsMs.length
+          : 0
+      console.log(
+        `  Run ${i + 1}/${settings.numRuns}: ` +
+          `ttfa=${r.ttfaMs !== null ? r.ttfaMs.toFixed(0) + 'ms' : 'n/a'}  ` +
+          `chunks=${r.chunkCount}  ` +
+          `interChunkMean=${interChunkMean.toFixed(0)}ms  ` +
+          `totalWall=${r.totalWallMs.toFixed(0)}ms  ` +
+          `audio=${(r.audioDurationMs / 1000).toFixed(2)}s`
+      )
     }
 
     if (runs.length === 0) {
@@ -377,10 +402,12 @@ test('Streaming benchmark: TTFA + inter-chunk latency', { timeout: 1800000 }, as
       return
     }
 
-    const ttfaStats = computeStats(runs.map(r => r.ttfaMs).filter(v => v !== null && v !== undefined))
-    const totalWallStats = computeStats(runs.map(r => r.totalWallMs))
-    const chunkCountStats = computeStats(runs.map(r => r.chunkCount))
-    const interChunkAll = runs.flatMap(r => r.interChunkGapsMs)
+    const ttfaStats = computeStats(
+      runs.map((r) => r.ttfaMs).filter((v) => v !== null && v !== undefined)
+    )
+    const totalWallStats = computeStats(runs.map((r) => r.totalWallMs))
+    const chunkCountStats = computeStats(runs.map((r) => r.chunkCount))
+    const interChunkAll = runs.flatMap((r) => r.interChunkGapsMs)
     const interChunkStats = computeStats(interChunkAll)
 
     console.log('\n' + '='.repeat(70))
@@ -393,7 +420,9 @@ test('Streaming benchmark: TTFA + inter-chunk latency', { timeout: 1800000 }, as
     console.log(`  Inter-chunk gap (${interChunkAll.length} samples across runs):`)
     console.log(`    Mean:   ${interChunkStats.mean.toFixed(0)}ms`)
     console.log(`    P95:    ${interChunkStats.p95.toFixed(0)}ms`)
-    console.log(`  Chunks per run: ${chunkCountStats.mean.toFixed(1)} (min ${chunkCountStats.min}, max ${chunkCountStats.max})`)
+    console.log(
+      `  Chunks per run: ${chunkCountStats.mean.toFixed(1)} (min ${chunkCountStats.min}, max ${chunkCountStats.max})`
+    )
     console.log(`  Total wall:     ${totalWallStats.mean.toFixed(0)}ms`)
     console.log('='.repeat(70) + '\n')
 
@@ -471,14 +500,19 @@ test('Streaming benchmark: TTFA + inter-chunk latency', { timeout: 1800000 }, as
       }
     }
 
-    t.ok(runs.length === settings.numRuns, `Completed ${settings.numRuns} streaming runs (got ${runs.length})`)
+    t.ok(
+      runs.length === settings.numRuns,
+      `Completed ${settings.numRuns} streaming runs (got ${runs.length})`
+    )
     t.ok(ttfaStats.count > 0 && ttfaStats.mean > 0, 'Mean TTFA should be positive')
     t.ok(chunkCountStats.min >= 1, 'At least one chunk should be produced per run')
 
     console.log('Streaming benchmark completed successfully.\n')
   } finally {
     if (model) {
-      try { await model.unload() } catch (_) {}
+      try {
+        await model.unload()
+      } catch (_) {}
     }
   }
 })

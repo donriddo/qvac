@@ -4,9 +4,13 @@ const path = require('bare-path')
 const GGMLBert = require('../index')
 const { downloadModel } = require('./utils')
 
-async function main () {
-  console.log('Batch Inference Example: Demonstrates setting up batch inference to run multiple prompts at once')
-  console.log('================================================================================================')
+async function main() {
+  console.log(
+    'Batch Inference Example: Demonstrates setting up batch inference to run multiple prompts at once'
+  )
+  console.log(
+    '================================================================================================'
+  )
 
   // 1. Downloading model
   const [modelName, dirPath] = await downloadModel(

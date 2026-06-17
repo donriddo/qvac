@@ -19,21 +19,27 @@ const handleError = (error, res) => {
 
   if (error instanceof ZodError) {
     res.statusCode = 400
-    return res.end(JSON.stringify({
-      error: formatZodError(error)
-    }))
+    return res.end(
+      JSON.stringify({
+        error: formatZodError(error)
+      })
+    )
   }
   if (error instanceof ApiError) {
     res.statusCode = error.status
-    return res.end(JSON.stringify({
-      error: error.message
-    }))
+    return res.end(
+      JSON.stringify({
+        error: error.message
+      })
+    )
   }
 
   res.statusCode = 500
-  res.end(JSON.stringify({
-    error: ERRORS.UNEXPECTED_ERROR
-  }))
+  res.end(
+    JSON.stringify({
+      error: ERRORS.UNEXPECTED_ERROR
+    })
+  )
 }
 
 /**
@@ -100,16 +106,20 @@ const handleRequest = async (req, res) => {
 
   try {
     if (pathname === '/' && method === HTTP_METHODS.GET) {
-      return res.end(JSON.stringify({
-        message: 'Parakeet Addon Benchmark Server is running'
-      }))
+      return res.end(
+        JSON.stringify({
+          message: 'Parakeet Addon Benchmark Server is running'
+        })
+      )
     }
     if (pathname === '/run' && method === HTTP_METHODS.POST) {
       const result = await runAddon(body)
       logger.info(`Completed run request for ${result.outputs.length} inputs`)
-      return res.end(JSON.stringify({
-        data: result
-      }))
+      return res.end(
+        JSON.stringify({
+          data: result
+        })
+      )
     }
     throw new ApiError(404, ERRORS.ROUTE_NOT_FOUND)
   } catch (error) {

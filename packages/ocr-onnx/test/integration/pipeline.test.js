@@ -37,10 +37,10 @@ test('Test for a fix of missing end of job event', { timeout: TEST_TIMEOUT }, as
     })
 
     await response
-      .onUpdate(output => {
+      .onUpdate((output) => {
         t.ok(Array.isArray(output), 'output should be an array')
       })
-      .onError(error => {
+      .onError((error) => {
         errorReceived = true
         t.fail('Unexpected error received: ' + JSON.stringify(error))
       })
@@ -57,6 +57,6 @@ test('Test for a fix of missing end of job event', { timeout: TEST_TIMEOUT }, as
     t.fail(`Error in test: ${err}`)
   } finally {
     await onnxOcr.unload()
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await new Promise((resolve) => setTimeout(resolve, 1000))
   }
 })

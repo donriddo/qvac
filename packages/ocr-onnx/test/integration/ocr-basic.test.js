@@ -2,7 +2,14 @@
 
 const { ONNXOcr } = require('../..')
 const test = require('brittle')
-const { isMobile, platform, getImagePath, ensureModelPath, formatOCRPerformanceMetrics, windowsOrtParams } = require('./utils')
+const {
+  isMobile,
+  platform,
+  getImagePath,
+  ensureModelPath,
+  formatOCRPerformanceMetrics,
+  windowsOrtParams
+} = require('./utils')
 
 const MOBILE_TIMEOUT = 600 * 1000 // 10 minutes for mobile
 const DESKTOP_TIMEOUT = 120 * 1000 // 2 minutes for desktop
@@ -20,7 +27,7 @@ const ALL_DEVICE_CONFIGS = [
 
 const DEVICE_CONFIGS = isMobile
   ? ALL_DEVICE_CONFIGS
-  : ALL_DEVICE_CONFIGS.filter(c => c.id === 'cpu')
+  : ALL_DEVICE_CONFIGS.filter((c) => c.id === 'cpu')
 
 for (const deviceConfig of DEVICE_CONFIGS) {
   const label = `[${deviceConfig.id.toUpperCase()}]`
@@ -57,15 +64,15 @@ for (const deviceConfig of DEVICE_CONFIGS) {
       let outputTexts = []
 
       await response
-        .onUpdate(output => {
+        .onUpdate((output) => {
           t.ok(Array.isArray(output), `${label} output should be an array`)
           t.ok(output.length === 3, `${label} output length should be 3, got ${output.length}`)
-          outputTexts = output.map(o => o[1])
+          outputTexts = output.map((o) => o[1])
           t.ok(outputTexts.includes('tilted'), `${label} should contain "tilted"`)
           t.ok(outputTexts.includes('normal'), `${label} should contain "normal"`)
           t.ok(outputTexts.includes('vertical'), `${label} should contain "vertical"`)
         })
-        .onError(error => {
+        .onError((error) => {
           t.fail(`${label} unexpected error: ` + JSON.stringify(error))
         })
         .await()
@@ -73,7 +80,9 @@ for (const deviceConfig of DEVICE_CONFIGS) {
       // Display stats
       const stats = response.stats || {}
       t.comment(`${label} Native addon stats: ` + JSON.stringify(stats))
-      t.comment(formatOCRPerformanceMetrics(`[OCR] ${label}`, stats, outputTexts, { skipReport: true }))
+      t.comment(
+        formatOCRPerformanceMetrics(`[OCR] ${label}`, stats, outputTexts, { skipReport: true })
+      )
 
       t.pass(`${label} OCR basic test completed successfully`)
     } catch (e) {
@@ -85,7 +94,7 @@ for (const deviceConfig of DEVICE_CONFIGS) {
       } catch (e) {
         t.comment(`${label} unload() error: ` + e.message)
       }
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      await new Promise((resolve) => setTimeout(resolve, 1000))
     }
   })
 }

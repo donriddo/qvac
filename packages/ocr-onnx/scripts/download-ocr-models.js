@@ -16,36 +16,91 @@ const fs = require('fs')
 const path = require('path')
 const { QVACRegistryClient } = require('@qvac/registry-client')
 
-const DEFAULT_REGISTRY_CORE_KEY = process.env.QVAC_REGISTRY_CORE_KEY || 'u6pq8h3kof7ck9g6kjusykfxaxqaqtnoydq15hhyuzrf55nt384y'
+const DEFAULT_REGISTRY_CORE_KEY =
+  process.env.QVAC_REGISTRY_CORE_KEY || 'u6pq8h3kof7ck9g6kjusykfxaxqaqtnoydq15hhyuzrf55nt384y'
 const OUT_DIR = path.resolve(__dirname, '..', 'models', 'ocr', 'rec_dyn')
-const REGISTRY_BASE = process.env.QVAC_OCR_REGISTRY_BASE || 'qvac_models_compiled/ocr/2026-02-12/rec_dyn'
+const REGISTRY_BASE =
+  process.env.QVAC_OCR_REGISTRY_BASE || 'qvac_models_compiled/ocr/2026-02-12/rec_dyn'
 
 const MODELS = {
   detector_craft: {
     path: 'qvac_models_compiled/ocr/2026-02-12/rec_512/detector_craft.onnx',
     filename: 'detector_craft.onnx'
   },
-  recognizer_latin: { path: `${REGISTRY_BASE}/recognizer_latin.onnx`, filename: 'recognizer_latin.onnx' },
-  recognizer_korean: { path: `${REGISTRY_BASE}/recognizer_korean.onnx`, filename: 'recognizer_korean.onnx' },
-  recognizer_arabic: { path: `${REGISTRY_BASE}/recognizer_arabic.onnx`, filename: 'recognizer_arabic.onnx' },
-  recognizer_cyrillic: { path: `${REGISTRY_BASE}/recognizer_cyrillic.onnx`, filename: 'recognizer_cyrillic.onnx' },
-  recognizer_devanagari: { path: `${REGISTRY_BASE}/recognizer_devanagari.onnx`, filename: 'recognizer_devanagari.onnx' },
-  recognizer_bengali: { path: `${REGISTRY_BASE}/recognizer_bengali.onnx`, filename: 'recognizer_bengali.onnx' },
-  recognizer_thai: { path: `${REGISTRY_BASE}/recognizer_thai.onnx`, filename: 'recognizer_thai.onnx' },
-  recognizer_zh_sim: { path: `${REGISTRY_BASE}/recognizer_zh_sim.onnx`, filename: 'recognizer_zh_sim.onnx' },
-  recognizer_zh_tra: { path: `${REGISTRY_BASE}/recognizer_zh_tra.onnx`, filename: 'recognizer_zh_tra.onnx' },
-  recognizer_japanese: { path: `${REGISTRY_BASE}/recognizer_japanese.onnx`, filename: 'recognizer_japanese.onnx' },
-  recognizer_tamil: { path: `${REGISTRY_BASE}/recognizer_tamil.onnx`, filename: 'recognizer_tamil.onnx' },
-  recognizer_telugu: { path: `${REGISTRY_BASE}/recognizer_telugu.onnx`, filename: 'recognizer_telugu.onnx' },
-  recognizer_kannada: { path: `${REGISTRY_BASE}/recognizer_kannada.onnx`, filename: 'recognizer_kannada.onnx' }
+  recognizer_latin: {
+    path: `${REGISTRY_BASE}/recognizer_latin.onnx`,
+    filename: 'recognizer_latin.onnx'
+  },
+  recognizer_korean: {
+    path: `${REGISTRY_BASE}/recognizer_korean.onnx`,
+    filename: 'recognizer_korean.onnx'
+  },
+  recognizer_arabic: {
+    path: `${REGISTRY_BASE}/recognizer_arabic.onnx`,
+    filename: 'recognizer_arabic.onnx'
+  },
+  recognizer_cyrillic: {
+    path: `${REGISTRY_BASE}/recognizer_cyrillic.onnx`,
+    filename: 'recognizer_cyrillic.onnx'
+  },
+  recognizer_devanagari: {
+    path: `${REGISTRY_BASE}/recognizer_devanagari.onnx`,
+    filename: 'recognizer_devanagari.onnx'
+  },
+  recognizer_bengali: {
+    path: `${REGISTRY_BASE}/recognizer_bengali.onnx`,
+    filename: 'recognizer_bengali.onnx'
+  },
+  recognizer_thai: {
+    path: `${REGISTRY_BASE}/recognizer_thai.onnx`,
+    filename: 'recognizer_thai.onnx'
+  },
+  recognizer_zh_sim: {
+    path: `${REGISTRY_BASE}/recognizer_zh_sim.onnx`,
+    filename: 'recognizer_zh_sim.onnx'
+  },
+  recognizer_zh_tra: {
+    path: `${REGISTRY_BASE}/recognizer_zh_tra.onnx`,
+    filename: 'recognizer_zh_tra.onnx'
+  },
+  recognizer_japanese: {
+    path: `${REGISTRY_BASE}/recognizer_japanese.onnx`,
+    filename: 'recognizer_japanese.onnx'
+  },
+  recognizer_tamil: {
+    path: `${REGISTRY_BASE}/recognizer_tamil.onnx`,
+    filename: 'recognizer_tamil.onnx'
+  },
+  recognizer_telugu: {
+    path: `${REGISTRY_BASE}/recognizer_telugu.onnx`,
+    filename: 'recognizer_telugu.onnx'
+  },
+  recognizer_kannada: {
+    path: `${REGISTRY_BASE}/recognizer_kannada.onnx`,
+    filename: 'recognizer_kannada.onnx'
+  }
 }
 
-const FULL_OCR_SUITE_RECOGNIZERS = ['latin', 'korean', 'arabic', 'cyrillic', 'devanagari', 'bengali', 'thai', 'zh_sim', 'zh_tra', 'japanese', 'tamil', 'telugu', 'kannada']
+const FULL_OCR_SUITE_RECOGNIZERS = [
+  'latin',
+  'korean',
+  'arabic',
+  'cyrillic',
+  'devanagari',
+  'bengali',
+  'thai',
+  'zh_sim',
+  'zh_tra',
+  'japanese',
+  'tamil',
+  'telugu',
+  'kannada'
+]
 
-async function main () {
-  const args = process.argv.slice(2).map(a => a.toLowerCase())
+async function main() {
+  const args = process.argv.slice(2).map((a) => a.toLowerCase())
   const wantAll = args.includes('all')
-  const requested = args.filter(a => a !== 'all')
+  const requested = args.filter((a) => a !== 'all')
 
   const toDownload = ['detector_craft', 'recognizer_latin']
   if (wantAll) {
@@ -92,7 +147,7 @@ async function main () {
   console.log('Done.')
 }
 
-main().catch(err => {
+main().catch((err) => {
   console.error(err)
   process.exit(1)
 })

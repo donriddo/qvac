@@ -13,7 +13,7 @@ class BaseDL extends ReadyResource {
    * @constructor
    * @param {Object} opts Options for the dataloader
    */
-  constructor (opts) {
+  constructor(opts) {
     super()
 
     if (typeof opts !== 'object' || opts === null || Array.isArray(opts)) {
@@ -29,7 +29,7 @@ class BaseDL extends ReadyResource {
    * Start the dataloader (INTERNAL METHOD)
    * @returns {Promise<void>}
    */
-  async _open () {
+  async _open() {
     // no-op
   }
 
@@ -37,7 +37,7 @@ class BaseDL extends ReadyResource {
    * Stop the dataloader (INTERNAL METHOD)
    * @returns {Promise<void>}
    */
-  async _close () {
+  async _close() {
     // no-op
   }
 
@@ -46,7 +46,7 @@ class BaseDL extends ReadyResource {
    * @param {string} [path='.'] Path to list
    * @returns {Promise<Array<any>>} List of files
    */
-  async list (path = '.') {
+  async list(path = '.') {
     throw new Error('ERR_METHOD_NOT_IMPLEMENTED')
   }
 
@@ -55,7 +55,7 @@ class BaseDL extends ReadyResource {
    * @param {string} path Path to the file
    * @returns {Promise<AsyncIterable<Buffer>>} File content
    */
-  async getStream (path) {
+  async getStream(path) {
     throw new Error('ERR_METHOD_NOT_IMPLEMENTED')
   }
 }

@@ -7,11 +7,9 @@ const { version, getEncoding, setVersion } = require('./messages.js')
 const versions = { schema: version, db: 0 }
 
 // '@rag/documents' collection key
-const collection0_key = new IndexEncoder([
-  IndexEncoder.STRING
-], { prefix: 0 })
+const collection0_key = new IndexEncoder([IndexEncoder.STRING], { prefix: 0 })
 
-function collection0_indexify (record) {
+function collection0_indexify(record) {
   const a = record.id
   return a === undefined ? [] : [a]
 }
@@ -20,7 +18,7 @@ function collection0_indexify (record) {
 const collection0_enc = getEncoding('@rag/documents/hyperdb#0')
 
 // '@rag/documents' reconstruction function
-function collection0_reconstruct (schemaVersion, keyBuf, valueBuf) {
+function collection0_reconstruct(schemaVersion, keyBuf, valueBuf) {
   const key = collection0_key.decode(keyBuf)
   setVersion(schemaVersion)
   const state = { start: 0, end: valueBuf.byteLength, buffer: valueBuf }
@@ -29,7 +27,7 @@ function collection0_reconstruct (schemaVersion, keyBuf, valueBuf) {
   return record
 }
 // '@rag/documents' key reconstruction function
-function collection0_reconstruct_key (keyBuf) {
+function collection0_reconstruct_key(keyBuf) {
   const key = collection0_key.decode(keyBuf)
   return {
     id: key[0]
@@ -41,11 +39,11 @@ const collection0 = {
   name: '@rag/documents',
   id: 0,
   version: 0,
-  encodeKey (record) {
+  encodeKey(record) {
     const key = [record.id]
     return collection0_key.encode(key)
   },
-  encodeKeyRange ({ gt, lt, gte, lte } = {}) {
+  encodeKeyRange({ gt, lt, gte, lte } = {}) {
     return collection0_key.encodeRange({
       gt: gt ? collection0_indexify(gt) : null,
       lt: lt ? collection0_indexify(lt) : null,
@@ -53,7 +51,7 @@ const collection0 = {
       lte: lte ? collection0_indexify(lte) : null
     })
   },
-  encodeValue (schemaVersion, collectionVersion, record) {
+  encodeValue(schemaVersion, collectionVersion, record) {
     setVersion(schemaVersion)
     const state = { start: 0, end: 0, buffer: null }
     collection0_enc.preencode(state, record)
@@ -69,11 +67,9 @@ const collection0 = {
 }
 
 // '@rag/vectors' collection key
-const collection1_key = new IndexEncoder([
-  IndexEncoder.STRING
-], { prefix: 1 })
+const collection1_key = new IndexEncoder([IndexEncoder.STRING], { prefix: 1 })
 
-function collection1_indexify (record) {
+function collection1_indexify(record) {
   const a = record.docId
   return a === undefined ? [] : [a]
 }
@@ -82,7 +78,7 @@ function collection1_indexify (record) {
 const collection1_enc = getEncoding('@rag/vectors/hyperdb#1')
 
 // '@rag/vectors' reconstruction function
-function collection1_reconstruct (schemaVersion, keyBuf, valueBuf) {
+function collection1_reconstruct(schemaVersion, keyBuf, valueBuf) {
   const key = collection1_key.decode(keyBuf)
   setVersion(schemaVersion)
   const state = { start: 0, end: valueBuf.byteLength, buffer: valueBuf }
@@ -91,7 +87,7 @@ function collection1_reconstruct (schemaVersion, keyBuf, valueBuf) {
   return record
 }
 // '@rag/vectors' key reconstruction function
-function collection1_reconstruct_key (keyBuf) {
+function collection1_reconstruct_key(keyBuf) {
   const key = collection1_key.decode(keyBuf)
   return {
     docId: key[0]
@@ -103,11 +99,11 @@ const collection1 = {
   name: '@rag/vectors',
   id: 1,
   version: 0,
-  encodeKey (record) {
+  encodeKey(record) {
     const key = [record.docId]
     return collection1_key.encode(key)
   },
-  encodeKeyRange ({ gt, lt, gte, lte } = {}) {
+  encodeKeyRange({ gt, lt, gte, lte } = {}) {
     return collection1_key.encodeRange({
       gt: gt ? collection1_indexify(gt) : null,
       lt: lt ? collection1_indexify(lt) : null,
@@ -115,7 +111,7 @@ const collection1 = {
       lte: lte ? collection1_indexify(lte) : null
     })
   },
-  encodeValue (schemaVersion, collectionVersion, record) {
+  encodeValue(schemaVersion, collectionVersion, record) {
     setVersion(schemaVersion)
     const state = { start: 0, end: 0, buffer: null }
     collection1_enc.preencode(state, record)
@@ -131,11 +127,9 @@ const collection1 = {
 }
 
 // '@rag/centroids' collection key
-const collection2_key = new IndexEncoder([
-  IndexEncoder.STRING
-], { prefix: 2 })
+const collection2_key = new IndexEncoder([IndexEncoder.STRING], { prefix: 2 })
 
-function collection2_indexify (record) {
+function collection2_indexify(record) {
   const a = record.id
   return a === undefined ? [] : [a]
 }
@@ -144,7 +138,7 @@ function collection2_indexify (record) {
 const collection2_enc = getEncoding('@rag/centroids/hyperdb#2')
 
 // '@rag/centroids' reconstruction function
-function collection2_reconstruct (schemaVersion, keyBuf, valueBuf) {
+function collection2_reconstruct(schemaVersion, keyBuf, valueBuf) {
   const key = collection2_key.decode(keyBuf)
   setVersion(schemaVersion)
   const state = { start: 0, end: valueBuf.byteLength, buffer: valueBuf }
@@ -153,7 +147,7 @@ function collection2_reconstruct (schemaVersion, keyBuf, valueBuf) {
   return record
 }
 // '@rag/centroids' key reconstruction function
-function collection2_reconstruct_key (keyBuf) {
+function collection2_reconstruct_key(keyBuf) {
   const key = collection2_key.decode(keyBuf)
   return {
     id: key[0]
@@ -165,11 +159,11 @@ const collection2 = {
   name: '@rag/centroids',
   id: 2,
   version: 0,
-  encodeKey (record) {
+  encodeKey(record) {
     const key = [record.id]
     return collection2_key.encode(key)
   },
-  encodeKeyRange ({ gt, lt, gte, lte } = {}) {
+  encodeKeyRange({ gt, lt, gte, lte } = {}) {
     return collection2_key.encodeRange({
       gt: gt ? collection2_indexify(gt) : null,
       lt: lt ? collection2_indexify(lt) : null,
@@ -177,7 +171,7 @@ const collection2 = {
       lte: lte ? collection2_indexify(lte) : null
     })
   },
-  encodeValue (schemaVersion, collectionVersion, record) {
+  encodeValue(schemaVersion, collectionVersion, record) {
     setVersion(schemaVersion)
     const state = { start: 0, end: 0, buffer: null }
     collection2_enc.preencode(state, record)
@@ -193,11 +187,9 @@ const collection2 = {
 }
 
 // '@rag/ivfBuckets' collection key
-const collection3_key = new IndexEncoder([
-  IndexEncoder.STRING
-], { prefix: 3 })
+const collection3_key = new IndexEncoder([IndexEncoder.STRING], { prefix: 3 })
 
-function collection3_indexify (record) {
+function collection3_indexify(record) {
   const a = record.centroidId
   return a === undefined ? [] : [a]
 }
@@ -206,7 +198,7 @@ function collection3_indexify (record) {
 const collection3_enc = getEncoding('@rag/ivfBuckets/hyperdb#3')
 
 // '@rag/ivfBuckets' reconstruction function
-function collection3_reconstruct (schemaVersion, keyBuf, valueBuf) {
+function collection3_reconstruct(schemaVersion, keyBuf, valueBuf) {
   const key = collection3_key.decode(keyBuf)
   setVersion(schemaVersion)
   const state = { start: 0, end: valueBuf.byteLength, buffer: valueBuf }
@@ -215,7 +207,7 @@ function collection3_reconstruct (schemaVersion, keyBuf, valueBuf) {
   return record
 }
 // '@rag/ivfBuckets' key reconstruction function
-function collection3_reconstruct_key (keyBuf) {
+function collection3_reconstruct_key(keyBuf) {
   const key = collection3_key.decode(keyBuf)
   return {
     centroidId: key[0]
@@ -227,11 +219,11 @@ const collection3 = {
   name: '@rag/ivfBuckets',
   id: 3,
   version: 0,
-  encodeKey (record) {
+  encodeKey(record) {
     const key = [record.centroidId]
     return collection3_key.encode(key)
   },
-  encodeKeyRange ({ gt, lt, gte, lte } = {}) {
+  encodeKeyRange({ gt, lt, gte, lte } = {}) {
     return collection3_key.encodeRange({
       gt: gt ? collection3_indexify(gt) : null,
       lt: lt ? collection3_indexify(lt) : null,
@@ -239,7 +231,7 @@ const collection3 = {
       lte: lte ? collection3_indexify(lte) : null
     })
   },
-  encodeValue (schemaVersion, collectionVersion, record) {
+  encodeValue(schemaVersion, collectionVersion, record) {
     setVersion(schemaVersion)
     const state = { start: 0, end: 0, buffer: null }
     collection3_enc.preencode(state, record)
@@ -255,12 +247,9 @@ const collection3 = {
 }
 
 // '@rag/doc-by-content-hash' collection key
-const index4_key = new IndexEncoder([
-  IndexEncoder.STRING,
-  IndexEncoder.STRING
-], { prefix: 4 })
+const index4_key = new IndexEncoder([IndexEncoder.STRING, IndexEncoder.STRING], { prefix: 4 })
 
-function index4_indexify (record) {
+function index4_indexify(record) {
   const arr = []
 
   const a0 = record.contentHash
@@ -279,10 +268,10 @@ const index4 = {
   name: '@rag/doc-by-content-hash',
   version: 0,
   id: 4,
-  encodeKey (record) {
+  encodeKey(record) {
     return index4_key.encode(index4_indexify(record))
   },
-  encodeKeyRange ({ gt, lt, gte, lte } = {}) {
+  encodeKeyRange({ gt, lt, gte, lte } = {}) {
     return index4_key.encodeRange({
       gt: gt ? index4_indexify(gt) : null,
       lt: lt ? index4_indexify(lt) : null,
@@ -291,7 +280,7 @@ const index4 = {
     })
   },
   encodeValue: (record) => index4.collection.encodeKey(record),
-  encodeIndexKeys (record, context) {
+  encodeIndexKeys(record, context) {
     return [index4_key.encode([record.contentHash, record.id])]
   },
   reconstruct: (keyBuf, valueBuf) => valueBuf,
@@ -301,11 +290,9 @@ const index4 = {
 collection0.indexes.push(index4)
 
 // '@rag/config' collection key
-const collection5_key = new IndexEncoder([
-  IndexEncoder.STRING
-], { prefix: 5 })
+const collection5_key = new IndexEncoder([IndexEncoder.STRING], { prefix: 5 })
 
-function collection5_indexify (record) {
+function collection5_indexify(record) {
   const a = record.key
   return a === undefined ? [] : [a]
 }
@@ -314,7 +301,7 @@ function collection5_indexify (record) {
 const collection5_enc = getEncoding('@rag/config/hyperdb#5')
 
 // '@rag/config' reconstruction function
-function collection5_reconstruct (schemaVersion, keyBuf, valueBuf) {
+function collection5_reconstruct(schemaVersion, keyBuf, valueBuf) {
   const key = collection5_key.decode(keyBuf)
   setVersion(schemaVersion)
   const state = { start: 0, end: valueBuf.byteLength, buffer: valueBuf }
@@ -323,7 +310,7 @@ function collection5_reconstruct (schemaVersion, keyBuf, valueBuf) {
   return record
 }
 // '@rag/config' key reconstruction function
-function collection5_reconstruct_key (keyBuf) {
+function collection5_reconstruct_key(keyBuf) {
   const key = collection5_key.decode(keyBuf)
   return {
     key: key[0]
@@ -335,11 +322,11 @@ const collection5 = {
   name: '@rag/config',
   id: 5,
   version: 0,
-  encodeKey (record) {
+  encodeKey(record) {
     const key = [record.key]
     return collection5_key.encode(key)
   },
-  encodeKeyRange ({ gt, lt, gte, lte } = {}) {
+  encodeKeyRange({ gt, lt, gte, lte } = {}) {
     return collection5_key.encodeRange({
       gt: gt ? collection5_indexify(gt) : null,
       lt: lt ? collection5_indexify(lt) : null,
@@ -347,7 +334,7 @@ const collection5 = {
       lte: lte ? collection5_indexify(lte) : null
     })
   },
-  encodeValue (schemaVersion, collectionVersion, record) {
+  encodeValue(schemaVersion, collectionVersion, record) {
     setVersion(schemaVersion)
     const state = { start: 0, end: 0, buffer: null }
     collection5_enc.preencode(state, record)
@@ -362,34 +349,34 @@ const collection5 = {
   decodedVersion: 0
 }
 
-const collections = [
-  collection0,
-  collection1,
-  collection2,
-  collection3,
-  collection5
-]
+const collections = [collection0, collection1, collection2, collection3, collection5]
 
-const indexes = [
-  index4
-]
+const indexes = [index4]
 
 module.exports = { versions, collections, indexes, resolveCollection, resolveIndex }
 
-function resolveCollection (name) {
+function resolveCollection(name) {
   switch (name) {
-    case '@rag/documents': return collection0
-    case '@rag/vectors': return collection1
-    case '@rag/centroids': return collection2
-    case '@rag/ivfBuckets': return collection3
-    case '@rag/config': return collection5
-    default: return null
+    case '@rag/documents':
+      return collection0
+    case '@rag/vectors':
+      return collection1
+    case '@rag/centroids':
+      return collection2
+    case '@rag/ivfBuckets':
+      return collection3
+    case '@rag/config':
+      return collection5
+    default:
+      return null
   }
 }
 
-function resolveIndex (name) {
+function resolveIndex(name) {
   switch (name) {
-    case '@rag/doc-by-content-hash': return index4
-    default: return null
+    case '@rag/doc-by-content-hash':
+      return index4
+    default:
+      return null
   }
 }

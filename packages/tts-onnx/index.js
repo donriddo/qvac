@@ -17,7 +17,7 @@ const { accumulateTextStream } = require('./lib/textStreamAccumulator')
 const ENGINE_CHATTERBOX = 'chatterbox'
 const ENGINE_SUPERTONIC = 'supertonic'
 
-function firstNonEmpty (...candidates) {
+function firstNonEmpty(...candidates) {
   for (let i = 0; i < candidates.length; i++) {
     const v = candidates[i]
     if (v != null && v !== '') return v
@@ -30,11 +30,20 @@ function firstNonEmpty (...candidates) {
  * vocoder, config, etc.). Used with `modelDir` to tell Chatterbox vs Supertonic layouts apart.
  * @param {Record<string, unknown>} n Normalized files map (same shape as {@link normalizeOnnxTtsFiles} output).
  */
-function hasAnyExplicitArtifact (n) {
+function hasAnyExplicitArtifact(n) {
   const keys = [
-    'tokenizer', 'speechEncoder', 'embedTokens', 'conditionalDecoder', 'languageModel',
-    'textEncoder', 'durationPredictor', 'vectorEstimator', 'vocoder',
-    'unicodeIndexer', 'ttsConfig', 'voiceStyle'
+    'tokenizer',
+    'speechEncoder',
+    'embedTokens',
+    'conditionalDecoder',
+    'languageModel',
+    'textEncoder',
+    'durationPredictor',
+    'vectorEstimator',
+    'vocoder',
+    'unicodeIndexer',
+    'ttsConfig',
+    'voiceStyle'
   ]
   for (let i = 0; i < keys.length; i++) {
     const v = n[keys[i]]
@@ -47,7 +56,7 @@ function hasAnyExplicitArtifact (n) {
  * @param {{ engine?: string }} options
  * @param {Record<string, string | undefined>} normalizedFiles
  */
-function resolveEngineType (options, normalizedFiles) {
+function resolveEngineType(options, normalizedFiles) {
   const e = options.engine
   if (e != null && e !== '') {
     if (e === ENGINE_CHATTERBOX || e === ENGINE_SUPERTONIC) return e
@@ -56,8 +65,7 @@ function resolveEngineType (options, normalizedFiles) {
     )
   }
 
-  const modelDirSet =
-    normalizedFiles.modelDir != null && normalizedFiles.modelDir !== ''
+  const modelDirSet = normalizedFiles.modelDir != null && normalizedFiles.modelDir !== ''
   if (modelDirSet && !hasAnyExplicitArtifact(normalizedFiles)) {
     return ENGINE_SUPERTONIC
   }
@@ -72,7 +80,7 @@ function resolveEngineType (options, normalizedFiles) {
   return ENGINE_CHATTERBOX
 }
 
-function ttsOutputDebugString (data) {
+function ttsOutputDebugString(data) {
   if (!data) return ''
   if (typeof data === 'object') {
     return JSON.stringify(data)
@@ -80,7 +88,7 @@ function ttsOutputDebugString (data) {
   return data.toString()
 }
 
-function normalizeOnnxTtsFiles (files) {
+function normalizeOnnxTtsFiles(files) {
   if (files == null || typeof files !== 'object') {
     return {}
   }
@@ -121,7 +129,7 @@ function normalizeOnnxTtsFiles (files) {
  * @param {unknown} textStream
  * @returns {boolean}
  */
-function defaultAccumulateSentencesForStreamInput (textStream) {
+function defaultAccumulateSentencesForStreamInput(textStream) {
   if (textStream == null) return false
   if (typeof textStream === 'string') return false
   if (Array.isArray(textStream)) return false
@@ -130,7 +138,7 @@ function defaultAccumulateSentencesForStreamInput (textStream) {
 }
 
 class ONNXTTS {
-  constructor (options = {}) {
+  constructor(options = {}) {
     const {
       files: filesInput = {},
       config = {},
@@ -168,9 +176,9 @@ class ONNXTTS {
     })
     this._runExclusive = this.exclusiveRun
       ? exclusiveRunQueue()
-      : async function runNow (fn) {
-        return fn()
-      }
+      : async function runNow(fn) {
+          return fn()
+        }
 
     const normalizedFiles = normalizeOnnxTtsFiles(filesInput)
 
@@ -190,9 +198,10 @@ class ONNXTTS {
 
     this._config = { ...config }
 
-    this._lazySessionLoading = lazySessionLoading != null
-      ? lazySessionLoading
-      : (platform() === 'ios' || platform() === 'android')
+    this._lazySessionLoading =
+      lazySessionLoading != null
+        ? lazySessionLoading
+        : platform() === 'ios' || platform() === 'android'
 
     const outputSampleRate = this._config.outputSampleRate
     if (outputSampleRate != null && (outputSampleRate < 8000 || outputSampleRate > 192000)) {
@@ -265,28 +274,19 @@ class ONNXTTS {
           normalizedFiles.vectorEstimator,
           path.join(onnx, 'vector_estimator.onnx')
         )
-        this._vocoderPath = firstNonEmpty(
-          normalizedFiles.vocoder,
-          path.join(onnx, 'vocoder.onnx')
-        )
+        this._vocoderPath = firstNonEmpty(normalizedFiles.vocoder, path.join(onnx, 'vocoder.onnx'))
         this._unicodeIndexerPath = firstNonEmpty(
           normalizedFiles.unicodeIndexer,
           path.join(onnx, 'unicode_indexer.json')
         )
-        this._ttsConfigPath = firstNonEmpty(
-          normalizedFiles.ttsConfig,
-          path.join(onnx, 'tts.json')
-        )
+        this._ttsConfigPath = firstNonEmpty(normalizedFiles.ttsConfig, path.join(onnx, 'tts.json'))
         const voiceStylesRoot = firstNonEmpty(
           normalizedFiles.voicesDir,
           path.join(normalizedFiles.modelDir, 'voice_styles')
         )
         this._voiceStyleJsonPath = firstNonEmpty(
           normalizedFiles.voiceStyle,
-          path.join(
-            voiceStylesRoot,
-            `${this._voiceName.replace(/\.json$/i, '')}.json`
-          )
+          path.join(voiceStylesRoot, `${this._voiceName.replace(/\.json$/i, '')}.json`)
         )
       } else {
         this._textEncoderPath = normalizedFiles.textEncoder
@@ -302,28 +302,26 @@ class ONNXTTS {
           normalizedFiles.voiceStyle,
           normalizedFiles.voicesDir
             ? path.join(
-              normalizedFiles.voicesDir,
-              `${this._voiceName.replace(/\.json$/i, '')}.json`
-            )
+                normalizedFiles.voicesDir,
+                `${this._voiceName.replace(/\.json$/i, '')}.json`
+              )
             : undefined
         )
       }
     }
   }
 
-  getApiDefinition () {
+  getApiDefinition() {
     const api = inferGetApiDefinition()
-    this.logger.debug(
-      `Using API definition: ${api} for platform: ${platform()}`
-    )
+    this.logger.debug(`Using API definition: ${api} for platform: ${platform()}`)
     return api
   }
 
-  getState () {
+  getState() {
     return this.state
   }
 
-  async load (..._args) {
+  async load(..._args) {
     if (this.state.destroyed) {
       throw new QvacErrorAddonTTS({
         code: ERR_CODES.FAILED_TO_LOAD,
@@ -349,7 +347,7 @@ class ONNXTTS {
    * @param {string} [input.locale] - BCP-47 locale for chunking when `streamOutput`
    * @param {number} [input.maxChunkScalars] - Max graphemes per chunk when `streamOutput`
    */
-  async run (input) {
+  async run(input) {
     if (input && typeof input === 'object' && input.streamOutput === true) {
       if (typeof input.input !== 'string' || input.input.trim().length === 0) {
         throw new QvacErrorAddonTTS({
@@ -374,10 +372,10 @@ class ONNXTTS {
   /**
    * Serialize streaming runs until the returned {@link QvacResponse} settles.
    */
-  async _enqueueExclusiveTtsResponse (runFn) {
+  async _enqueueExclusiveTtsResponse(runFn) {
     const prev = this._ttsInferenceQueueWaiter || Promise.resolve()
     let releaseSlot
-    this._ttsInferenceQueueWaiter = new Promise(resolve => {
+    this._ttsInferenceQueueWaiter = new Promise((resolve) => {
       releaseSlot = resolve
     })
     await prev
@@ -388,7 +386,12 @@ class ONNXTTS {
       releaseSlot()
       throw err
     }
-    response.await().finally(() => { releaseSlot() }).catch(() => {})
+    response
+      .await()
+      .finally(() => {
+        releaseSlot()
+      })
+      .catch(() => {})
     return response
   }
 
@@ -400,7 +403,7 @@ class ONNXTTS {
    * @param {string} text
    * @param {{ locale?: string, maxChunkScalars?: number }} [options]
    */
-  async runStream (text, options = {}) {
+  async runStream(text, options = {}) {
     const opts = options == null || typeof options !== 'object' ? {} : options
     return this.run({
       input: text,
@@ -427,7 +430,7 @@ class ONNXTTS {
    * @param {number} [options.maxBufferScalars] - Max graphemes before hard flush (default by language).
    * @param {number} [options.flushAfterMs] - Idle flush after last fragment (default 500).
    */
-  async runStreaming (textStream, options = {}) {
+  async runStreaming(textStream, options = {}) {
     const streamOpts = this._resolveRunStreamingOptions(textStream, options)
     let normalized = this._normalizeTextStream(textStream)
     if (streamOpts.accumulateSentences) {
@@ -451,7 +454,7 @@ class ONNXTTS {
    * @param {unknown} textStream
    * @param {Record<string, unknown>} options
    */
-  _resolveRunStreamingOptions (textStream, options) {
+  _resolveRunStreamingOptions(textStream, options) {
     const o = options == null || typeof options !== 'object' ? {} : options
     let accumulateSentences = o.accumulateSentences
     if (accumulateSentences === undefined) {
@@ -475,7 +478,7 @@ class ONNXTTS {
     }
   }
 
-  _normalizeTextStream (textStream) {
+  _normalizeTextStream(textStream) {
     if (textStream == null) {
       throw new QvacErrorAddonTTS({
         code: ERR_CODES.FAILED_TO_APPEND,
@@ -483,7 +486,7 @@ class ONNXTTS {
       })
     }
     if (typeof textStream === 'string') {
-      async function * oneString () {
+      async function* oneString() {
         yield textStream
       }
       return oneString()
@@ -492,7 +495,7 @@ class ONNXTTS {
       return textStream
     }
     if (Array.isArray(textStream)) {
-      async function * fromArray () {
+      async function* fromArray() {
         for (let i = 0; i < textStream.length; i++) {
           yield textStream[i]
         }
@@ -500,7 +503,7 @@ class ONNXTTS {
       return fromArray()
     }
     if (typeof textStream[Symbol.iterator] === 'function') {
-      async function * fromIterable () {
+      async function* fromIterable() {
         for (const x of textStream) {
           yield x
         }
@@ -517,7 +520,7 @@ class ONNXTTS {
    * Starts a {@link QvacResponse} and schedules chunk synthesis without awaiting completion
    * (so callers can attach `onUpdate` before audio callbacks run).
    */
-  _runTextStreamOrchestrator (asyncTextSource) {
+  _runTextStreamOrchestrator(asyncTextSource) {
     const response = this._job.start()
     this._sentenceStreamCtx = {
       textStreamMode: true,
@@ -545,7 +548,7 @@ class ONNXTTS {
     return response
   }
 
-  async _sentenceStreamTextIterableDrive () {
+  async _sentenceStreamTextIterableDrive() {
     const ctx = this._sentenceStreamCtx
     if (!ctx || !ctx.textStreamMode) return
     try {
@@ -611,7 +614,7 @@ class ONNXTTS {
    * Starts a {@link QvacResponse} and schedules chunk synthesis without awaiting completion
    * (so callers can attach `onUpdate` before audio callbacks run).
    */
-  _runStreamOrchestrator (text, options) {
+  _runStreamOrchestrator(text, options) {
     const chunks = splitTtsText(String(text), {
       language: this._config?.language,
       locale: options.locale,
@@ -649,7 +652,7 @@ class ONNXTTS {
     return response
   }
 
-  async _sentenceStreamDriveBody () {
+  async _sentenceStreamDriveBody() {
     const ctx = this._sentenceStreamCtx
     if (!ctx || ctx.textStreamMode) return
     for (let i = 0; i < ctx.chunks.length; i++) {
@@ -666,7 +669,7 @@ class ONNXTTS {
     this._sentenceStreamCtx = null
   }
 
-  async _load () {
+  async _load() {
     this.logger.info('[TTS] Engine type:', this._engineType)
     this.logger.info('[TTS] Language:', this._config?.language || 'en')
 
@@ -683,7 +686,7 @@ class ONNXTTS {
     await this.addon.activate()
   }
 
-  _getChatterboxTtsParams () {
+  _getChatterboxTtsParams() {
     const language = this._config?.language || 'en'
     if (language === 'ja' && !this._mecabDictPath) {
       throw new QvacErrorAddonTTS({
@@ -709,7 +712,7 @@ class ONNXTTS {
     return params
   }
 
-  _getSupertonicTtsParams () {
+  _getSupertonicTtsParams() {
     const baseDir = this._modelDir || ''
     return {
       modelDir: baseDir,
@@ -728,7 +731,7 @@ class ONNXTTS {
     }
   }
 
-  _getEnhancerParams () {
+  _getEnhancerParams() {
     const params = {}
     if (this._enhancer && this._enhancer.type === 'lavasr') {
       if (this._enhancer.enhance) params.enhance = true
@@ -755,12 +758,12 @@ class ONNXTTS {
    * @param {Function} outputCb - Callback for inference events
    * @returns {TTSInterface} The instantiated addon interface
    */
-  _createAddon (configurationParams, outputCb) {
+  _createAddon(configurationParams, outputCb) {
     const binding = require('./binding')
     return new TTSInterface(binding, configurationParams, outputCb)
   }
 
-  _resolvePath (filePath) {
+  _resolvePath(filePath) {
     if (!filePath) return ''
     if (platform() === 'win32') {
       return '\\\\?\\' + path.resolve(filePath)
@@ -768,7 +771,7 @@ class ONNXTTS {
     return path.resolve(filePath)
   }
 
-  async unload () {
+  async unload() {
     await this.cancel()
     this._failAndClearActiveResponse('Model was unloaded')
     if (this.addon) {
@@ -782,12 +785,12 @@ class ONNXTTS {
    * Tear down the native addon and mark this instance destroyed (see {@link ONNXTTS#getState}).
    * @returns {Promise<void>}
    */
-  async destroy () {
+  async destroy() {
     await this.unload()
     this.state.destroyed = true
   }
 
-  async _runInternal (input) {
+  async _runInternal(input) {
     const response = this._job.start()
     try {
       const jobData = {
@@ -795,7 +798,8 @@ class ONNXTTS {
         input: input.input
       }
 
-      const hasPerRequestOverrides = input.outputSampleRate !== undefined ||
+      const hasPerRequestOverrides =
+        input.outputSampleRate !== undefined ||
         (input.enhancer !== undefined && input.enhancer.type === 'lavasr')
 
       if (hasPerRequestOverrides) {
@@ -818,7 +822,7 @@ class ONNXTTS {
     return response
   }
 
-  _mergeSentenceStreamStats (acc, data) {
+  _mergeSentenceStreamStats(acc, data) {
     const t = typeof data.totalTime === 'number' ? data.totalTime : 0
     const a = typeof data.audioDurationMs === 'number' ? data.audioDurationMs : 0
     const s = typeof data.totalSamples === 'number' ? data.totalSamples : 0
@@ -827,7 +831,7 @@ class ONNXTTS {
     acc.totalSamples += s
   }
 
-  _addonOutputCallback (addon, event, data, error) {
+  _addonOutputCallback(addon, event, data, error) {
     if (typeof error === 'string' && error.length > 0) {
       this.logger.error(`TTS job failed with error: ${error}`)
       if (this._sentenceStreamCtx && this._sentenceStreamCtx.chunkResolver) {
@@ -884,12 +888,9 @@ class ONNXTTS {
         if (isLast) {
           const totalChars = ctx.chunks.join('').length
           const merged = { ...ctx.acc }
-          merged.tokensPerSecond =
-            ctx.acc.totalTime > 0 ? totalChars / ctx.acc.totalTime : 0
+          merged.tokensPerSecond = ctx.acc.totalTime > 0 ? totalChars / ctx.acc.totalTime : 0
           merged.realTimeFactor =
-            ctx.acc.audioDurationMs > 0
-              ? (ctx.acc.totalTime * 1000.0) / ctx.acc.audioDurationMs
-              : 0
+            ctx.acc.audioDurationMs > 0 ? (ctx.acc.totalTime * 1000.0) / ctx.acc.audioDurationMs : 0
           if (this.opts?.stats) {
             this._job.end(merged)
           } else {
@@ -909,13 +910,13 @@ class ONNXTTS {
     this.logger.debug(`Received TTS event: ${event}`)
   }
 
-  async cancel () {
+  async cancel() {
     if (this.addon?.cancel) {
       await this.addon.cancel()
     }
   }
 
-  _failAndClearActiveResponse (reason) {
+  _failAndClearActiveResponse(reason) {
     if (this._sentenceStreamCtx && this._sentenceStreamCtx.chunkResolver) {
       this._sentenceStreamCtx.chunkResolver.reject(
         reason instanceof Error ? reason : new Error(String(reason))
@@ -933,7 +934,7 @@ class ONNXTTS {
    * @param {string} [newConfig.language] - Language setting (defaults to 'en')
    * @param {boolean} [newConfig.useGPU] - Whether to use GPU (defaults to false)
    */
-  async reload (newConfig = {}) {
+  async reload(newConfig = {}) {
     this.logger.debug('Reloading addon with new configuration', newConfig)
 
     if (newConfig.language !== undefined) {
@@ -943,14 +944,28 @@ class ONNXTTS {
       this._config.useGPU = newConfig.useGPU
     }
 
-    if (newConfig.outputSampleRate !== undefined) this._outputSampleRate = newConfig.outputSampleRate
+    if (newConfig.outputSampleRate !== undefined)
+      this._outputSampleRate = newConfig.outputSampleRate
     if (newConfig.enhancer !== undefined && newConfig.enhancer.type === 'lavasr') {
-      if (!this._enhancer) this._enhancer = { type: 'lavasr', enhance: false, denoise: false, backbonePath: null, specHeadPath: null, denoiserPath: null }
-      if (newConfig.enhancer.enhance !== undefined) this._enhancer.enhance = newConfig.enhancer.enhance
-      if (newConfig.enhancer.denoise !== undefined) this._enhancer.denoise = newConfig.enhancer.denoise
-      if (newConfig.enhancer.backbonePath !== undefined) this._enhancer.backbonePath = newConfig.enhancer.backbonePath
-      if (newConfig.enhancer.specHeadPath !== undefined) this._enhancer.specHeadPath = newConfig.enhancer.specHeadPath
-      if (newConfig.enhancer.denoiserPath !== undefined) this._enhancer.denoiserPath = newConfig.enhancer.denoiserPath
+      if (!this._enhancer)
+        this._enhancer = {
+          type: 'lavasr',
+          enhance: false,
+          denoise: false,
+          backbonePath: null,
+          specHeadPath: null,
+          denoiserPath: null
+        }
+      if (newConfig.enhancer.enhance !== undefined)
+        this._enhancer.enhance = newConfig.enhancer.enhance
+      if (newConfig.enhancer.denoise !== undefined)
+        this._enhancer.denoise = newConfig.enhancer.denoise
+      if (newConfig.enhancer.backbonePath !== undefined)
+        this._enhancer.backbonePath = newConfig.enhancer.backbonePath
+      if (newConfig.enhancer.specHeadPath !== undefined)
+        this._enhancer.specHeadPath = newConfig.enhancer.specHeadPath
+      if (newConfig.enhancer.denoiserPath !== undefined)
+        this._enhancer.denoiserPath = newConfig.enhancer.denoiserPath
     }
 
     let ttsParams
@@ -976,7 +991,7 @@ class ONNXTTS {
     noAdditionalDownload: true
   }
 
-  static getModelKey (params) {
+  static getModelKey(params) {
     return 'onnx-tts'
   }
 }

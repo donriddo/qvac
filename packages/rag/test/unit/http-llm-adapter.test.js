@@ -12,8 +12,10 @@ const mockConfig = {
 }
 
 // Helper to reset mock state
-function resetMocks () {
-  Object.keys(mockConfig).forEach(key => { mockConfig[key] = false })
+function resetMocks() {
+  Object.keys(mockConfig).forEach((key) => {
+    mockConfig[key] = false
+  })
 }
 
 // Mock HTTP LLM Adapter's _makeHttpRequest method
@@ -27,12 +29,14 @@ HttpLlmAdapter.prototype._makeHttpRequest = async function (requestBody) {
 
   // Mock realistic HTTP response that works with response formatters
   return {
-    choices: [{
-      message: {
-        role: 'assistant',
-        content: 'Mock HTTP LLM response'
+    choices: [
+      {
+        message: {
+          role: 'assistant',
+          content: 'Mock HTTP LLM response'
+        }
       }
-    }]
+    ]
   }
 }
 
@@ -48,7 +52,7 @@ const mockResponseFormatter = (response) => ({
   content: response.choices[0].message.content
 })
 
-test('HttpLlmAdapter: should extend BaseLlmAdapter', t => {
+test('HttpLlmAdapter: should extend BaseLlmAdapter', (t) => {
   const httpConfig = { apiUrl: 'https://api.test.com/chat' }
   const adapter = new HttpLlmAdapter(httpConfig, mockRequestFormatter, mockResponseFormatter)
 
@@ -56,7 +60,7 @@ test('HttpLlmAdapter: should extend BaseLlmAdapter', t => {
   t.ok(adapter instanceof HttpLlmAdapter, 'Should be instance of HttpLlmAdapter')
 })
 
-test('HttpLlmAdapter: should create with valid configuration', t => {
+test('HttpLlmAdapter: should create with valid configuration', (t) => {
   const httpConfig = {
     apiUrl: 'https://api.test.com/chat',
     method: 'POST',
@@ -70,14 +74,14 @@ test('HttpLlmAdapter: should create with valid configuration', t => {
   t.ok(adapter.httpConfig.headers.Authorization, 'Should store headers')
 })
 
-test('HttpLlmAdapter: should use default method when not provided', t => {
+test('HttpLlmAdapter: should use default method when not provided', (t) => {
   const httpConfig = { apiUrl: 'https://api.test.com/chat' }
   const adapter = new HttpLlmAdapter(httpConfig, mockRequestFormatter, mockResponseFormatter)
 
   t.is(adapter.httpConfig.method, 'POST', 'Should default to POST method')
 })
 
-test('HttpLlmAdapter: should throw error for missing httpConfig', t => {
+test('HttpLlmAdapter: should throw error for missing httpConfig', (t) => {
   try {
     // eslint-disable-next-line no-new
     new HttpLlmAdapter(null, mockRequestFormatter, mockResponseFormatter)
@@ -85,13 +89,16 @@ test('HttpLlmAdapter: should throw error for missing httpConfig', t => {
   } catch (err) {
     t.ok(err instanceof QvacErrorRAG, 'Error should be instance of QvacErrorRAG')
     t.is(err.code, ERR_CODES.INVALID_INPUT, 'Error code should be INVALID_INPUT')
-    t.ok(err.message.includes('HTTP configuration'), 'Error message should mention HTTP configuration')
+    t.ok(
+      err.message.includes('HTTP configuration'),
+      'Error message should mention HTTP configuration'
+    )
   }
 })
 
-test('HttpLlmAdapter: should throw error for invalid config or URL', t => {
+test('HttpLlmAdapter: should throw error for invalid config or URL', (t) => {
   const invalidConfigs = ['string', 123, true, []]
-  invalidConfigs.forEach(invalidConfig => {
+  invalidConfigs.forEach((invalidConfig) => {
     try {
       // eslint-disable-next-line no-new
       new HttpLlmAdapter(invalidConfig, mockRequestFormatter, mockResponseFormatter)
@@ -112,7 +119,7 @@ test('HttpLlmAdapter: should throw error for invalid config or URL', t => {
   }
 
   const invalidUrls = [123, {}, [], true, null]
-  invalidUrls.forEach(invalidUrl => {
+  invalidUrls.forEach((invalidUrl) => {
     try {
       // eslint-disable-next-line no-new
       new HttpLlmAdapter({ apiUrl: invalidUrl }, mockRequestFormatter, mockResponseFormatter)
@@ -124,11 +131,11 @@ test('HttpLlmAdapter: should throw error for invalid config or URL', t => {
   })
 })
 
-test('HttpLlmAdapter: should throw error for invalid formatters', t => {
+test('HttpLlmAdapter: should throw error for invalid formatters', (t) => {
   const httpConfig = { apiUrl: 'https://api.test.com/chat' }
   const invalidFormatters = [null, 'string', 123, {}, []]
 
-  invalidFormatters.forEach(invalidFormatter => {
+  invalidFormatters.forEach((invalidFormatter) => {
     try {
       // eslint-disable-next-line no-new
       new HttpLlmAdapter(httpConfig, invalidFormatter, mockResponseFormatter)
@@ -139,7 +146,7 @@ test('HttpLlmAdapter: should throw error for invalid formatters', t => {
     }
   })
 
-  invalidFormatters.forEach(invalidFormatter => {
+  invalidFormatters.forEach((invalidFormatter) => {
     try {
       // eslint-disable-next-line no-new
       new HttpLlmAdapter(httpConfig, mockRequestFormatter, invalidFormatter)
@@ -151,13 +158,11 @@ test('HttpLlmAdapter: should throw error for invalid formatters', t => {
   })
 })
 
-test('HttpLlmAdapter: run should process messages successfully', async t => {
+test('HttpLlmAdapter: run should process messages successfully', async (t) => {
   const httpConfig = { apiUrl: 'https://api.test.com/chat' }
   const adapter = new HttpLlmAdapter(httpConfig, mockRequestFormatter, mockResponseFormatter)
 
-  const messages = [
-    { role: 'user', content: 'What is the capital of France?' }
-  ]
+  const messages = [{ role: 'user', content: 'What is the capital of France?' }]
 
   const result = await adapter.run(messages)
 
@@ -167,7 +172,7 @@ test('HttpLlmAdapter: run should process messages successfully', async t => {
   t.is(typeof result.content, 'string', 'Content should be a string')
 })
 
-test('HttpLlmAdapter: run should handle multiple messages', async t => {
+test('HttpLlmAdapter: run should handle multiple messages', async (t) => {
   const httpConfig = { apiUrl: 'https://api.test.com/chat' }
   const adapter = new HttpLlmAdapter(httpConfig, mockRequestFormatter, mockResponseFormatter)
 
@@ -185,7 +190,7 @@ test('HttpLlmAdapter: run should handle multiple messages', async t => {
   t.ok(result.content, 'Result should have content')
 })
 
-test('HttpLlmAdapter: run should handle network failure', async t => {
+test('HttpLlmAdapter: run should handle network failure', async (t) => {
   resetMocks()
   const httpConfig = { apiUrl: 'https://api.test.com/chat' }
   const adapter = new HttpLlmAdapter(httpConfig, mockRequestFormatter, mockResponseFormatter)
@@ -202,7 +207,7 @@ test('HttpLlmAdapter: run should handle network failure', async t => {
   }
 })
 
-test('HttpLlmAdapter: run should handle LLM failure', async t => {
+test('HttpLlmAdapter: run should handle LLM failure', async (t) => {
   resetMocks()
   const httpConfig = { apiUrl: 'https://api.test.com/chat' }
   const adapter = new HttpLlmAdapter(httpConfig, mockRequestFormatter, mockResponseFormatter)
@@ -219,7 +224,7 @@ test('HttpLlmAdapter: run should handle LLM failure', async t => {
   }
 })
 
-test('HttpLlmAdapter: should use custom headers', async t => {
+test('HttpLlmAdapter: should use custom headers', async (t) => {
   resetMocks()
   const httpConfig = {
     apiUrl: 'https://api.test.com/chat',
@@ -234,7 +239,7 @@ test('HttpLlmAdapter: should use custom headers', async t => {
   t.ok(adapter.httpConfig.headers['X-Custom-Header'], 'Should store custom header')
 })
 
-test('HttpLlmAdapter: should handle empty messages array', async t => {
+test('HttpLlmAdapter: should handle empty messages array', async (t) => {
   const httpConfig = { apiUrl: 'https://api.test.com/chat' }
   const adapter = new HttpLlmAdapter(httpConfig, mockRequestFormatter, mockResponseFormatter)
 
@@ -244,7 +249,7 @@ test('HttpLlmAdapter: should handle empty messages array', async t => {
   t.is(result.role, 'assistant', 'Result should have assistant role')
 })
 
-test('HttpLlmAdapter: should use request formatter correctly', async t => {
+test('HttpLlmAdapter: should use request formatter correctly', async (t) => {
   const httpConfig = { apiUrl: 'https://api.test.com/chat' }
 
   // Custom formatter that adds specific fields
@@ -263,7 +268,7 @@ test('HttpLlmAdapter: should use request formatter correctly', async t => {
   t.ok(result, 'Should return a result with custom formatter')
 })
 
-test('HttpLlmAdapter: should use response formatter correctly', async t => {
+test('HttpLlmAdapter: should use response formatter correctly', async (t) => {
   const httpConfig = { apiUrl: 'https://api.test.com/chat' }
 
   // Custom response formatter
@@ -281,7 +286,7 @@ test('HttpLlmAdapter: should use response formatter correctly', async t => {
   t.ok(result.metadata?.formatted, 'Should include custom metadata')
 })
 
-test('HttpLlmAdapter: should handle complex message structures', async t => {
+test('HttpLlmAdapter: should handle complex message structures', async (t) => {
   const httpConfig = { apiUrl: 'https://api.test.com/chat' }
   const adapter = new HttpLlmAdapter(httpConfig, mockRequestFormatter, mockResponseFormatter)
 
@@ -304,7 +309,7 @@ test('HttpLlmAdapter: should handle complex message structures', async t => {
   t.is(result.role, 'assistant', 'Result should have assistant role')
 })
 
-test('HttpLlmAdapter: should merge default and custom headers', t => {
+test('HttpLlmAdapter: should merge default and custom headers', (t) => {
   const httpConfig = {
     apiUrl: 'https://api.test.com/chat',
     headers: {
@@ -316,6 +321,10 @@ test('HttpLlmAdapter: should merge default and custom headers', t => {
 
   // Default headers should be merged with custom ones
   t.ok(adapter.httpConfig.headers['Content-Type'], 'Should have default Content-Type header')
-  t.is(adapter.httpConfig.headers.Authorization, 'Bearer token', 'Should preserve custom Authorization')
+  t.is(
+    adapter.httpConfig.headers.Authorization,
+    'Bearer token',
+    'Should preserve custom Authorization'
+  )
   t.is(adapter.httpConfig.headers['Custom-Header'], 'value', 'Should preserve custom header')
 })

@@ -21,7 +21,7 @@ const { samplesDir } = getTestPaths()
 const NUM_TRANSCRIPTIONS = 3
 const NO_GPU = proc.env && proc.env.NO_GPU === 'true'
 
-function loadSampleAudio () {
+function loadSampleAudio() {
   const samplePath = path.join(samplesDir, 'sample.raw')
   if (!fs.existsSync(samplePath)) return null
 
@@ -34,7 +34,7 @@ function loadSampleAudio () {
   return audioData
 }
 
-async function runMobilePerfCase (t, opts) {
+async function runMobilePerfCase(t, opts) {
   const modelType = opts.modelType
   const useGPU = opts.useGPU
   const epLabel = useGPU ? '[GPU]' : '[CPU]'
@@ -56,7 +56,7 @@ async function runMobilePerfCase (t, opts) {
   const allResults = []
   const receivedStats = []
 
-  function finishCurrentRun () {
+  function finishCurrentRun() {
     if (outputResolve) {
       outputResolve()
       outputResolve = null
@@ -97,7 +97,7 @@ async function runMobilePerfCase (t, opts) {
       ...getNamedPathsConfig(modelType, modelPath)
     }
 
-    function outputCallback (handle, event, id, output, error) {
+    function outputCallback(handle, event, id, output, error) {
       if (event === 'Output' && Array.isArray(output)) {
         for (const segment of output) {
           if (segment && segment.text) {
@@ -121,7 +121,9 @@ async function runMobilePerfCase (t, opts) {
       console.log(`=== Transcription ${run}/${NUM_TRANSCRIPTIONS} ===`)
       const runStartTime = Date.now()
       const startResultCount = allResults.length
-      const outputPromise = new Promise(resolve => { outputResolve = resolve })
+      const outputPromise = new Promise((resolve) => {
+        outputResolve = resolve
+      })
 
       await parakeet.append({ type: 'audio', data: audioData.buffer })
       await parakeet.append({ type: 'end of job' })
@@ -133,20 +135,28 @@ async function runMobilePerfCase (t, opts) {
       const runTime = Date.now() - runStartTime
       timings.push(runTime)
       const runResults = allResults.slice(startResultCount)
-      const runText = runResults.map(r => r.segment.text).join(' ').trim()
+      const runText = runResults
+        .map((r) => r.segment.text)
+        .join(' ')
+        .trim()
 
       console.log(`   Time: ${runTime}ms`)
       console.log(`   Segments: ${runResults.length}`)
-      console.log(`   Text preview: "${runText.substring(0, 80)}${runText.length > 80 ? '...' : ''}"`)
+      console.log(
+        `   Text preview: "${runText.substring(0, 80)}${runText.length > 80 ? '...' : ''}"`
+      )
 
-      const jobStats = receivedStats.length > 0
-        ? receivedStats[receivedStats.length - 1].stats
-        : null
+      const jobStats =
+        receivedStats.length > 0 ? receivedStats[receivedStats.length - 1].stats : null
       if (jobStats) {
-        recordParakeetStats(`${modelLabel} ${quantLabel} ${epLabel} mobile-perf run ${run}`, jobStats, {
-          wallMs: runTime,
-          output: runText
-        })
+        recordParakeetStats(
+          `${modelLabel} ${quantLabel} ${epLabel} mobile-perf run ${run}`,
+          jobStats,
+          {
+            wallMs: runTime,
+            output: runText
+          }
+        )
         if (typeof jobStats.realTimeFactor === 'number') {
           console.log(`   RTF: ${jobStats.realTimeFactor.toFixed(4)}`)
         }
@@ -154,8 +164,14 @@ async function runMobilePerfCase (t, opts) {
       console.log('')
     }
 
-    t.ok(receivedStats.length >= NUM_TRANSCRIPTIONS, `${modelLabel} ${epLabel} should receive JobEnded stats for every run (got ${receivedStats.length})`)
-    t.ok(timings.length === NUM_TRANSCRIPTIONS, `${modelLabel} ${epLabel} should complete ${NUM_TRANSCRIPTIONS} transcriptions (got ${timings.length})`)
+    t.ok(
+      receivedStats.length >= NUM_TRANSCRIPTIONS,
+      `${modelLabel} ${epLabel} should receive JobEnded stats for every run (got ${receivedStats.length})`
+    )
+    t.ok(
+      timings.length === NUM_TRANSCRIPTIONS,
+      `${modelLabel} ${epLabel} should complete ${NUM_TRANSCRIPTIONS} transcriptions (got ${timings.length})`
+    )
     console.log(`✅ Mobile perf case ${modelLabel} ${epLabel} completed successfully!\n`)
   } finally {
     console.log('=== Cleanup ===')

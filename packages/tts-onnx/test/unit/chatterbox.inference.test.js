@@ -9,7 +9,11 @@ const process = require('bare-process')
 
 global.process = process
 
-function createMockedChatterboxModel ({ onOutput = () => { }, binding = undefined, exclusiveRun = false } = {}) {
+function createMockedChatterboxModel({
+  onOutput = () => {},
+  binding = undefined,
+  exclusiveRun = false
+} = {}) {
   const model = new ONNXTTS({
     files: {
       modelDir: './models/chatterbox'
@@ -36,7 +40,7 @@ function createMockedChatterboxModel ({ onOutput = () => { }, binding = undefine
   return model
 }
 
-async function waitWithTimeout (promise, timeoutMs, message) {
+async function waitWithTimeout(promise, timeoutMs, message) {
   let timeoutId
   const timeoutPromise = new Promise((resolve, reject) => {
     timeoutId = setTimeout(() => reject(new Error(message)), timeoutMs)
@@ -61,13 +65,19 @@ test('Chatterbox: run returns audio output and stats', async (t) => {
 
   const response = await model.run({ type: 'text', input: 'Hello world' })
   const outputs = []
-  await response.onUpdate(data => outputs.push(data)).await()
+  await response.onUpdate((data) => outputs.push(data)).await()
 
   t.ok(outputs.length > 0, 'Response should emit at least one update')
-  t.ok(outputs.some(d => d.outputArray), 'Response should contain outputArray payload')
+  t.ok(
+    outputs.some((d) => d.outputArray),
+    'Response should contain outputArray payload'
+  )
   t.ok(response.stats.totalSamples > 0, 'Response stats should include total samples')
   t.ok(events.length > 0, 'Raw addon callback should have been called')
-  t.ok(callbackArity.every(length => length === 4), 'Native callbacks should not include a native jobId argument')
+  t.ok(
+    callbackArity.every((length) => length === 4),
+    'Native callbacks should not include a native jobId argument'
+  )
   await model.unload()
 })
 
@@ -94,11 +104,7 @@ test('Chatterbox: exclusiveRun does not deadlock run()', async (t) => {
     'run() timed out under exclusiveRun'
   )
 
-  await waitWithTimeout(
-    response.await(),
-    1000,
-    'response.await() timed out under exclusiveRun'
-  )
+  await waitWithTimeout(response.await(), 1000, 'response.await() timed out under exclusiveRun')
 
   t.ok(response.stats.totalSamples > 0, 'Exclusive run should still produce runtime stats')
   await model.unload()
@@ -140,11 +146,7 @@ test('Chatterbox: exclusiveRun does not deadlock reload() or unload()', async (t
     'response.await() after reload timed out under exclusiveRun'
   )
 
-  await waitWithTimeout(
-    model.unload(),
-    1000,
-    'unload() timed out under exclusiveRun'
-  )
+  await waitWithTimeout(model.unload(), 1000, 'unload() timed out under exclusiveRun')
   t.pass('exclusiveRun operations complete without deadlock')
 })
 
@@ -166,7 +168,7 @@ test('Chatterbox: reload during in-flight job does not stay busy', async (t) => 
   t.ok(rejected, 'Reload should reject the in-flight response')
 
   // Let stale callbacks from the destroyed addon drain before submitting a new job.
-  await new Promise(resolve => setTimeout(resolve, 150))
+  await new Promise((resolve) => setTimeout(resolve, 150))
 
   const afterReload = await model.run({ type: 'text', input: 'hello after reload' })
   await afterReload.await()
@@ -179,7 +181,11 @@ test('Chatterbox: Static methods return expected values', async (t) => {
   const modelKey = ONNXTTS.getModelKey({})
   t.is(modelKey, 'onnx-tts', 'getModelKey should return "onnx-tts"')
   t.ok(ONNXTTS.inferenceManagerConfig, 'inferenceManagerConfig should exist')
-  t.is(ONNXTTS.inferenceManagerConfig.noAdditionalDownload, true, 'noAdditionalDownload should be true')
+  t.is(
+    ONNXTTS.inferenceManagerConfig.noAdditionalDownload,
+    true,
+    'noAdditionalDownload should be true'
+  )
 })
 
 test('Chatterbox: Engine type is detected correctly', async (t) => {
@@ -192,7 +198,11 @@ test('Chatterbox: Engine type is detected correctly', async (t) => {
       languageModel: './language_model.onnx'
     }
   })
-  t.is(chatterboxModel._engineType, 'chatterbox', 'Should detect Chatterbox engine when Chatterbox paths are provided')
+  t.is(
+    chatterboxModel._engineType,
+    'chatterbox',
+    'Should detect Chatterbox engine when Chatterbox paths are provided'
+  )
 
   const fromBundle = new ONNXTTS({
     files: { modelDir: './models/chatterbox' },
@@ -207,10 +217,7 @@ test('Chatterbox: Engine type is detected correctly', async (t) => {
 })
 
 test('Chatterbox: invalid engine throws', async (t) => {
-  t.exception(
-    () => new ONNXTTS({ files: { modelDir: './x' }, engine: 'other' }),
-    /invalid engine/
-  )
+  t.exception(() => new ONNXTTS({ files: { modelDir: './x' }, engine: 'other' }), /invalid engine/)
 })
 
 test('Chatterbox: load fails when language is ja without mecabDictPath', async (t) => {
@@ -226,10 +233,7 @@ test('Chatterbox: load fails when language is ja without mecabDictPath', async (
     referenceAudio: [0.1, 0.2, 0.3]
   })
 
-  await t.exception(
-    async () => model.load(),
-    /mecabDictPath/
-  )
+  await t.exception(async () => model.load(), /mecabDictPath/)
 })
 
 test('Chatterbox: cancel propagates as job failure', async (t) => {

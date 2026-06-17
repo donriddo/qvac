@@ -26,19 +26,30 @@ const VARIANT = config.model?.variant || 'fp32'
 
 // HuggingFace base URL for Chatterbox models
 const BASE_URL = 'https://huggingface.co/ResembleAI/chatterbox-turbo-ONNX/resolve/main/onnx'
-const TOKENIZER_URL = 'https://huggingface.co/ResembleAI/chatterbox-turbo-ONNX/resolve/main/tokenizer.json'
+const TOKENIZER_URL =
+  'https://huggingface.co/ResembleAI/chatterbox-turbo-ONNX/resolve/main/tokenizer.json'
 
 /**
  * Get file size from URL
  */
-function getFileSizeFromUrl (url) {
+function getFileSizeFromUrl(url) {
   try {
-    const result = spawnSync('curl', [
-      '-I', '-L', url,
-      '--fail', '--silent', '--show-error',
-      '--connect-timeout', '10',
-      '--max-time', '30'
-    ], { stdio: ['inherit', 'pipe', 'pipe'] })
+    const result = spawnSync(
+      'curl',
+      [
+        '-I',
+        '-L',
+        url,
+        '--fail',
+        '--silent',
+        '--show-error',
+        '--connect-timeout',
+        '10',
+        '--max-time',
+        '30'
+      ],
+      { stdio: ['inherit', 'pipe', 'pipe'] }
+    )
 
     if (result.status === 0 && result.stdout) {
       const output = result.stdout.toString()
@@ -56,7 +67,7 @@ function getFileSizeFromUrl (url) {
 /**
  * Download a file from URL using curl
  */
-async function downloadFileFromUrl (url, filepath, minSize = 1000) {
+async function downloadFileFromUrl(url, filepath, minSize = 1000) {
   const isJson = filepath.endsWith('.json')
 
   // Ensure the directory exists
@@ -88,12 +99,23 @@ async function downloadFileFromUrl (url, filepath, minSize = 1000) {
   try {
     // Download all files directly to disk (avoid pipe buffer limits for large files)
     const maxTime = isJson ? '300' : '1800' // 5 min for JSON, 30 min for binary
-    const result = spawnSync('curl', [
-      '-L', '-o', filepath, url,
-      '--fail', '--silent', '--show-error',
-      '--connect-timeout', '30',
-      '--max-time', maxTime
-    ], { stdio: ['inherit', 'inherit', 'pipe'] })
+    const result = spawnSync(
+      'curl',
+      [
+        '-L',
+        '-o',
+        filepath,
+        url,
+        '--fail',
+        '--silent',
+        '--show-error',
+        '--connect-timeout',
+        '30',
+        '--max-time',
+        maxTime
+      ],
+      { stdio: ['inherit', 'inherit', 'pipe'] }
+    )
 
     if (result.status === 0 && fs.existsSync(filepath)) {
       const stats = fs.statSync(filepath)
@@ -101,7 +123,9 @@ async function downloadFileFromUrl (url, filepath, minSize = 1000) {
         console.log(` ✓ Downloaded: ${path.basename(filepath)} (${stats.size} bytes)`)
         return { success: true, path: filepath }
       } else {
-        console.log(` Downloaded file too small: ${stats.size} bytes (expected >${effectiveMinSize})`)
+        console.log(
+          ` Downloaded file too small: ${stats.size} bytes (expected >${effectiveMinSize})`
+        )
       }
     } else {
       console.log(` Download failed with exit code: ${result.status}`)
@@ -116,7 +140,7 @@ async function downloadFileFromUrl (url, filepath, minSize = 1000) {
 /**
  * Download Chatterbox model files from HuggingFace
  */
-async function downloadChatterboxModels (variant, destPath) {
+async function downloadChatterboxModels(variant, destPath) {
   console.log(`\n>>> Downloading Chatterbox Models (variant: ${variant})...`)
 
   const suffix = variant === 'fp32' ? '' : `_${variant}`
@@ -168,7 +192,7 @@ async function downloadChatterboxModels (variant, destPath) {
     results.push({ success: false, path: tokenizerPath })
   }
 
-  const allSuccess = results.every(r => r.success)
+  const allSuccess = results.every((r) => r.success)
   console.log('>>> Chatterbox Models download complete')
 
   return {
@@ -180,7 +204,7 @@ async function downloadChatterboxModels (variant, destPath) {
 /**
  * Main setup function
  */
-async function setup () {
+async function setup() {
   console.log('=================================================')
   console.log('    Chatterbox TTS Benchmark Setup')
   console.log('=================================================')
@@ -203,11 +227,13 @@ async function setup () {
   console.log(`Models: ${MODELS_PATH}`)
   console.log('\nNext steps:')
   console.log('  1. Start Node.js server:  npm start')
-  console.log('  2. Run benchmark:         cd ../client && python -m src.tts.main --config config/config-chatterbox.yaml')
+  console.log(
+    '  2. Run benchmark:         cd ../client && python -m src.tts.main --config config/config-chatterbox.yaml'
+  )
   console.log('=================================================\n')
 }
 
-setup().catch(err => {
+setup().catch((err) => {
   console.error('\n❌ Setup failed:', err)
   process.exit(1)
 })

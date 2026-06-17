@@ -6,7 +6,7 @@ const HyperDriveDL = require('../index.js')
  * Example demonstrating download cancellation functionality
  * This example shows how to cancel downloads after a certain time period
  */
-async function cancelDownloadsExample () {
+async function cancelDownloadsExample() {
   console.log('Starting download cancellation example...\n')
 
   // Basic cancellation with timeout
@@ -20,7 +20,7 @@ async function cancelDownloadsExample () {
  * Basic cancellation with timeout
  * Shows how to cancel downloads after a certain time period
  */
-async function basicCancellationWithTimeout () {
+async function basicCancellationWithTimeout() {
   console.level = 'debug'
   const dl = new HyperDriveDL({
     key: 'hd://5dca3a0ca4ffe4686da0c4163b15b52be07a6676be66d1b4fb0fd9fc7aad583c',
@@ -42,10 +42,13 @@ async function basicCancellationWithTimeout () {
 
     // Show first few files
     const sampleFiles = files.slice(0, 3)
-    console.log('Sample files:', sampleFiles.map(f => f.key))
+    console.log(
+      'Sample files:',
+      sampleFiles.map((f) => f.key)
+    )
 
     // Start downloading the first few files
-    const filesToDownload = files.slice(0, 3).map(f => f.key)
+    const filesToDownload = files.slice(0, 3).map((f) => f.key)
     console.log('Starting downloads for:', filesToDownload)
 
     // Store all downloads for cancellation
@@ -81,7 +84,7 @@ async function basicCancellationWithTimeout () {
     }, 100)
 
     // Wait a bit to see the cancellation in action
-    await new Promise(resolve => setTimeout(resolve, 200))
+    await new Promise((resolve) => setTimeout(resolve, 200))
 
     // try cancelling downloads again (should be no-op since already cancelled)
     for (const download of allDownloads) {
@@ -104,7 +107,7 @@ async function basicCancellationWithTimeout () {
     const download = await dl.download('/')
     console.log(`Complete directory download started: got ${download.trackers.length} trackers`)
 
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await new Promise((resolve) => setTimeout(resolve, 1000))
 
     // try to cancel completed downloads
     await download.cancel()

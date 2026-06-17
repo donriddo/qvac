@@ -13,7 +13,7 @@ let cachedModel = null
 let cachedModelKey = null
 let loadTimeMs = 0
 
-function generateModelKey (config) {
+function generateModelKey(config) {
   const mul = config.supertonicMultilingual === true
   return [
     'supertonic',
@@ -26,7 +26,7 @@ function generateModelKey (config) {
   ].join(':')
 }
 
-async function runSupertonicTTS (payload) {
+async function runSupertonicTTS(payload) {
   const { texts, config, includeSamples = false } = payload
 
   logger.info(`[Supertonic] Processing ${texts.length} texts`)
@@ -42,8 +42,7 @@ async function runSupertonicTTS (payload) {
   const speed = config.speed != null ? config.speed : 1
   const numInferenceSteps = config.numInferenceSteps != null ? config.numInferenceSteps : 5
   const supertonicMultilingual = config.supertonicMultilingual === true
-  const sampleRate =
-    config.sampleRate != null && config.sampleRate > 0 ? config.sampleRate : 44100
+  const sampleRate = config.sampleRate != null && config.sampleRate > 0 ? config.sampleRate : 44100
 
   const modelKey = generateModelKey(config)
 
@@ -87,7 +86,9 @@ async function runSupertonicTTS (payload) {
     const text = texts[i]
     const textStart = process.hrtime()
 
-    logger.debug(`[Supertonic] Synthesizing text ${i + 1}/${texts.length}: "${text.substring(0, 50)}..."`)
+    logger.debug(
+      `[Supertonic] Synthesizing text ${i + 1}/${texts.length}: "${text.substring(0, 50)}..."`
+    )
 
     const response = await cachedModel.run({
       input: text,
@@ -97,7 +98,7 @@ async function runSupertonicTTS (payload) {
     let buffer = []
     let jobStats = null
     await response
-      .onUpdate(data => {
+      .onUpdate((data) => {
         if (data && data.outputArray) {
           buffer = buffer.concat(Array.from(data.outputArray))
         }
@@ -118,7 +119,7 @@ async function runSupertonicTTS (payload) {
     } else if (response.stats?.realTimeFactor != null) {
       rtf = response.stats.realTimeFactor
     } else {
-      rtf = durationSec > 0 ? (textGenMs / 1000) / durationSec : 0
+      rtf = durationSec > 0 ? textGenMs / 1000 / durationSec : 0
     }
 
     logger.info(`  Text: "${text.substring(0, 50)}"`)
@@ -144,7 +145,9 @@ async function runSupertonicTTS (payload) {
   const totalGenMs = genSec * 1e3 + genNano / 1e6
   const avgRtf = outputs.length ? outputs.reduce((sum, o) => sum + o.rtf, 0) / outputs.length : 0
 
-  logger.info(`[Supertonic] Completed ${outputs.length} syntheses in ${totalGenMs.toFixed(2)}ms (avg RTF: ${avgRtf.toFixed(4)})`)
+  logger.info(
+    `[Supertonic] Completed ${outputs.length} syntheses in ${totalGenMs.toFixed(2)}ms (avg RTF: ${avgRtf.toFixed(4)})`
+  )
 
   let version = 'unknown'
   try {

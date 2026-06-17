@@ -5,16 +5,16 @@ const { WhisperInterface } = require('../../../../whisper')
 const fs = require('bare-fs')
 
 class ProcessingQueue {
-  constructor (maxActive = 5) {
+  constructor(maxActive = 5) {
     this.queue = []
     this.pendingPromises = new Set()
     this.active = 0
     this.maxActive = maxActive
   }
 
-  async add (job) {
+  async add(job) {
     if (this.active >= this.maxActive) {
-      await new Promise(resolve => {
+      await new Promise((resolve) => {
         this.queue.push(resolve)
       })
     }
@@ -28,21 +28,23 @@ class ProcessingQueue {
       this.active--
 
       const next = this.queue.shift()
-      if (next) { next() }
+      if (next) {
+        next()
+      }
     }
 
     promise.then(cleanup, cleanup)
     return promise
   }
 
-  async awaitForCompletion () {
+  async awaitForCompletion() {
     await Promise.allSettled([...this.pendingPromises])
     this.queue = []
   }
 }
 
 class WhisperBenchmarkRunner {
-  constructor (payload, active) {
+  constructor(payload, active) {
     this.payload = payload
     this.outputs = []
     this.transcriptionSegments = []
@@ -52,7 +54,7 @@ class WhisperBenchmarkRunner {
     this.processingQueue = new ProcessingQueue()
   }
 
-  async run () {
+  async run() {
     if (this.validateParams()) {
       const whisperParams = this.buildWhisperParams()
       await this.processAudio(whisperParams)
@@ -61,7 +63,7 @@ class WhisperBenchmarkRunner {
     }
   }
 
-  validateParams () {
+  validateParams() {
     try {
       InferenceArgsSchema.parse(this.payload)
       return true
@@ -70,7 +72,7 @@ class WhisperBenchmarkRunner {
     }
   }
 
-  buildWhisperParams () {
+  buildWhisperParams() {
     return {
       opts: { stats: true },
       path: this.payload.config.path,
@@ -78,7 +80,7 @@ class WhisperBenchmarkRunner {
     }
   }
 
-  async processAudio (whisperParams) {
+  async processAudio(whisperParams) {
     const onOutput = (addon, event, jobId, output, error) => {
       if (event === 'Output') {
         if (output && Array.isArray(output)) {
@@ -97,7 +99,7 @@ class WhisperBenchmarkRunner {
     await model.destroy()
   }
 
-  async transcribeAudio (model, audioData) {
+  async transcribeAudio(model, audioData) {
     await model.append({ type: 'audio', input: new Uint8Array(audioData) })
     await model.append({ type: 'end of job' })
 
@@ -106,16 +108,16 @@ class WhisperBenchmarkRunner {
     this.saveTranscriptionResults()
   }
 
-  saveTranscriptionResults () {
+  saveTranscriptionResults() {
     const transcription = this.transcriptionSegments
-      .map(segment => segment.text)
+      .map((segment) => segment.text)
       .join(' ')
       .trim()
 
     this.outputs.push(transcription)
   }
 
-  async processAllFiles (model) {
+  async processAllFiles(model) {
     const processFile = async (audioFilePath) => {
       try {
         this.transcriptionSegments = []
@@ -134,15 +136,15 @@ class WhisperBenchmarkRunner {
     }
   }
 
-  async waitForCompletion (model) {
+  async waitForCompletion(model) {
     while (true) {
       const status = await model.status()
       if (status === 'IDLE') break
-      await new Promise(resolve => setTimeout(resolve, 100))
+      await new Promise((resolve) => setTimeout(resolve, 100))
     }
   }
 
-  getResult () {
+  getResult() {
     const endTime = Date.now()
     const runMs = endTime - this.startTime - this.loadModelMs
 

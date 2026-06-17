@@ -6,13 +6,19 @@ const os = require('bare-os')
 const process = require('bare-process')
 
 const TRANSIENT_ERROR_CODES = new Set([
-  'EAI_NODATA', 'EAI_AGAIN', 'ENOTFOUND', 'ETIMEDOUT',
-  'ECONNRESET', 'EPIPE', 'ECONNABORTED', 'ESIZE'
+  'EAI_NODATA',
+  'EAI_AGAIN',
+  'ENOTFOUND',
+  'ETIMEDOUT',
+  'ECONNRESET',
+  'EPIPE',
+  'ECONNABORTED',
+  'ESIZE'
 ])
 
 const cleanedIntegrationCacheFiles = new Set()
 
-function cleanupIntegrationCacheFiles (...cachePaths) {
+function cleanupIntegrationCacheFiles(...cachePaths) {
   for (const cachePath of cachePaths.flat()) {
     if (!cachePath || cleanedIntegrationCacheFiles.has(cachePath)) continue
     if (!path.isAbsolute(cachePath)) {
@@ -28,7 +34,7 @@ function cleanupIntegrationCacheFiles (...cachePaths) {
   }
 }
 
-function isTransientError (err) {
+function isTransientError(err) {
   if (err.code && TRANSIENT_ERROR_CODES.has(err.code)) return true
   if (err.statusCode) {
     const s = err.statusCode
@@ -37,11 +43,15 @@ function isTransientError (err) {
   return false
 }
 
-function urlHost (url) {
-  try { return new URL(url).host } catch (_) { return url }
+function urlHost(url) {
+  try {
+    return new URL(url).host
+  } catch (_) {
+    return url
+  }
 }
 
-async function downloadFileOnce (url, dest, opts = {}) {
+async function downloadFileOnce(url, dest, opts = {}) {
   const { timeoutMs = 30_000, idleTimeoutMs = 30_000, maxRedirects = 10, _redirectCount = 0 } = opts
   return new Promise((resolve, reject) => {
     let settled = false
@@ -72,16 +82,22 @@ async function downloadFileOnce (url, dest, opts = {}) {
     })
 
     const reqTimer = setTimeout(() => {
-      req.destroy(Object.assign(new Error(`Request timeout after ${timeoutMs}ms from ${urlHost(url)}`), { code: 'ETIMEDOUT' }))
+      req.destroy(
+        Object.assign(new Error(`Request timeout after ${timeoutMs}ms from ${urlHost(url)}`), {
+          code: 'ETIMEDOUT'
+        })
+      )
     }, timeoutMs)
 
-    const req = https.request(url, response => {
+    const req = https.request(url, (response) => {
       clearTimeout(reqTimer)
 
       if ([301, 302, 307, 308].includes(response.statusCode)) {
         file.destroy()
         if (_redirectCount >= maxRedirects) {
-          fs.unlink(dest, () => safeReject(new Error(`Too many redirects (max ${maxRedirects}) from ${urlHost(url)}`)))
+          fs.unlink(dest, () =>
+            safeReject(new Error(`Too many redirects (max ${maxRedirects}) from ${urlHost(url)}`))
+          )
           return
         }
         fs.unlink(dest, (unlinkErr) => {
@@ -109,10 +125,12 @@ async function downloadFileOnce (url, dest, opts = {}) {
       const resetIdle = () => {
         if (idleTimer) clearTimeout(idleTimer)
         idleTimer = setTimeout(() => {
-          response.destroy(Object.assign(
-            new Error(`Response idle timeout after ${idleTimeoutMs}ms from ${urlHost(url)}`),
-            { code: 'ETIMEDOUT' }
-          ))
+          response.destroy(
+            Object.assign(
+              new Error(`Response idle timeout after ${idleTimeoutMs}ms from ${urlHost(url)}`),
+              { code: 'ETIMEDOUT' }
+            )
+          )
         }, idleTimeoutMs)
       }
       resetIdle()
@@ -124,15 +142,22 @@ async function downloadFileOnce (url, dest, opts = {}) {
       })
 
       response.pipe(file)
-      file.on('close', () => { if (idleTimer) clearTimeout(idleTimer); safeResolve() })
+      file.on('close', () => {
+        if (idleTimer) clearTimeout(idleTimer)
+        safeResolve()
+      })
     })
 
-    req.on('error', err => { clearTimeout(reqTimer); file.destroy(); cleanupAndReject(err) })
+    req.on('error', (err) => {
+      clearTimeout(reqTimer)
+      file.destroy()
+      cleanupAndReject(err)
+    })
     req.end()
   })
 }
 
-async function downloadFileWithRetries (urls, dest, opts = {}) {
+async function downloadFileWithRetries(urls, dest, opts = {}) {
   const { retries = 3, minBytes = 1, ...downloadOpts } = opts
   const urlList = Array.isArray(urls) ? urls : [urls]
   const partPath = dest + '.part'
@@ -152,22 +177,28 @@ async function downloadFileWithRetries (urls, dest, opts = {}) {
       fs.renameSync(partPath, dest)
       return
     } catch (err) {
-      try { fs.unlinkSync(partPath) } catch (_) {}
+      try {
+        fs.unlinkSync(partPath)
+      } catch (_) {}
 
       const attemptsLeft = retries - attempt
       if (!isTransientError(err) || attemptsLeft === 0) {
-        console.error(`[download] Failed after ${attempt + 1} attempt(s) from ${host}: ${err.code || err.message}`)
+        console.error(
+          `[download] Failed after ${attempt + 1} attempt(s) from ${host}: ${err.code || err.message}`
+        )
         throw err
       }
 
       const delay = Math.min(1000 * Math.pow(2, attempt) + Math.random() * 500, 30_000)
-      console.log(`[download] Attempt ${attempt + 1}/${retries + 1} failed (${err.code || err.statusCode}) from ${host}, retrying in ${Math.round(delay)}ms...`)
-      await new Promise(resolve => setTimeout(resolve, delay))
+      console.log(
+        `[download] Attempt ${attempt + 1}/${retries + 1} failed (${err.code || err.statusCode}) from ${host}, retrying in ${Math.round(delay)}ms...`
+      )
+      await new Promise((resolve) => setTimeout(resolve, delay))
     }
   }
 }
 
-async function ensureModel ({ modelName, downloadUrl }) {
+async function ensureModel({ modelName, downloadUrl }) {
   const modelDir = path.resolve(__dirname, '../model')
   const modelPath = path.join(modelDir, modelName)
 
@@ -190,7 +221,7 @@ async function ensureModel ({ modelName, downloadUrl }) {
   return [modelName, modelDir]
 }
 
-async function ensureModelPath ({ modelName, downloadUrl }) {
+async function ensureModelPath({ modelName, downloadUrl }) {
   const [downloadedModelName, modelDir] = await ensureModel({ modelName, downloadUrl })
   return path.join(modelDir, downloadedModelName)
 }
@@ -207,7 +238,7 @@ async function ensureModelPath ({ modelName, downloadUrl }) {
  * const imagePath = getMediaPath('elephant.jpg')
  * const imageBytes = fs.readFileSync(imagePath)
  */
-function getMediaPath (filename) {
+function getMediaPath(filename) {
   // Mobile environment - use asset loading from testAssets
   const isMobile = os.platform() === 'ios' || os.platform() === 'android'
   if (isMobile && global.assetPaths) {
@@ -218,7 +249,9 @@ function getMediaPath (filename) {
       return resolvedPath
     }
     // Asset not found in manifest
-    throw new Error(`Asset not found in testAssets: ${filename}. Make sure ${filename} is in testAssets/ directory and rebuild the app.`)
+    throw new Error(
+      `Asset not found in testAssets: ${filename}. Make sure ${filename} is in testAssets/ directory and rebuild the app.`
+    )
   }
 
   // Desktop environment - use media directory at addon root
@@ -254,7 +287,7 @@ function getMediaPath (filename) {
  * // ... run inference ...
  * console.log(collector.generatedText)
  */
-function makeOutputCollector (t, logger = console) {
+function makeOutputCollector(t, logger = console) {
   const outputText = {}
   let jobCompleted = false
   let generatedText = ''
@@ -262,7 +295,7 @@ function makeOutputCollector (t, logger = console) {
   let startTime = null
   let stats = null
 
-  function onOutput (addon, event, jobId, output, error) {
+  function onOutput(addon, event, jobId, output, error) {
     if (event === 'Output') {
       if (!outputText[jobId]) {
         outputText[jobId] = ''
@@ -289,22 +322,32 @@ function makeOutputCollector (t, logger = console) {
   return {
     onOutput,
     outputText,
-    get generatedText () { return generatedText },
-    get jobCompleted () { return jobCompleted },
-    get timeToFirstToken () { return timeToFirstToken },
-    get stats () { return stats },
-    setStartTime (time) { startTime = time }
+    get generatedText() {
+      return generatedText
+    },
+    get jobCompleted() {
+      return jobCompleted
+    },
+    get timeToFirstToken() {
+      return timeToFirstToken
+    },
+    get stats() {
+      return stats
+    },
+    setStartTime(time) {
+      startTime = time
+    }
   }
 }
 
-function getDefaultTextModel () {
+function getDefaultTextModel() {
   return {
     modelName: process.env.TEXT_MODEL_NAME || 'small-test-model.gguf',
     downloadUrl: 'https://huggingface.co/ggml-org/models/resolve/main/tinyllamas/stories260K.gguf'
   }
 }
 
-function getFinetuneModel () {
+function getFinetuneModel() {
   // Use Qwen3_0.6B.Q8_0.gguf for finetuning tests (same as examples)
   // If model exists locally, use it; otherwise use small test model as fallback
   const modelDir = path.resolve(__dirname, '../../models')
@@ -326,7 +369,7 @@ function getFinetuneModel () {
   }
 }
 
-function createDefaultGpuConfig (overrides = {}) {
+function createDefaultGpuConfig(overrides = {}) {
   return {
     gpu_layers: '99',
     ctx_size: '2048',
@@ -335,7 +378,7 @@ function createDefaultGpuConfig (overrides = {}) {
   }
 }
 
-function createTestAddon (binding, modelPath, projectionPath, config, onOutput) {
+function createTestAddon(binding, modelPath, projectionPath, config, onOutput) {
   const { LlamaInterface } = require('../../addon.js')
   return new LlamaInterface(
     binding,
@@ -348,7 +391,7 @@ function createTestAddon (binding, modelPath, projectionPath, config, onOutput) 
   )
 }
 
-async function waitForJobCompletion (addon, collector, options = {}) {
+async function waitForJobCompletion(addon, collector, options = {}) {
   const { checkComplete } = options
   const maxWaitSeconds = options.maxWaitSeconds || 600
   const pollIntervalMs = options.pollIntervalMs || 500
@@ -363,12 +406,12 @@ async function waitForJobCompletion (addon, collector, options = {}) {
         return
       }
     }
-    await new Promise(resolve => setTimeout(resolve, pollIntervalMs))
+    await new Promise((resolve) => setTimeout(resolve, pollIntervalMs))
   }
   throw new Error('Timeout waiting for job completion')
 }
 
-function createTestDataset (filePath, format = 'chat') {
+function createTestDataset(filePath, format = 'chat') {
   if (format === 'chat') {
     // Create a minimal chat-format JSONL dataset
     const samples = [
@@ -397,24 +440,51 @@ function createTestDataset (filePath, format = 'chat') {
 
     const dir = path.dirname(filePath)
     fs.mkdirSync(dir, { recursive: true })
-    const content = samples.map(s => JSON.stringify(s)).join('\n')
+    const content = samples.map((s) => JSON.stringify(s)).join('\n')
     fs.writeFileSync(filePath, content)
   } else {
     // For tokenized format, we'd need actual tokenized data
     // For now, just create a simple text file
     const dir = path.dirname(filePath)
     fs.mkdirSync(dir, { recursive: true })
-    fs.writeFileSync(filePath, 'This is a test dataset for finetuning.\nIt contains some sample text for training.')
+    fs.writeFileSync(
+      filePath,
+      'This is a test dataset for finetuning.\nIt contains some sample text for training.'
+    )
   }
   return filePath
 }
 
-function createPauseResumeTestDataset (filePath, count = 8) {
+function createPauseResumeTestDataset(filePath, count = 8) {
   const baseSamples = [
-    { messages: [{ role: 'system', content: 'You are a helpful assistant.' }, { role: 'user', content: 'What is 2+2?' }, { role: 'assistant', content: '2+2 equals 4.' }] },
-    { messages: [{ role: 'system', content: 'You are a helpful assistant.' }, { role: 'user', content: 'What is the capital of France?' }, { role: 'assistant', content: 'The capital of France is Paris.' }] },
-    { messages: [{ role: 'system', content: 'You are a helpful assistant.' }, { role: 'user', content: 'Hello, how are you?' }, { role: 'assistant', content: 'Hello! I am doing well, thank you for asking.' }] },
-    { messages: [{ role: 'system', content: 'You are a helpful assistant.' }, { role: 'user', content: 'What color is the sky?' }, { role: 'assistant', content: 'The sky is typically blue on a clear day.' }] }
+    {
+      messages: [
+        { role: 'system', content: 'You are a helpful assistant.' },
+        { role: 'user', content: 'What is 2+2?' },
+        { role: 'assistant', content: '2+2 equals 4.' }
+      ]
+    },
+    {
+      messages: [
+        { role: 'system', content: 'You are a helpful assistant.' },
+        { role: 'user', content: 'What is the capital of France?' },
+        { role: 'assistant', content: 'The capital of France is Paris.' }
+      ]
+    },
+    {
+      messages: [
+        { role: 'system', content: 'You are a helpful assistant.' },
+        { role: 'user', content: 'Hello, how are you?' },
+        { role: 'assistant', content: 'Hello! I am doing well, thank you for asking.' }
+      ]
+    },
+    {
+      messages: [
+        { role: 'system', content: 'You are a helpful assistant.' },
+        { role: 'user', content: 'What color is the sky?' },
+        { role: 'assistant', content: 'The sky is typically blue on a clear day.' }
+      ]
+    }
   ]
   const samples = []
   for (let i = 0; i < count; i++) {
@@ -422,12 +492,12 @@ function createPauseResumeTestDataset (filePath, count = 8) {
   }
   const dir = path.dirname(filePath)
   fs.mkdirSync(dir, { recursive: true })
-  const content = samples.map(s => JSON.stringify(s)).join('\n')
+  const content = samples.map((s) => JSON.stringify(s)).join('\n')
   fs.writeFileSync(filePath, content + '\n')
   return filePath
 }
 
-function setupParams (modelDir, overrides = {}) {
+function setupParams(modelDir, overrides = {}) {
   const { testId = 'pause-resume', datasetSize, ...finetuneOverrides } = overrides
   const trainDatasetPath = path.join(modelDir, `train_${testId}.jsonl`)
   const checkpointDir = path.join(modelDir, `test_${testId}`)
@@ -448,7 +518,7 @@ function setupParams (modelDir, overrides = {}) {
   }
 }
 
-function cleanupCheckpoints (checkpointDir) {
+function cleanupCheckpoints(checkpointDir) {
   if (fs.existsSync(checkpointDir)) {
     try {
       fs.rmSync(checkpointDir, { recursive: true, force: true })
@@ -456,17 +526,17 @@ function cleanupCheckpoints (checkpointDir) {
   }
 }
 
-function verifyCheckpointExists (checkpointPath) {
+function verifyCheckpointExists(checkpointPath) {
   return fs.existsSync(checkpointPath) && fs.statSync(checkpointPath).isDirectory()
 }
 
-function findPauseCheckpoint (checkpointDir) {
+function findPauseCheckpoint(checkpointDir) {
   if (!fs.existsSync(checkpointDir)) {
     return null
   }
 
   const files = fs.readdirSync(checkpointDir)
-  const pauseCheckpoints = files.filter(f => f.startsWith('pause_checkpoint_step_'))
+  const pauseCheckpoints = files.filter((f) => f.startsWith('pause_checkpoint_step_'))
 
   if (pauseCheckpoints.length === 0) {
     return null
@@ -481,7 +551,7 @@ function findPauseCheckpoint (checkpointDir) {
   return path.join(checkpointDir, pauseCheckpoints[0])
 }
 
-function setupFinetuneTestData (testDataDir, testCheckpointDir, testId) {
+function setupFinetuneTestData(testDataDir, testCheckpointDir, testId) {
   const trainDatasetPath = path.join(testDataDir, `train_${testId}.jsonl`)
   const evalDatasetPath = path.join(testDataDir, `eval_${testId}.jsonl`)
   const checkpointDir = path.join(testCheckpointDir, `test_${testId}`)
@@ -493,7 +563,7 @@ function setupFinetuneTestData (testDataDir, testCheckpointDir, testId) {
   return { trainDatasetPath, evalDatasetPath, checkpointDir }
 }
 
-function parsePauseCheckpointMetadata (pauseCheckpointPath) {
+function parsePauseCheckpointMetadata(pauseCheckpointPath) {
   const metadataPath = path.join(pauseCheckpointPath, 'metadata.txt')
   if (!fs.existsSync(metadataPath)) {
     return null
@@ -514,7 +584,7 @@ function parsePauseCheckpointMetadata (pauseCheckpointPath) {
   }
 }
 
-function verifyPauseCheckpoint (t, checkpointDir) {
+function verifyPauseCheckpoint(t, checkpointDir) {
   const pauseCheckpointPath = findPauseCheckpoint(checkpointDir)
 
   if (!pauseCheckpointPath) {
@@ -535,12 +605,20 @@ function verifyPauseCheckpoint (t, checkpointDir) {
   const modelPath = path.join(pauseCheckpointPath, 'model.gguf')
   t.ok(fs.existsSync(modelPath), 'Pause checkpoint must contain model.gguf (LoRA adapter)')
   const optimizerPath = path.join(pauseCheckpointPath, 'optimizer.gguf')
-  t.ok(fs.existsSync(optimizerPath), 'Pause checkpoint must contain optimizer.gguf (optimizer state)')
+  t.ok(
+    fs.existsSync(optimizerPath),
+    'Pause checkpoint must contain optimizer.gguf (optimizer state)'
+  )
 
   return pauseCheckpointPath
 }
 
-async function handleEarlyCompletion (t, finetuneHandle, checkpointDir = null, message = 'Finetuning completed too quickly') {
+async function handleEarlyCompletion(
+  t,
+  finetuneHandle,
+  checkpointDir = null,
+  message = 'Finetuning completed too quickly'
+) {
   t.comment(`${message} - this is acceptable for small datasets`)
   const result = await (finetuneHandle?.await ? finetuneHandle.await() : finetuneHandle)
   t.ok(result && typeof result === 'object', 'Finetuning should complete with result object')
@@ -550,13 +628,13 @@ async function handleEarlyCompletion (t, finetuneHandle, checkpointDir = null, m
   return result
 }
 
-async function verifyFinalStatus (t, model, result = null) {
+async function verifyFinalStatus(t, model, result = null) {
   t.ok(result, 'Result must be provided')
 }
 
 const test = require('brittle')
 
-function safeTest (name, opts, fn) {
+function safeTest(name, opts, fn) {
   test(name, opts, async (t) => {
     try {
       await fn(t)

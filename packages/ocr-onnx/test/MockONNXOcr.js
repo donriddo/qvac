@@ -8,13 +8,13 @@ const { transitionCb } = require('./utils.js')
 const END_OF_INPUT = 'end of job'
 
 class ONNXOcr {
-  constructor (args) {
+  constructor(args) {
     this.args = args
     this.addon = null
     this._job = createJobHandler({ cancel: () => this.addon.cancel() })
   }
 
-  async load () {
+  async load() {
     const configurationParams = {
       config: this.config
     }
@@ -22,35 +22,31 @@ class ONNXOcr {
     await this.addon.activate()
   }
 
-  async run (input) {
+  async run(input) {
     return this._runInternal(input)
   }
 
-  async pause () {
+  async pause() {
     await this.addon.pause()
   }
 
-  async unpause () {
+  async unpause() {
     await this.addon.activate()
   }
 
-  async stop () {
+  async stop() {
     await this.addon.stop()
   }
 
-  async status () {
+  async status() {
     return this.addon.status()
   }
 
-  createAddon (configurationParams) {
-    return new AddonInterface(
-      configurationParams,
-      this.outputCallback.bind(this),
-      transitionCb
-    )
+  createAddon(configurationParams) {
+    return new AddonInterface(configurationParams, this.outputCallback.bind(this), transitionCb)
   }
 
-  outputCallback (addon, event, jobId, data, error) {
+  outputCallback(addon, event, jobId, data, error) {
     if (event === 'Error') {
       this._job.fail(error)
     } else if (event === 'Output') {
@@ -60,7 +56,7 @@ class ONNXOcr {
     }
   }
 
-  async _runInternal (input) {
+  async _runInternal(input) {
     const imageInput = this.getImage(input.path)
     await this.addon.append({ type: 'image', input: imageInput, options: input.options })
     const response = this._job.start()
@@ -68,13 +64,13 @@ class ONNXOcr {
     return response
   }
 
-  getImage (imagePath) {
+  getImage(imagePath) {
     const contents = fs.readFileSync(imagePath)
     if (!contents || contents.length < 14 + 4) {
       throw new Error('Invalid BMP file or insufficient data')
     }
 
-    if (contents[0] !== 0x42 || contents[1] !== 0x4D) {
+    if (contents[0] !== 0x42 || contents[1] !== 0x4d) {
       throw new Error('Not a valid BMP file')
     }
 
@@ -102,12 +98,43 @@ class ONNXOcr {
     return { width, height, data: pixelDataBuffer }
   }
 
-  getRecognizerModelName (langList) {
+  getRecognizerModelName(langList) {
     const arabicLangList = ['ar', 'fa', 'ug', 'ur']
     const bengaliLangList = ['bn', 'as', 'mni']
-    const cyrillicLangList = ['ru', 'rs_cyrillic', 'be', 'bg', 'uk', 'mn', 'abq', 'ady', 'kbd', 'ava', 'dar', 'inh', 'che',
-      'lbe', 'lez', 'tab', 'tjk']
-    const devanagariLangList = ['hi', 'mr', 'ne', 'bh', 'mai', 'ang', 'bho', 'mah', 'sck', 'new', 'gom', 'sa', 'bgc']
+    const cyrillicLangList = [
+      'ru',
+      'rs_cyrillic',
+      'be',
+      'bg',
+      'uk',
+      'mn',
+      'abq',
+      'ady',
+      'kbd',
+      'ava',
+      'dar',
+      'inh',
+      'che',
+      'lbe',
+      'lez',
+      'tab',
+      'tjk'
+    ]
+    const devanagariLangList = [
+      'hi',
+      'mr',
+      'ne',
+      'bh',
+      'mai',
+      'ang',
+      'bho',
+      'mah',
+      'sck',
+      'new',
+      'gom',
+      'sa',
+      'bgc'
+    ]
 
     const langMap = {
       th: 'thai',

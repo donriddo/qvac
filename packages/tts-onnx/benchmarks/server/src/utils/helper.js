@@ -7,11 +7,11 @@ const MAX_BODY_SIZE = 1 * 1024 * 1024 // 1 MB
 /**
  * Process incoming JSON request body
  */
-async function processJsonRequest (req) {
+async function processJsonRequest(req) {
   return new Promise((resolve, reject) => {
     const chunks = []
     let received = 0
-    req.on('data', chunk => {
+    req.on('data', (chunk) => {
       received += chunk.length
       if (received > MAX_BODY_SIZE) {
         req.destroy(new Error('Payload too large'))
@@ -35,8 +35,8 @@ async function processJsonRequest (req) {
 /**
  * Format Zod validation errors
  */
-function formatZodError (error) {
-  const issues = error.issues.map(issue => ({
+function formatZodError(error) {
+  const issues = error.issues.map((issue) => ({
     path: issue.path.join('.'),
     message: issue.message
   }))

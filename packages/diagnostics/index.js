@@ -1,7 +1,7 @@
 'use strict'
 
 const w = require('which-runtime')
-const os = (w.isNode || w.isBare) ? require('os') : null
+const os = w.isNode || w.isBare ? require('os') : null
 
 /**
  * Version of the diagnostic report format
@@ -75,7 +75,7 @@ const _extensions = new Map()
  *
  * @param {{ name: string, version: string, getDiagnostics: () => string }} addon
  */
-function registerAddon (addon) {
+function registerAddon(addon) {
   if (!addon || typeof addon.name !== 'string' || !addon.name) {
     throw new Error('addon.name must be a non-empty string')
   }
@@ -96,7 +96,7 @@ function registerAddon (addon) {
  *
  * @param {string} name - Addon name to remove
  */
-function unregisterAddon (name) {
+function unregisterAddon(name) {
   _addonRegistry.delete(name)
 }
 
@@ -106,7 +106,7 @@ function unregisterAddon (name) {
  * @param {string} name - Extension section name
  * @param {*} data - Extension data (any JSON-serializable value)
  */
-function registerExtension (name, data) {
+function registerExtension(name, data) {
   if (typeof name !== 'string' || !name) {
     throw new Error('extension name must be a non-empty string')
   }
@@ -118,8 +118,8 @@ function registerExtension (name, data) {
  *
  * @returns {EnvironmentInfo}
  */
-function collectEnvironment () {
-  const runtime = w.isBare ? 'bare' + w.version : (w.isNode ? 'node' + w.version : 'unknown')
+function collectEnvironment() {
+  const runtime = w.isBare ? 'bare' + w.version : w.isNode ? 'node' + w.version : 'unknown'
   const osVersion = os ? os.release() : 'unknown'
 
   return { os: w.platform, arch: w.arch, osVersion, runtime }
@@ -130,7 +130,7 @@ function collectEnvironment () {
  *
  * @returns {HardwareInfo}
  */
-function collectHardware () {
+function collectHardware() {
   let cpuModel = 'unknown'
   let cpuCores = 0
   let totalMemoryMB = 0
@@ -163,8 +163,8 @@ function collectHardware () {
  * @param {{ app: AppInfo }} opts
  * @returns {DiagnosticReport}
  */
-function generateReport (opts) {
-  const app = (opts && opts.app) ? opts.app : { name: 'unknown', version: 'unknown' }
+function generateReport(opts) {
+  const app = opts && opts.app ? opts.app : { name: 'unknown', version: 'unknown' }
   const environment = collectEnvironment()
   const hardware = collectHardware()
 
@@ -201,7 +201,7 @@ function generateReport (opts) {
  * @param {DiagnosticReport} report
  * @returns {string}
  */
-function serializeReport (report) {
+function serializeReport(report) {
   return JSON.stringify(report, null, 2)
 }
 
@@ -209,7 +209,7 @@ function serializeReport (report) {
  * Resets all singleton state (addon registry and extensions).
  * Primarily useful for testing.
  */
-function reset () {
+function reset() {
   _addonRegistry.clear()
   _extensions.clear()
 }

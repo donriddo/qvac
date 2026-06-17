@@ -23,8 +23,16 @@ test.hook('setup', (t) => {
   t.ok(fs.existsSync(TEST_DIR), 'Test directory should exist')
   t.ok(fs.existsSync(path.join(TEST_DIR, TEST_FILE_1)), 'Test file 1 should exist')
   t.ok(fs.existsSync(path.join(TEST_DIR, TEST_FILE_2)), 'Test file 2 should exist')
-  t.is(fs.readFileSync(path.join(TEST_DIR, TEST_FILE_1), 'utf8'), TEST_FILE_CONTENT_1, 'Test file 1 content should be correct')
-  t.is(fs.readFileSync(path.join(TEST_DIR, TEST_FILE_2), 'utf8'), TEST_FILE_CONTENT_2, 'Test file 2 content should be correct')
+  t.is(
+    fs.readFileSync(path.join(TEST_DIR, TEST_FILE_1), 'utf8'),
+    TEST_FILE_CONTENT_1,
+    'Test file 1 content should be correct'
+  )
+  t.is(
+    fs.readFileSync(path.join(TEST_DIR, TEST_FILE_2), 'utf8'),
+    TEST_FILE_CONTENT_2,
+    'Test file 2 content should be correct'
+  )
 })
 
 test('FilesystemDL: constructor should throw error with correct code if folder does not exist', async (t) => {
@@ -35,7 +43,10 @@ test('FilesystemDL: constructor should throw error with correct code if folder d
   } catch (err) {
     t.ok(err instanceof QvacErrorFilesystem, 'Error should be instance of QvacErrorFilesystem')
     t.is(err.code, ERR_CODES.PATH_INVALID, 'Error code should be PATH_INVALID')
-    t.ok(err.message.includes('/nonexistent/folder'), 'Error message should include the invalid path')
+    t.ok(
+      err.message.includes('/nonexistent/folder'),
+      'Error message should include the invalid path'
+    )
   }
 })
 
@@ -247,11 +258,7 @@ test('FilesystemDL: should return a readable stream for an existing file', async
     chunks.push(chunk.toString())
   }
 
-  t.is(
-    chunks.join(''),
-    TEST_FILE_CONTENT_1,
-    'Content matches expected for test file 1'
-  )
+  t.is(chunks.join(''), TEST_FILE_CONTENT_1, 'Content matches expected for test file 1')
 })
 
 test('FilesystemDL: should support async iteration over a file stream', async (t) => {
@@ -265,11 +272,7 @@ test('FilesystemDL: should support async iteration over a file stream', async (t
     chunks.push(chunk.toString())
   }
 
-  t.is(
-    chunks.join(''),
-    TEST_FILE_CONTENT_1,
-    'Async iteration returns correct content for the file'
-  )
+  t.is(chunks.join(''), TEST_FILE_CONTENT_1, 'Async iteration returns correct content for the file')
 })
 
 test('FilesystemDL: should correctly read multiple files from the same directory', async (t) => {
@@ -280,29 +283,25 @@ test('FilesystemDL: should correctly read multiple files from the same directory
   for await (const chunk of stream1) {
     chunks1.push(chunk.toString())
   }
-  t.is(
-    chunks1.join(''),
-    TEST_FILE_CONTENT_1,
-    'Correctly reads content from first file'
-  )
+  t.is(chunks1.join(''), TEST_FILE_CONTENT_1, 'Correctly reads content from first file')
 
   const stream2 = await fsDL.getStream(TEST_FILE_2)
   const chunks2 = []
   for await (const chunk of stream2) {
     chunks2.push(chunk.toString())
   }
-  t.is(
-    chunks2.join(''),
-    TEST_FILE_CONTENT_2,
-    'Correctly reads content from second file'
-  )
+  t.is(chunks2.join(''), TEST_FILE_CONTENT_2, 'Correctly reads content from second file')
 })
 
 test('FilesystemDL: should list files in the directory', async (t) => {
   const fsDL = new FilesystemDL({ dirPath: TEST_DIR })
 
   const files = await fsDL.list()
-  t.alike(files.sort(), [TEST_FILE_1, TEST_FILE_2, 'nested', 'empty'].sort(), 'List method returns the correct file names')
+  t.alike(
+    files.sort(),
+    [TEST_FILE_1, TEST_FILE_2, 'nested', 'empty'].sort(),
+    'List method returns the correct file names'
+  )
 })
 
 test('FilesystemDL: should handle zero-byte files', async (t) => {
@@ -324,7 +323,7 @@ test('FilesystemDL: should handle zero-byte files', async (t) => {
 
 test('FilesystemDL: should handle binary files', async (t) => {
   const binaryFile = path.join(TEST_DIR, 'binary.bin')
-  const binaryData = Buffer.from([0x00, 0x01, 0x02, 0x03, 0xFF, 0xFE])
+  const binaryData = Buffer.from([0x00, 0x01, 0x02, 0x03, 0xff, 0xfe])
   fs.writeFileSync(binaryFile, binaryData)
 
   const fsDL = new FilesystemDL({ dirPath: TEST_DIR })

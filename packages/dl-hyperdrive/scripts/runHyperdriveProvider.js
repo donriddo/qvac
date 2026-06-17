@@ -10,7 +10,7 @@ const process = require('bare-process')
 const b4a = require('b4a')
 const getTmpDir = require('test-tmp')
 
-async function main () {
+async function main() {
   const folderPath = process.argv[2]
 
   if (!folderPath) {
@@ -30,9 +30,7 @@ async function main () {
   await drive.ready()
 
   const mirrorDrive = debounce(async () => {
-    console.log(
-      `Started mirroring changes from '${absoluteFolderPath}' into the drive...`
-    )
+    console.log(`Started mirroring changes from '${absoluteFolderPath}' into the drive...`)
     const mirror = local.mirror(drive)
     await mirror.done()
     console.log('Finished mirroring:', mirror.count)
@@ -40,7 +38,7 @@ async function main () {
 
   await mirrorDrive()
 
-  swarm.on('connection', conn => {
+  swarm.on('connection', (conn) => {
     store.replicate(conn)
     console.log('New Connection: ' + b4a.toString(conn.publicKey, 'hex'))
   })

@@ -27,7 +27,7 @@ const isMobile = platform === 'ios' || platform === 'android'
 // ChatterboxModel::loadLocked rather than opting into GPU here.
 // Tests that *are* about GPU live in gpu-smoke.test.js.
 
-function getBaseDir () {
+function getBaseDir() {
   return isMobile && global.testDir ? global.testDir : '.'
 }
 
@@ -40,7 +40,7 @@ const MTL_SENTENCES = [
   { lang: 'pt', text: 'A raposa marrom pula sobre o cachorro preguiçoso.' }
 ]
 
-async function loadChatterboxMtlTTS (params) {
+async function loadChatterboxMtlTTS(params) {
   // Route through `resolveRefWavPath` so the mobile-asset path (staged
   // into `Library/Caches/jfk.wav` via `global.assetPaths`) is preferred
   // over the in-bundle `test/reference-audio/jfk.wav`; the bundled
@@ -69,78 +69,105 @@ async function loadChatterboxMtlTTS (params) {
   return model
 }
 
-test('Chatterbox MTL TTS (ggml): synthesizes across es/fr/de/pt with shared engine', { timeout: 1800000 }, async (t) => {
-  const baseDir = getBaseDir()
-  const download = await ensureChatterboxMtlModels({ targetDir: path.join(baseDir, 'models') })
-  if (!download.success) {
-    t.fail('Chatterbox MTL GGUFs not available - registry fetch failed. Run `npm run download-models:registry` or stage models locally.')
-    return
-  }
+test(
+  'Chatterbox MTL TTS (ggml): synthesizes across es/fr/de/pt with shared engine',
+  { timeout: 1800000 },
+  async (t) => {
+    const baseDir = getBaseDir()
+    const download = await ensureChatterboxMtlModels({ targetDir: path.join(baseDir, 'models') })
+    if (!download.success) {
+      t.fail(
+        'Chatterbox MTL GGUFs not available - registry fetch failed. Run `npm run download-models:registry` or stage models locally.'
+      )
+      return
+    }
 
-  const model = await loadChatterboxMtlTTS({
-    modelDir: download.targetDir,
-    language: MTL_SENTENCES[0].lang
-  })
-  try {
-    for (let i = 0; i < MTL_SENTENCES.length; i++) {
-      const { lang, text } = MTL_SENTENCES[i]
-      console.log(`  [${lang}] "${text.slice(0, 50)}..."`)
-      if (i > 0) {
-        await model.reload({ language: lang })
+    const model = await loadChatterboxMtlTTS({
+      modelDir: download.targetDir,
+      language: MTL_SENTENCES[0].lang
+    })
+    try {
+      for (let i = 0; i < MTL_SENTENCES.length; i++) {
+        const { lang, text } = MTL_SENTENCES[i]
+        console.log(`  [${lang}] "${text.slice(0, 50)}..."`)
+        if (i > 0) {
+          await model.reload({ language: lang })
+        }
+        const t0 = Date.now()
+        const result = await runTTS(
+          model,
+          { text },
+          { minSamples: 5000, maxSamples: 5000000, minDurationMs: 200, maxDurationMs: 300000 },
+          { sampleRate: SAMPLE_RATE, engineTag: 'Chatterbox MTL' }
+        )
+        const wallMs = Date.now() - t0
+        console.log('    ' + result.output)
+
+        t.ok(result.passed, `MTL ${lang} run passes expectations`)
+        t.ok(result.data.sampleCount > 0, `MTL ${lang} produced audio`)
+        t.is(
+          result.data.reportedSampleRate || SAMPLE_RATE,
+          SAMPLE_RATE,
+          `MTL ${lang} reports 24 kHz`
+        )
+
+        const st = result.data?.stats || {}
+        t.comment(
+          recordTtsStats(
+            `chatterbox mtl ${lang}`,
+            {
+              realTimeFactor: st.realTimeFactor,
+              audioDurationMs: st.audioDurationMs || result.data?.durationMs,
+              totalSamples: st.totalSamples,
+              backendDevice: st.backendDevice
+            },
+            { wallMs, sampleCount: result.data?.sampleCount, model: 'chatterbox-mtl', output: text }
+          )
+        )
       }
-      const t0 = Date.now()
+    } finally {
+      try {
+        await model.unload()
+      } catch (_e) {}
+    }
+  }
+)
+
+test(
+  'Chatterbox MTL TTS (ggml): backendDevice + backendId surfaced in stats',
+  { timeout: 600000 },
+  async (t) => {
+    const baseDir = getBaseDir()
+    const download = await ensureChatterboxMtlModels({ targetDir: path.join(baseDir, 'models') })
+    if (!download.success) {
+      t.fail(
+        'Chatterbox MTL GGUFs not available - registry fetch failed. Run `npm run download-models:registry` or stage models locally.'
+      )
+      return
+    }
+
+    const model = await loadChatterboxMtlTTS({
+      modelDir: download.targetDir,
+      language: 'es'
+    })
+    try {
       const result = await runTTS(
         model,
-        { text },
-        { minSamples: 5000, maxSamples: 5000000, minDurationMs: 200, maxDurationMs: 300000 },
+        { text: 'Comprobando los datos de telemetría del backend.' },
+        { minSamples: 5000 },
         { sampleRate: SAMPLE_RATE, engineTag: 'Chatterbox MTL' }
       )
-      const wallMs = Date.now() - t0
-      console.log('    ' + result.output)
-
-      t.ok(result.passed, `MTL ${lang} run passes expectations`)
-      t.ok(result.data.sampleCount > 0, `MTL ${lang} produced audio`)
-      t.is(result.data.reportedSampleRate || SAMPLE_RATE, SAMPLE_RATE, `MTL ${lang} reports 24 kHz`)
-
-      const st = result.data?.stats || {}
-      t.comment(recordTtsStats(
-        `chatterbox mtl ${lang}`,
-        { realTimeFactor: st.realTimeFactor, audioDurationMs: st.audioDurationMs || result.data?.durationMs, totalSamples: st.totalSamples, backendDevice: st.backendDevice },
-        { wallMs, sampleCount: result.data?.sampleCount, model: 'chatterbox-mtl', output: text }
-      ))
+      t.ok(result.passed, 'MTL run for backend telemetry passes')
+      if (result.data.stats) {
+        t.ok(typeof result.data.stats.backendDevice === 'number', 'backendDevice surfaced in stats')
+        t.ok(typeof result.data.stats.backendId === 'number', 'backendId surfaced in stats')
+      } else {
+        t.fail('expected stats from MTL run')
+      }
+    } finally {
+      try {
+        await model.unload()
+      } catch (_e) {}
     }
-  } finally {
-    try { await model.unload() } catch (_e) {}
   }
-})
-
-test('Chatterbox MTL TTS (ggml): backendDevice + backendId surfaced in stats', { timeout: 600000 }, async (t) => {
-  const baseDir = getBaseDir()
-  const download = await ensureChatterboxMtlModels({ targetDir: path.join(baseDir, 'models') })
-  if (!download.success) {
-    t.fail('Chatterbox MTL GGUFs not available - registry fetch failed. Run `npm run download-models:registry` or stage models locally.')
-    return
-  }
-
-  const model = await loadChatterboxMtlTTS({
-    modelDir: download.targetDir,
-    language: 'es'
-  })
-  try {
-    const result = await runTTS(
-      model,
-      { text: 'Comprobando los datos de telemetría del backend.' },
-      { minSamples: 5000 },
-      { sampleRate: SAMPLE_RATE, engineTag: 'Chatterbox MTL' }
-    )
-    t.ok(result.passed, 'MTL run for backend telemetry passes')
-    if (result.data.stats) {
-      t.ok(typeof result.data.stats.backendDevice === 'number', 'backendDevice surfaced in stats')
-      t.ok(typeof result.data.stats.backendId === 'number', 'backendId surfaced in stats')
-    } else {
-      t.fail('expected stats from MTL run')
-    }
-  } finally {
-    try { await model.unload() } catch (_e) {}
-  }
-})
+)

@@ -20,17 +20,15 @@ const files = {
 }
 
 class FakeDL extends Base {
-  async start () {
-  }
+  async start() {}
 
-  async stop () {
-  }
+  async stop() {}
 
-  async list (path) {
+  async list(path) {
     return [...Object.keys(files)]
   }
 
-  async getStream (filepath) {
+  async getStream(filepath) {
     const name = path.basename(filepath)
     return Readable.from(Buffer.from(files[name]))
   }

@@ -11,9 +11,9 @@ const MODEL = {
   url: 'https://huggingface.co/unsloth/Qwen3-0.6B-GGUF/resolve/main/Qwen3-0.6B-Q8_0.gguf'
 }
 
-const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms))
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
-function waitForProgress (handle, minSteps, timeoutMs) {
+function waitForProgress(handle, minSteps, timeoutMs) {
   minSteps = minSteps || 5
   timeoutMs = timeoutMs || 300_000
   return new Promise((resolve, reject) => {
@@ -23,7 +23,11 @@ function waitForProgress (handle, minSteps, timeoutMs) {
       if (settled) return
       settled = true
       handle.removeListener('stats', onStats)
-      reject(new Error(`waitForProgress: no progress after ${timeoutMs}ms (received ${count}/${minSteps} steps)`))
+      reject(
+        new Error(
+          `waitForProgress: no progress after ${timeoutMs}ms (received ${count}/${minSteps} steps)`
+        )
+      )
     }, timeoutMs)
     const onStats = () => {
       if (settled) return
@@ -45,7 +49,7 @@ function waitForProgress (handle, minSteps, timeoutMs) {
   })
 }
 
-async function main () {
+async function main() {
   const [modelName, modelDir] = await downloadModel(MODEL.url, MODEL.name)
 
   const trainDatasetPath = './examples/input/small_train_HF.jsonl'
@@ -119,7 +123,7 @@ async function main () {
     }
 
     const attachProgressLogger = (handle) => {
-      handle.on('stats', stats => {
+      handle.on('stats', (stats) => {
         console.log(`  ${formatProgress(stats, finetuneOptions.numberOfEpochs)}`)
       })
     }
@@ -128,7 +132,7 @@ async function main () {
     let finetuneHandle = await client.finetune(finetuneOptions)
     attachProgressLogger(finetuneHandle)
 
-    async function getPauseStepNumber (checkpointDir) {
+    async function getPauseStepNumber(checkpointDir) {
       const maxRetries = 10
       const retryDelayMs = 500
 
@@ -203,7 +207,9 @@ async function main () {
 
       const checkpointBeforeResume = await getPauseStepNumber(finetuneOptions.checkpointSaveDir)
       if (resumeCheckpointStep !== null && checkpointBeforeResume !== resumeCheckpointStep) {
-        console.log(`⚠️  Warning: Expected checkpoint step ${resumeCheckpointStep} but found ${checkpointBeforeResume} before resume (cycle ${cycle})`)
+        console.log(
+          `⚠️  Warning: Expected checkpoint step ${resumeCheckpointStep} but found ${checkpointBeforeResume} before resume (cycle ${cycle})`
+        )
       }
 
       console.log(`▶️  Resuming finetuning (cycle ${cycle})...`)
@@ -215,12 +221,16 @@ async function main () {
 
       const checkpointAfterResume = await getPauseStepNumber(finetuneOptions.checkpointSaveDir)
       if (checkpointAfterResume !== null) {
-        console.log(`⚠️  Warning: Checkpoint still exists after resume at step ${checkpointAfterResume} (cycle ${cycle})`)
+        console.log(
+          `⚠️  Warning: Checkpoint still exists after resume at step ${checkpointAfterResume} (cycle ${cycle})`
+        )
       }
 
       if (resumeCheckpointStep !== null) {
         const resumeFromStep = resumeCheckpointStep + 1
-        console.log(`✅ Finetuning has RESUMED from checkpoint step ${resumeCheckpointStep}, continuing from step ${resumeFromStep} (cycle ${cycle})\n`)
+        console.log(
+          `✅ Finetuning has RESUMED from checkpoint step ${resumeCheckpointStep}, continuing from step ${resumeFromStep} (cycle ${cycle})\n`
+        )
       } else {
         console.log(`✅ Finetuning has RESUMED (cycle ${cycle})\n`)
       }
@@ -253,7 +263,7 @@ async function main () {
   }
 }
 
-main().catch(async error => {
+main().catch(async (error) => {
   console.error('\n❌ Fatal error:', error.message)
   console.error('Stack:', error.stack)
   process.exit(1)

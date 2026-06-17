@@ -37,18 +37,24 @@ test('OCR processes JPEG images correctly', { timeout: TEST_TIMEOUT }, async fun
     })
 
     await response
-      .onUpdate(output => {
+      .onUpdate((output) => {
         t.ok(Array.isArray(output), 'JPEG: output should be an array')
-        t.ok(output.length === IMAGE_FORMAT_EXPECTED_TEXTS.length, `JPEG: output length should be ${IMAGE_FORMAT_EXPECTED_TEXTS.length}, got ${output.length}`)
+        t.ok(
+          output.length === IMAGE_FORMAT_EXPECTED_TEXTS.length,
+          `JPEG: output length should be ${IMAGE_FORMAT_EXPECTED_TEXTS.length}, got ${output.length}`
+        )
 
-        const texts = output.map(o => o[1])
+        const texts = output.map((o) => o[1])
         t.comment('JPEG output texts: ' + JSON.stringify(texts))
 
         for (let i = 0; i < IMAGE_FORMAT_EXPECTED_TEXTS.length; i++) {
-          t.ok(texts.includes(IMAGE_FORMAT_EXPECTED_TEXTS[i]), `JPEG: should contain text "${IMAGE_FORMAT_EXPECTED_TEXTS[i]}"`)
+          t.ok(
+            texts.includes(IMAGE_FORMAT_EXPECTED_TEXTS[i]),
+            `JPEG: should contain text "${IMAGE_FORMAT_EXPECTED_TEXTS[i]}"`
+          )
         }
       })
-      .onError(error => {
+      .onError((error) => {
         t.fail('JPEG: unexpected error: ' + JSON.stringify(error))
       })
       .await()
@@ -56,7 +62,7 @@ test('OCR processes JPEG images correctly', { timeout: TEST_TIMEOUT }, async fun
     t.pass('JPEG format processing completed successfully')
   } finally {
     await onnxOcr.unload()
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await new Promise((resolve) => setTimeout(resolve, 1000))
   }
 })
 
@@ -87,18 +93,24 @@ test('OCR processes PNG images correctly', { timeout: TEST_TIMEOUT }, async func
     })
 
     await response
-      .onUpdate(output => {
+      .onUpdate((output) => {
         t.ok(Array.isArray(output), 'PNG: output should be an array')
-        t.ok(output.length === IMAGE_FORMAT_EXPECTED_TEXTS.length, `PNG: output length should be ${IMAGE_FORMAT_EXPECTED_TEXTS.length}, got ${output.length}`)
+        t.ok(
+          output.length === IMAGE_FORMAT_EXPECTED_TEXTS.length,
+          `PNG: output length should be ${IMAGE_FORMAT_EXPECTED_TEXTS.length}, got ${output.length}`
+        )
 
-        const texts = output.map(o => o[1])
+        const texts = output.map((o) => o[1])
         t.comment('PNG output texts: ' + JSON.stringify(texts))
 
         for (let i = 0; i < IMAGE_FORMAT_EXPECTED_TEXTS.length; i++) {
-          t.ok(texts.includes(IMAGE_FORMAT_EXPECTED_TEXTS[i]), `PNG: should contain text "${IMAGE_FORMAT_EXPECTED_TEXTS[i]}"`)
+          t.ok(
+            texts.includes(IMAGE_FORMAT_EXPECTED_TEXTS[i]),
+            `PNG: should contain text "${IMAGE_FORMAT_EXPECTED_TEXTS[i]}"`
+          )
         }
       })
-      .onError(error => {
+      .onError((error) => {
         t.fail('PNG: unexpected error: ' + JSON.stringify(error))
       })
       .await()
@@ -106,7 +118,7 @@ test('OCR processes PNG images correctly', { timeout: TEST_TIMEOUT }, async func
     t.pass('PNG format processing completed successfully')
   } finally {
     await onnxOcr.unload()
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await new Promise((resolve) => setTimeout(resolve, 1000))
   }
 })
 
@@ -139,12 +151,12 @@ test('BMP and JPEG produce consistent results', { timeout: TEST_TIMEOUT }, async
     })
 
     await bmpResponse
-      .onUpdate(output => {
-        bmpTexts = output.map(o => o[1]).sort()
+      .onUpdate((output) => {
+        bmpTexts = output.map((o) => o[1]).sort()
       })
       .await()
 
-    await new Promise(resolve => setTimeout(resolve, 2000))
+    await new Promise((resolve) => setTimeout(resolve, 2000))
 
     const jpegResponse = await onnxOcr.run({
       path: jpgPath,
@@ -152,15 +164,18 @@ test('BMP and JPEG produce consistent results', { timeout: TEST_TIMEOUT }, async
     })
 
     await jpegResponse
-      .onUpdate(output => {
-        jpegTexts = output.map(o => o[1]).sort()
+      .onUpdate((output) => {
+        jpegTexts = output.map((o) => o[1]).sort()
       })
       .await()
 
     t.comment('BMP texts: ' + JSON.stringify(bmpTexts))
     t.comment('JPEG texts: ' + JSON.stringify(jpegTexts))
 
-    t.ok(bmpTexts.length === jpegTexts.length, 'BMP and JPEG should detect same number of text regions')
+    t.ok(
+      bmpTexts.length === jpegTexts.length,
+      'BMP and JPEG should detect same number of text regions'
+    )
 
     for (const text of bmpTexts) {
       t.ok(jpegTexts.includes(text), `JPEG should also detect text "${text}" found in BMP`)
@@ -169,6 +184,6 @@ test('BMP and JPEG produce consistent results', { timeout: TEST_TIMEOUT }, async
     t.pass('BMP and JPEG produce consistent results')
   } finally {
     await onnxOcr.unload()
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await new Promise((resolve) => setTimeout(resolve, 1000))
   }
 })

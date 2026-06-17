@@ -9,7 +9,7 @@ const process = require('bare-process')
 
 global.process = process
 
-function createMockedSupertonicModel ({
+function createMockedSupertonicModel({
   onOutput = () => {},
   binding,
   files,
@@ -102,10 +102,13 @@ test('Supertonic: synthesis returns audio output and stats', async (t) => {
 
   const response = await model.run({ type: 'text', input: 'Hello supertonic.' })
   const outputs = []
-  await response.onUpdate(d => outputs.push(d)).await()
+  await response.onUpdate((d) => outputs.push(d)).await()
 
   t.ok(outputs.length > 0, 'supertonic emits at least one update')
-  t.ok(outputs.some(d => d.outputArray), 'supertonic output has outputArray')
+  t.ok(
+    outputs.some((d) => d.outputArray),
+    'supertonic output has outputArray'
+  )
   t.ok(response.stats.totalSamples > 0, 'supertonic stats include totalSamples')
   t.ok(events.length > 0, 'raw addon callback fired for supertonic run')
   await model.unload()
@@ -156,10 +159,7 @@ test('Supertonic: streamChunkTokens / streamFirstChunkTokens rejected at constru
       })
     } catch (e) {
       threw = true
-      t.ok(
-        /Chatterbox-only/.test(e.message),
-        `${knob} error mentions Chatterbox-only`
-      )
+      t.ok(/Chatterbox-only/.test(e.message), `${knob} error mentions Chatterbox-only`)
       t.ok(
         /runStream\(\) \/ runStreaming\(\)/.test(e.message),
         `${knob} error points at sentence-level streaming alternative`
@@ -175,13 +175,13 @@ test('Supertonic: runStream emits per-sentence chunks with chunkIndex + isLast (
   const text = 'First chunk one. Second chunk two. Third chunk three.'
   const r = await model.runStream(text, { maxChunkScalars: 18 })
   const updates = []
-  await r.onUpdate(d => updates.push(d)).await()
+  await r.onUpdate((d) => updates.push(d)).await()
 
-  const withChunk = updates.filter(u => u.chunkIndex !== undefined)
+  const withChunk = updates.filter((u) => u.chunkIndex !== undefined)
   t.ok(withChunk.length >= 2, 'supertonic runStream emits multiple chunks')
   t.is(withChunk[0].chunkIndex, 0, 'first chunkIndex is 0')
   t.ok(typeof withChunk[0].sentenceChunk === 'string', 'sentenceChunk is a string')
-  const isLastFlags = withChunk.map(u => !!u.isLast)
+  const isLastFlags = withChunk.map((u) => !!u.isLast)
   t.is(isLastFlags.filter(Boolean).length, 1, 'exactly one isLast=true on the final chunk')
   t.is(isLastFlags[isLastFlags.length - 1], true, 'final chunk carries isLast=true')
   t.is(isLastFlags[0], false, 'first chunk is not isLast (if multiple chunks)')
@@ -191,20 +191,23 @@ test('Supertonic: runStream emits per-sentence chunks with chunkIndex + isLast (
 test('Supertonic: runStreaming with async iterator drives one job per sentence (mocked)', async (t) => {
   const model = createMockedSupertonicModel()
   await model.load()
-  async function * lines () {
+  async function* lines() {
     yield 'First yielded sentence.'
     yield 'Second yielded sentence.'
     yield 'Third yielded sentence.'
   }
   const r = await model.runStreaming(lines())
   const updates = []
-  await r.onUpdate(d => updates.push(d)).await()
+  await r.onUpdate((d) => updates.push(d)).await()
 
-  const withChunk = updates.filter(u => u.chunkIndex !== undefined)
+  const withChunk = updates.filter((u) => u.chunkIndex !== undefined)
   t.is(withChunk.length, 3, 'supertonic runStreaming emits 3 chunks')
   t.is(withChunk[0].chunkIndex, 0)
   t.is(withChunk[2].chunkIndex, 2)
-  t.ok(withChunk.every(u => u.isLast === undefined), 'isLast is undefined for async-iter mode (count not known up-front)')
+  t.ok(
+    withChunk.every((u) => u.isLast === undefined),
+    'isLast is undefined for async-iter mode (count not known up-front)'
+  )
   await model.unload()
 })
 
@@ -228,6 +231,8 @@ test('Supertonic: modelDir auto-detects supertonic.gguf', async (t) => {
       'supertonic path resolved from modelDir'
     )
   } finally {
-    try { fs.rmSync(tmpRoot, { recursive: true, force: true }) } catch (_e) {}
+    try {
+      fs.rmSync(tmpRoot, { recursive: true, force: true })
+    } catch (_e) {}
   }
 })

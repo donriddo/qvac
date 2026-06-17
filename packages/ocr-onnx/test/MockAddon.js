@@ -13,7 +13,7 @@ const END_OF_INPUT = 'end of job'
 const END_OF_OUTPUT = 'end of job'
 
 class AddonInterface {
-  constructor (configurationParams, outputCb, transitionCb = null) {
+  constructor(configurationParams, outputCb, transitionCb = null) {
     console.log('Constructing the addon')
     // Configuration params will depend on the specific addon.
     // A new addon will be in LOADING status.
@@ -23,14 +23,14 @@ class AddonInterface {
     this.jobId = 1
   }
 
-  async loadWeights (weightsData) {
+  async loadWeights(weightsData) {
     console.log(`Loading weights: ${JSON.stringify(weightsData)}`)
     // After creating the addon, we allow weights to be loaded. The loadWeights
     // method accepts chunks of data to be loaded while the addon is in the LOADING
     // status. A call to activate() will be required to move the addon to IDLE status.
   }
 
-  async destroy () {
+  async destroy() {
     console.log('Destroyed the addon')
     // Clear resources on the C++ side.
     this._state = state.IDLE
@@ -39,7 +39,7 @@ class AddonInterface {
     }
   }
 
-  async append ({ type, input, priority }) {
+  async append({ type, input, priority }) {
     const priorityStr = priority !== undefined ? ` with priority ${priority}` : ''
     console.log(`New chunk of data is appended: ${input}, type: ${type}${priorityStr}`)
 
@@ -63,7 +63,16 @@ class AddonInterface {
         }
         const currentJob = this.jobId
         const output = [
-          [[[25, 61], [62, 6], [82, 20], [46, 75]], 'tilted', 0.7302044630050659]
+          [
+            [
+              [25, 61],
+              [62, 6],
+              [82, 20],
+              [46, 75]
+            ],
+            'tilted',
+            0.7302044630050659
+          ]
         ]
         setImmediate(() => {
           // Emit an output event.
@@ -86,7 +95,13 @@ class AddonInterface {
       // If not in a valid state, immediately emit an error.
       const currentJob = this.jobId
       setImmediate(() => {
-        this.outputCb(this, 'Error', currentJob, { error: 'Invalid state for appending data' }, null)
+        this.outputCb(
+          this,
+          'Error',
+          currentJob,
+          { error: 'Invalid state for appending data' },
+          null
+        )
       })
       return currentJob
     }
@@ -101,7 +116,7 @@ class AddonInterface {
     // ‘end of job’
   }
 
-  async activate () {
+  async activate() {
     console.log('Activated the addon')
     this._state = state.LISTENING
     if (this.transitionCb) {
@@ -116,7 +131,7 @@ class AddonInterface {
     // Will be in IDLE status while waiting for next job
   }
 
-  async pause () {
+  async pause() {
     console.log('Paused the processing')
     this._state = state.PAUSED
     // Interrupt the processing as soon as possible, but allow resuming.
@@ -127,7 +142,7 @@ class AddonInterface {
     }
   }
 
-  async stop () {
+  async stop() {
     console.log('Stopped the processing')
     this._state = state.STOPPED
     // Discards the current job and stops processing. When activate() is called
@@ -137,7 +152,7 @@ class AddonInterface {
     }
   }
 
-  async cancel (jobId) {
+  async cancel(jobId) {
     console.log(`Cancel job id: ${jobId}`)
     this._state = state.STOPPED
     if (this.transitionCb) {
@@ -150,13 +165,13 @@ class AddonInterface {
     // No effect if a finished job or non-existent id is passed.
   }
 
-  async status () {
+  async status() {
     return this._state
     // Returns whether the plugin status is LOADING, PROCESSING, LISTENING, IDLE,
     // STOPPED, or PAUSED
   }
 
-  async progress () {
+  async progress() {
     return { processed: 5, total: 10 }
     // Returns total size of input read, and amount processed
     // for the current job.

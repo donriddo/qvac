@@ -8,11 +8,11 @@ const MockAddon = require('../MockAddon.js')
 const MockONNXOcr = require('../MockONNXOcr.js')
 const { wait } = require('../utils.js')
 
-function createAddon (outputCb, transitionCb) {
+function createAddon(outputCb, transitionCb) {
   return new MockAddon({}, outputCb || (() => {}), transitionCb || null)
 }
 
-function createModel () {
+function createModel() {
   return new MockONNXOcr({
     params: {
       langList: ['en'],
@@ -25,7 +25,7 @@ function createModel () {
 
 // --- cancel() state transition ---
 
-test('cancel() transitions addon to stopped state', async t => {
+test('cancel() transitions addon to stopped state', async (t) => {
   const addon = createAddon()
   await addon.activate()
   t.is(await addon.status(), 'listening', 'Precondition: should be listening before cancel')
@@ -35,9 +35,11 @@ test('cancel() transitions addon to stopped state', async t => {
   t.is(await addon.status(), 'stopped', 'State should be stopped after cancel')
 })
 
-test('cancel() fires transition callback with stopped state', async t => {
+test('cancel() fires transition callback with stopped state', async (t) => {
   const transitions = []
-  const transitionCb = (instance, newState) => { transitions.push(newState) }
+  const transitionCb = (instance, newState) => {
+    transitions.push(newState)
+  }
   const addon = createAddon(() => {}, transitionCb)
 
   await addon.activate()
@@ -48,7 +50,7 @@ test('cancel() fires transition callback with stopped state', async t => {
 
 // --- cancel before any run ---
 
-test('cancel() before load does not throw', async t => {
+test('cancel() before load does not throw', async (t) => {
   const addon = createAddon()
   // Addon is in 'loading' state – cancel should not crash
 
@@ -60,7 +62,7 @@ test('cancel() before load does not throw', async t => {
   }
 })
 
-test('cancel() before model.run does not prevent subsequent run', async t => {
+test('cancel() before model.run does not prevent subsequent run', async (t) => {
   const model = createModel()
   await model.load()
 
@@ -75,7 +77,9 @@ test('cancel() before model.run does not prevent subsequent run', async t => {
   // Now run a job – it should succeed
   const response = await model.run({ path: 'test/images/basic_test.bmp' })
   let outputReceived = false
-  response.onUpdate(() => { outputReceived = true })
+  response.onUpdate(() => {
+    outputReceived = true
+  })
   await response.await()
 
   t.ok(outputReceived, 'Run after cancel-then-activate should produce output')
@@ -83,7 +87,7 @@ test('cancel() before model.run does not prevent subsequent run', async t => {
 
 // --- cancel() wiring from response object ---
 
-test('cancel handler on response calls addon.cancel', async t => {
+test('cancel handler on response calls addon.cancel', async (t) => {
   const model = createModel()
   await model.load()
 
@@ -105,13 +109,15 @@ test('cancel handler on response calls addon.cancel', async t => {
 
 // --- sequential runs after cancel ---
 
-test('two sequential runs succeed when cancel is not called between them', async t => {
+test('two sequential runs succeed when cancel is not called between them', async (t) => {
   const model = createModel()
   await model.load()
 
   const response1 = await model.run({ path: 'test/images/basic_test.bmp' })
   let output1 = null
-  response1.onUpdate(data => { output1 = data })
+  response1.onUpdate((data) => {
+    output1 = data
+  })
   await response1.await()
   t.ok(output1, 'First run should produce output')
 
@@ -119,12 +125,14 @@ test('two sequential runs succeed when cancel is not called between them', async
 
   const response2 = await model.run({ path: 'test/images/basic_test.bmp' })
   let output2 = null
-  response2.onUpdate(data => { output2 = data })
+  response2.onUpdate((data) => {
+    output2 = data
+  })
   await response2.await()
   t.ok(output2, 'Second sequential run should also produce output')
 })
 
-test('run after cancel-and-reactivate succeeds (flag-reset semantics)', async t => {
+test('run after cancel-and-reactivate succeeds (flag-reset semantics)', async (t) => {
   // This mirrors the C++ flag-reset: cancelFlag_ is cleared at the start of
   // each process() call, so a cancelled pipeline is immediately reusable.
   const model = createModel()
@@ -136,7 +144,9 @@ test('run after cancel-and-reactivate succeeds (flag-reset semantics)', async t 
 
   const response = await model.run({ path: 'test/images/basic_test.bmp' })
   let outputReceived = false
-  response.onUpdate(() => { outputReceived = true })
+  response.onUpdate(() => {
+    outputReceived = true
+  })
   await response.await()
 
   t.ok(outputReceived, 'Run should succeed after cancel + activate (flag reset)')

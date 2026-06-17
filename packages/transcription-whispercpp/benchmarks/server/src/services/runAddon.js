@@ -7,24 +7,20 @@ const { Readable } = require('bare-stream')
 const process = require('bare-process')
 const path = require('bare-path')
 
-const ALLOWED_LIBS = [
-  '@qvac/transcription-whispercpp'
-]
+const ALLOWED_LIBS = ['@qvac/transcription-whispercpp']
 
 const loadedModels = new Map()
 
-const ALLOWED_AUDIO_DIRS = [
-  path.resolve('.'),
-  path.resolve('./models'),
-  path.resolve('./examples')
-]
+const ALLOWED_AUDIO_DIRS = [path.resolve('.'), path.resolve('./models'), path.resolve('./examples')]
 
 const validateFilePath = (filePath) => {
   const resolved = path.resolve(filePath)
   if (!fs.existsSync(resolved)) {
     throw new Error('File not found')
   }
-  const isAllowed = ALLOWED_AUDIO_DIRS.some(dir => resolved.startsWith(dir + path.sep) || resolved === dir)
+  const isAllowed = ALLOWED_AUDIO_DIRS.some(
+    (dir) => resolved.startsWith(dir + path.sep) || resolved === dir
+  )
   if (!isAllowed) {
     throw new Error('File path is outside allowed directories')
   }
@@ -43,8 +39,7 @@ const getPackageVersion = (lib) => {
 }
 
 const runAddon = async (payload) => {
-  const { inputs, whisper, config } =
-    InferenceArgsSchema.parse(payload)
+  const { inputs, whisper, config } = InferenceArgsSchema.parse(payload)
 
   const { lib: whisperLib } = whisper
 
@@ -88,13 +83,15 @@ const runAddon = async (payload) => {
     const unsupportedParams = ['mode', 'output_format', 'min_seconds', 'max_seconds']
     const whisperConfig = config.whisperConfig || {}
     const filteredWhisperConfig = Object.keys(whisperConfig)
-      .filter(key => !unsupportedParams.includes(key))
+      .filter((key) => !unsupportedParams.includes(key))
       .reduce((obj, key) => {
         obj[key] = whisperConfig[key]
         return obj
       }, {})
 
-    const removedParams = Object.keys(whisperConfig).filter(key => unsupportedParams.includes(key))
+    const removedParams = Object.keys(whisperConfig).filter((key) =>
+      unsupportedParams.includes(key)
+    )
     if (removedParams.length > 0) {
       logger.debug(`Filtered out unsupported params: ${removedParams.join(', ')}`)
     }
@@ -137,9 +134,11 @@ const runAddon = async (payload) => {
 
     let audioStream
     if (streaming) {
-      logger.info(`Processing ${audioFilePath} in streaming mode with chunk size ${streamingChunkSize}`)
+      logger.info(
+        `Processing ${audioFilePath} in streaming mode with chunk size ${streamingChunkSize}`
+      )
 
-      async function * streamChunks (buffer) {
+      async function* streamChunks(buffer) {
         let offset = 0
         while (offset < buffer.length) {
           const end = Math.min(offset + streamingChunkSize, buffer.length)
@@ -156,21 +155,25 @@ const runAddon = async (payload) => {
     const response = await modelInstance.run(audioStream)
 
     await response
-      .onUpdate(outputArr => {
+      .onUpdate((outputArr) => {
         const items = Array.isArray(outputArr) ? outputArr : [outputArr]
-        logger.debug(`Segment update: ${JSON.stringify(items.map(i => ({ text: i.text, start: i.start, end: i.end })))}`)
+        logger.debug(
+          `Segment update: ${JSON.stringify(items.map((i) => ({ text: i.text, start: i.start, end: i.end })))}`
+        )
         segments.push(...items)
       })
       .await()
 
     const text = segments
-      .map(s => s.text || s)
-      .filter(t => t && t.trim().length > 0)
+      .map((s) => s.text || s)
+      .filter((t) => t && t.trim().length > 0)
       .join(' ')
       .trim()
       .replace(/\s+/g, ' ')
 
-    logger.debug(`Transcription for ${audioFilePath}: segments=${segments.length}, text="${text.substring(0, 100)}"`)
+    logger.debug(
+      `Transcription for ${audioFilePath}: segments=${segments.length}, text="${text.substring(0, 100)}"`
+    )
     outputs.push(text)
   }
 

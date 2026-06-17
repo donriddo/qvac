@@ -29,14 +29,24 @@ const VOICE_NAME = (config.model?.voiceName || 'F1').replace(/\.(bin|json)$/i, '
 /**
  * Get file size from URL
  */
-function getFileSizeFromUrl (url) {
+function getFileSizeFromUrl(url) {
   try {
-    const result = spawnSync('curl', [
-      '-I', '-L', url,
-      '--fail', '--silent', '--show-error',
-      '--connect-timeout', '10',
-      '--max-time', '30'
-    ], { stdio: ['inherit', 'pipe', 'pipe'] })
+    const result = spawnSync(
+      'curl',
+      [
+        '-I',
+        '-L',
+        url,
+        '--fail',
+        '--silent',
+        '--show-error',
+        '--connect-timeout',
+        '10',
+        '--max-time',
+        '30'
+      ],
+      { stdio: ['inherit', 'pipe', 'pipe'] }
+    )
 
     if (result.status === 0 && result.stdout) {
       const output = result.stdout.toString()
@@ -54,7 +64,7 @@ function getFileSizeFromUrl (url) {
 /**
  * Download a file from URL using curl
  */
-async function downloadFileFromUrl (url, filepath, minSize = 1000, relRoot = null) {
+async function downloadFileFromUrl(url, filepath, minSize = 1000, relRoot = null) {
   const relBase = relRoot != null ? relRoot : path.dirname(filepath)
   const isJson = filepath.endsWith('.json')
   const dir = path.dirname(filepath)
@@ -81,12 +91,23 @@ async function downloadFileFromUrl (url, filepath, minSize = 1000, relRoot = nul
   }
 
   const maxTime = isJson ? '300' : '1800'
-  const result = spawnSync('curl', [
-    '-L', '-o', filepath, url,
-    '--fail', '--silent', '--show-error',
-    '--connect-timeout', '30',
-    '--max-time', maxTime
-  ], { stdio: ['inherit', 'inherit', 'pipe'] })
+  const result = spawnSync(
+    'curl',
+    [
+      '-L',
+      '-o',
+      filepath,
+      url,
+      '--fail',
+      '--silent',
+      '--show-error',
+      '--connect-timeout',
+      '30',
+      '--max-time',
+      maxTime
+    ],
+    { stdio: ['inherit', 'inherit', 'pipe'] }
+  )
 
   if (result.status === 0 && fs.existsSync(filepath)) {
     const stats = fs.statSync(filepath)
@@ -104,7 +125,7 @@ async function downloadFileFromUrl (url, filepath, minSize = 1000, relRoot = nul
 /**
  * Download Supertone supertonic bundle (English or multilingual HF supertonic-2) from Hugging Face.
  */
-async function downloadSupertonicBundle (destPath, voiceName, baseUrl, label) {
+async function downloadSupertonicBundle(destPath, voiceName, baseUrl, label) {
   console.log(`\n>>> Downloading Supertone supertonic ${label} (voice: ${voiceName})...`)
 
   const onnxDir = path.join(destPath, 'onnx')
@@ -147,12 +168,12 @@ async function downloadSupertonicBundle (destPath, voiceName, baseUrl, label) {
     results.push({ success: false, path: voicePath })
   }
 
-  const allSuccess = results.every(r => r.success)
+  const allSuccess = results.every((r) => r.success)
   console.log(`>>> Supertone supertonic ${label} download complete`)
   return { results, success: allSuccess }
 }
 
-async function setup () {
+async function setup() {
   console.log('=================================================')
   console.log('    Supertonic TTS Benchmark Setup')
   console.log('=================================================')
@@ -167,8 +188,18 @@ async function setup () {
   fs.mkdirSync(MODELS_MULTILINGUAL_PATH, { recursive: true })
   console.log('✓ Directories created')
 
-  await downloadSupertonicBundle(MODELS_ENGLISH_PATH, VOICE_NAME, BASE_URL_ENGLISH, 'English (HF supertonic)')
-  await downloadSupertonicBundle(MODELS_MULTILINGUAL_PATH, VOICE_NAME, BASE_URL_MULTILINGUAL, 'multilingual (HF supertonic-2)')
+  await downloadSupertonicBundle(
+    MODELS_ENGLISH_PATH,
+    VOICE_NAME,
+    BASE_URL_ENGLISH,
+    'English (HF supertonic)'
+  )
+  await downloadSupertonicBundle(
+    MODELS_MULTILINGUAL_PATH,
+    VOICE_NAME,
+    BASE_URL_MULTILINGUAL,
+    'multilingual (HF supertonic-2)'
+  )
 
   console.log('\n=================================================')
   console.log('    Setup Complete!')
@@ -177,11 +208,13 @@ async function setup () {
   console.log(`Models multilingual (HF supertonic-2): ${MODELS_MULTILINGUAL_PATH}`)
   console.log('\nNext steps:')
   console.log('  1. Start Node.js server:  npm start')
-  console.log('  2. Run benchmark:         cd ../client && python -m src.tts.main --config config/config-supertonic.yaml')
+  console.log(
+    '  2. Run benchmark:         cd ../client && python -m src.tts.main --config config/config-supertonic.yaml'
+  )
   console.log('=================================================\n')
 }
 
-setup().catch(err => {
+setup().catch((err) => {
   console.error('\n❌ Setup failed:', err)
   process.exit(1)
 })

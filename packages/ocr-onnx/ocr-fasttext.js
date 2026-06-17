@@ -8,7 +8,7 @@ class OcrFasttextInterface {
    * @param {Function} outputCb - to be called on any inference event ( started, new output, error, etc )
    * @param {Function} transitionCb - to be called on addon state changes (LISTENING, IDLE, STOPPED, etc )
    */
-  constructor (configurationParams, outputCb, transitionCb = null) {
+  constructor(configurationParams, outputCb, transitionCb = null) {
     this._handle = binding.createInstance(this, configurationParams, outputCb, transitionCb)
   }
 
@@ -19,7 +19,7 @@ class OcrFasttextInterface {
    * @param {Uint8Array} weightsData.contents
    * @param {Boolean} weightsData.completed
    */
-  async loadWeights (weightsData) {
+  async loadWeights(weightsData) {
     try {
       binding.loadWeights(this._handle, weightsData)
     } catch (err) {
@@ -34,7 +34,7 @@ class OcrFasttextInterface {
   /**
    * Moves addon to the LISTENING state after all the initialization is done
    */
-  async activate () {
+  async activate() {
     try {
       binding.activate(this._handle)
     } catch (err) {
@@ -49,7 +49,7 @@ class OcrFasttextInterface {
   /**
    * Cancel current inference process.
    */
-  async cancel () {
+  async cancel() {
     binding.cancel(this._handle)
   }
 
@@ -60,7 +60,7 @@ class OcrFasttextInterface {
    * @param {Object} data.input - The input image data
    * @param {Object} data.options - Optional processing options
    */
-  async runJob (data) {
+  async runJob(data) {
     try {
       return binding.runJob(this._handle, data)
     } catch (err) {
@@ -75,7 +75,7 @@ class OcrFasttextInterface {
   /**
    * Stops addon process and clears resources (including memory).
    */
-  async destroy () {
+  async destroy() {
     try {
       binding.destroyInstance(this._handle)
       this._handle = null
@@ -88,7 +88,7 @@ class OcrFasttextInterface {
     }
   }
 
-  async unload () {
+  async unload() {
     return this.destroy()
   }
 }

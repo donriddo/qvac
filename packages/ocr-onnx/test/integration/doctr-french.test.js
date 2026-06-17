@@ -1,7 +1,12 @@
 'use strict'
 
 const test = require('brittle')
-const { getImagePath, formatOCRPerformanceMetrics, runDoctrOCR, ensureDoctrModels } = require('./utils')
+const {
+  getImagePath,
+  formatOCRPerformanceMetrics,
+  runDoctrOCR,
+  ensureDoctrModels
+} = require('./utils')
 
 const TEST_TIMEOUT = 180 * 1000
 
@@ -21,25 +26,32 @@ test('DocTR french test - accented characters', { timeout: TEST_TIMEOUT }, async
 
   t.comment('Testing DocTR pipeline with French image (accented chars): ' + imagePath)
 
-  const { results, stats } = await runDoctrOCR(t, {
-    pathDetector: DOCTR_DETECTOR,
-    pathRecognizer: DOCTR_RECOGNIZER,
-    langList: ['fr'],
-    decodingMethod: 'attention'
-  }, imagePath)
+  const { results, stats } = await runDoctrOCR(
+    t,
+    {
+      pathDetector: DOCTR_DETECTOR,
+      pathRecognizer: DOCTR_RECOGNIZER,
+      langList: ['fr'],
+      decodingMethod: 'attention'
+    },
+    imagePath
+  )
 
-  const outputTexts = results.map(r => r.text)
+  const outputTexts = results.map((r) => r.text)
   t.ok(results.length > 0, `should detect text regions, got ${results.length}`)
   t.comment('Detected texts (French): ' + JSON.stringify(outputTexts))
-  t.comment('Full output: ' + JSON.stringify(results.map(r => ({
-    text: r.text,
-    confidence: r.confidence
-  }))))
+  t.comment(
+    'Full output: ' +
+      JSON.stringify(
+        results.map((r) => ({
+          text: r.text,
+          confidence: r.confidence
+        }))
+      )
+  )
 
   // Check for accented characters in the output
-  const hasAccent = outputTexts.some(t =>
-    /[àâéèêëîïôùûüçÀÂÉÈÊËÎÏÔÙÛÜÇ]/.test(t)
-  )
+  const hasAccent = outputTexts.some((t) => /[àâéèêëîïôùûüçÀÂÉÈÊËÎÏÔÙÛÜÇ]/.test(t))
   t.comment('Contains accented characters: ' + hasAccent)
 
   t.comment(formatOCRPerformanceMetrics('[DocTR French]', stats, outputTexts, { skipReport: true }))

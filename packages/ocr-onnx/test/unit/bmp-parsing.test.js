@@ -7,7 +7,7 @@ const MockONNXOcr = require('../MockONNXOcr.js')
 
 const TMP_DIR = path.resolve('.', 'test', 'tmp')
 
-function createModel () {
+function createModel() {
   return new MockONNXOcr({
     params: {
       langList: ['en'],
@@ -18,28 +18,30 @@ function createModel () {
   })
 }
 
-function ensureTmpDir () {
+function ensureTmpDir() {
   if (!fs.existsSync(TMP_DIR)) {
     fs.mkdirSync(TMP_DIR, { recursive: true })
   }
 }
 
-function writeTmpFile (filename, buffer) {
+function writeTmpFile(filename, buffer) {
   ensureTmpDir()
   const filePath = path.join(TMP_DIR, filename)
   fs.writeFileSync(filePath, buffer)
   return filePath
 }
 
-function cleanupTmpFile (filePath) {
-  try { fs.unlinkSync(filePath) } catch (_) {}
+function cleanupTmpFile(filePath) {
+  try {
+    fs.unlinkSync(filePath)
+  } catch (_) {}
 }
 
 /**
  * Helper to create a minimal valid BMP file buffer.
  * Standard BITMAPINFOHEADER (40 bytes), 24-bit, 2x2 pixels.
  */
-function createValidBmp ({ width = 2, height = 2, bitsPerPixel = 24, infoHeaderSize = 40 } = {}) {
+function createValidBmp({ width = 2, height = 2, bitsPerPixel = 24, infoHeaderSize = 40 } = {}) {
   const bytesPerPixel = bitsPerPixel / 8
   const rowSize = Math.ceil((width * bytesPerPixel) / 4) * 4
   const pixelDataSize = rowSize * Math.abs(height)
@@ -50,7 +52,7 @@ function createValidBmp ({ width = 2, height = 2, bitsPerPixel = 24, infoHeaderS
 
   // BMP file header (14 bytes)
   buf[0] = 0x42 // 'B'
-  buf[1] = 0x4D // 'M'
+  buf[1] = 0x4d // 'M'
   buf.writeUInt32LE(fileSize, 2)
   buf.writeUInt32LE(pixelDataOffset, 10)
 
@@ -68,7 +70,7 @@ function createValidBmp ({ width = 2, height = 2, bitsPerPixel = 24, infoHeaderS
 
   // Fill pixel data with dummy values
   for (let i = pixelDataOffset; i < fileSize; i++) {
-    buf[i] = 0xFF
+    buf[i] = 0xff
   }
 
   return buf
@@ -77,7 +79,7 @@ function createValidBmp ({ width = 2, height = 2, bitsPerPixel = 24, infoHeaderS
 /**
  * Test that a zero-byte file is rejected.
  */
-test('BMP parser rejects zero-byte file', async t => {
+test('BMP parser rejects zero-byte file', async (t) => {
   const model = createModel()
   const filePath = writeTmpFile('zero.bmp', Buffer.alloc(0))
 
@@ -85,7 +87,10 @@ test('BMP parser rejects zero-byte file', async t => {
     model.getImage(filePath)
     t.fail('Should have thrown an error')
   } catch (err) {
-    t.ok(err.message.includes('Invalid BMP file or insufficient data'), 'Should report invalid/insufficient data')
+    t.ok(
+      err.message.includes('Invalid BMP file or insufficient data'),
+      'Should report invalid/insufficient data'
+    )
   } finally {
     cleanupTmpFile(filePath)
   }
@@ -94,7 +99,7 @@ test('BMP parser rejects zero-byte file', async t => {
 /**
  * Test that a file too small to contain a BMP header is rejected.
  */
-test('BMP parser rejects file smaller than minimum header size', async t => {
+test('BMP parser rejects file smaller than minimum header size', async (t) => {
   const model = createModel()
   const filePath = writeTmpFile('tiny.bmp', Buffer.alloc(10))
 
@@ -102,7 +107,10 @@ test('BMP parser rejects file smaller than minimum header size', async t => {
     model.getImage(filePath)
     t.fail('Should have thrown an error')
   } catch (err) {
-    t.ok(err.message.includes('Invalid BMP file or insufficient data'), 'Should report invalid/insufficient data')
+    t.ok(
+      err.message.includes('Invalid BMP file or insufficient data'),
+      'Should report invalid/insufficient data'
+    )
   } finally {
     cleanupTmpFile(filePath)
   }
@@ -111,7 +119,7 @@ test('BMP parser rejects file smaller than minimum header size', async t => {
 /**
  * Test that a file with wrong magic bytes (not BMP) is rejected.
  */
-test('BMP parser rejects file with non-BMP magic bytes', async t => {
+test('BMP parser rejects file with non-BMP magic bytes', async (t) => {
   const model = createModel()
   const buf = Buffer.alloc(100)
   buf[0] = 0x89 // PNG magic byte
@@ -131,13 +139,13 @@ test('BMP parser rejects file with non-BMP magic bytes', async t => {
 /**
  * Test that a BMP with truncated info header is rejected.
  */
-test('BMP parser rejects BMP with incomplete info header', async t => {
+test('BMP parser rejects BMP with incomplete info header', async (t) => {
   const model = createModel()
   // Create a buffer with BMP magic bytes but truncated after the info header size field
   // BMP header = 14 bytes, then info header size says 40 but we only give 20 total bytes
   const buf = Buffer.alloc(20)
   buf[0] = 0x42 // 'B'
-  buf[1] = 0x4D // 'M'
+  buf[1] = 0x4d // 'M'
   buf.writeUInt32LE(20, 2) // file size
   buf.writeUInt32LE(40, 14) // info header size claims 40 bytes, but file is only 20 bytes
 
@@ -156,12 +164,12 @@ test('BMP parser rejects BMP with incomplete info header', async t => {
 /**
  * Test that a BMP with unsupported (too small) info header size is rejected.
  */
-test('BMP parser rejects BMP with unsupported info header size', async t => {
+test('BMP parser rejects BMP with unsupported info header size', async (t) => {
   const model = createModel()
   // Create buffer with BMP magic, and info header size = 8 (less than minimum 12)
   const buf = Buffer.alloc(30)
   buf[0] = 0x42
-  buf[1] = 0x4D
+  buf[1] = 0x4d
   buf.writeUInt32LE(30, 2)
   buf.writeUInt32LE(8, 14) // info header size too small
 
@@ -171,7 +179,10 @@ test('BMP parser rejects BMP with unsupported info header size', async t => {
     model.getImage(filePath)
     t.fail('Should have thrown an error')
   } catch (err) {
-    t.ok(err.message.includes('Unsupported BMP Information Header size'), 'Should report unsupported header size')
+    t.ok(
+      err.message.includes('Unsupported BMP Information Header size'),
+      'Should report unsupported header size'
+    )
   } finally {
     cleanupTmpFile(filePath)
   }
@@ -180,7 +191,7 @@ test('BMP parser rejects BMP with unsupported info header size', async t => {
 /**
  * Test that a valid BMP with standard 40-byte header parses correctly.
  */
-test('BMP parser handles valid BMP with 40-byte info header', async t => {
+test('BMP parser handles valid BMP with 40-byte info header', async (t) => {
   const model = createModel()
   const bmpBuffer = createValidBmp({ width: 4, height: 3 })
   const filePath = writeTmpFile('valid_40.bmp', bmpBuffer)
@@ -199,7 +210,7 @@ test('BMP parser handles valid BMP with 40-byte info header', async t => {
 /**
  * Test that a valid BMP with 12-byte OS/2 header parses correctly.
  */
-test('BMP parser handles valid BMP with 12-byte info header (OS/2 format)', async t => {
+test('BMP parser handles valid BMP with 12-byte info header (OS/2 format)', async (t) => {
   const model = createModel()
   const bmpBuffer = createValidBmp({ width: 3, height: 2, infoHeaderSize: 12 })
   const filePath = writeTmpFile('valid_12.bmp', bmpBuffer)
@@ -217,7 +228,7 @@ test('BMP parser handles valid BMP with 12-byte info header (OS/2 format)', asyn
 /**
  * Test that BMP parser handles file-not-found gracefully.
  */
-test('BMP parser throws on non-existent file', async t => {
+test('BMP parser throws on non-existent file', async (t) => {
   const model = createModel()
 
   let errorCaught = false
@@ -225,14 +236,18 @@ test('BMP parser throws on non-existent file', async t => {
     model.getImage('/nonexistent/path/image.bmp')
   } catch (err) {
     errorCaught = true
-    t.ok(err.message.includes('no such file or directory') || err.message.includes('ENOENT'),
-      'Should throw file not found error')
+    t.ok(
+      err.message.includes('no such file or directory') || err.message.includes('ENOENT'),
+      'Should throw file not found error'
+    )
   }
   t.ok(errorCaught, 'Error should be caught')
 })
 
 // Cleanup tmp directory after all tests
-test('Cleanup temp directory', async t => {
-  try { fs.rmdirSync(TMP_DIR) } catch (_) {}
+test('Cleanup temp directory', async (t) => {
+  try {
+    fs.rmdirSync(TMP_DIR)
+  } catch (_) {}
   t.pass('Cleanup complete')
 })

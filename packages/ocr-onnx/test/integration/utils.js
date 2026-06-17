@@ -35,16 +35,19 @@ try {
     }
 
     return {
-      record (testName, metrics, extra) {
+      record(testName, metrics, extra) {
         var entry = {
           test: testName,
           execution_provider: (extra && extra.execution_provider) || null,
-          metrics: Object.assign({
-            total_time_ms: null,
-            detection_time_ms: null,
-            recognition_time_ms: null,
-            text_regions: null
-          }, metrics),
+          metrics: Object.assign(
+            {
+              total_time_ms: null,
+              detection_time_ms: null,
+              recognition_time_ms: null,
+              text_regions: null
+            },
+            metrics
+          ),
           input: (extra && extra.input) || null,
           output: (extra && extra.output) || null,
           quality: (extra && extra.quality) || undefined
@@ -52,7 +55,7 @@ try {
         if (extra && extra.image_path) entry.image_path = extra.image_path
         _results.push(entry)
       },
-      toJSON () {
+      toJSON() {
         return {
           schema_version: '1.0',
           addon: _addon,
@@ -62,7 +65,7 @@ try {
           results: _results
         }
       },
-      writeReport () {
+      writeReport() {
         var json = JSON.stringify(this.toJSON())
         var written = false
         var dirs = []
@@ -75,7 +78,9 @@ try {
         dirs.push('/tmp')
         for (var di = 0; di < dirs.length; di++) {
           try {
-            try { fs.mkdirSync(dirs[di], { recursive: true }) } catch (_) {}
+            try {
+              fs.mkdirSync(dirs[di], { recursive: true })
+            } catch (_) {}
             var p = path.join(dirs[di], 'perf-report.json')
             fs.writeFileSync(p, json)
             console.log('[PERF_REPORT_PATH]' + p)
@@ -88,17 +93,29 @@ try {
           console.log('[perf-reporter] all write locations failed')
         }
       },
-      writeStepSummary () {},
-      writeToConsole (opts) {
+      writeStepSummary() {},
+      writeToConsole(opts) {
         try {
           var data = this.toJSON()
           var lightweight = opts && opts.lightweight
           data.results = data.results.map(function (r) {
             var q = r.quality
             if (lightweight && q) {
-              q = { cer: q.cer, wer: q.wer, word_recognition_rate: q.word_recognition_rate, keyword_detection_rate: q.keyword_detection_rate, key_value_accuracy: q.key_value_accuracy }
+              q = {
+                cer: q.cer,
+                wer: q.wer,
+                word_recognition_rate: q.word_recognition_rate,
+                keyword_detection_rate: q.keyword_detection_rate,
+                key_value_accuracy: q.key_value_accuracy
+              }
             }
-            return { test: r.test, execution_provider: r.execution_provider, metrics: r.metrics, quality: q, image_path: r.image_path || null }
+            return {
+              test: r.test,
+              execution_provider: r.execution_provider,
+              metrics: r.metrics,
+              quality: q,
+              image_path: r.image_path || null
+            }
           })
           var json = JSON.stringify(data)
           // Android logcat has per-entry size limits that vary by device.
@@ -111,27 +128,43 @@ try {
             var id = Date.now().toString(36)
             var n = Math.ceil(json.length / CHUNK)
             for (var i = 0; i < n; i++) {
-              console.log('[PERF_CHUNK:' + id + ':' + i + ':' + n + ']' + json.substring(i * CHUNK, (i + 1) * CHUNK))
+              console.log(
+                '[PERF_CHUNK:' +
+                  id +
+                  ':' +
+                  i +
+                  ':' +
+                  n +
+                  ']' +
+                  json.substring(i * CHUNK, (i + 1) * CHUNK)
+              )
             }
           }
         } catch (err) {
           console.log('[perf-reporter] mobile console write failed: ' + err.message)
         }
       },
-      get length () { return _results.length }
+      get length() {
+        return _results.length
+      }
     }
   }
   // --- Inline quality metrics for mobile (pure computation, no external deps) ---
 
-  function _normalize (text) {
-    return String(text).replace(/\r\n/g, '\n').replace(/[\t\v\f]/g, ' ').replace(/ {2,}/g, ' ').trim().toLowerCase()
+  function _normalize(text) {
+    return String(text)
+      .replace(/\r\n/g, '\n')
+      .replace(/[\t\v\f]/g, ' ')
+      .replace(/ {2,}/g, ' ')
+      .trim()
+      .toLowerCase()
   }
 
-  function _tokenize (text) {
+  function _tokenize(text) {
     return _normalize(text).split(/\s+/).filter(Boolean)
   }
 
-  function _levenshtein (a, b) {
+  function _levenshtein(a, b) {
     var m = a.length
     var n = b.length
     if (m === 0) return n
@@ -146,12 +179,16 @@ try {
         var cost = a[i - 1] === b[j - 1] ? 0 : 1
         curr[j] = Math.min(prev[j] + 1, curr[j - 1] + 1, prev[j - 1] + cost)
       }
-      var tmp = prev; prev = curr; curr = tmp
+      var tmp = prev
+      prev = curr
+      curr = tmp
     }
     return prev[n]
   }
 
-  function _round4 (v) { return Math.round(v * 10000) / 10000 }
+  function _round4(v) {
+    return Math.round(v * 10000) / 10000
+  }
 
   evaluateQuality = function (ocrTexts, groundTruth) {
     if (!groundTruth) return null
@@ -165,12 +202,22 @@ try {
       var rTokens = _tokenize(gt.reference_text).sort()
       var h = hTokens.join(' ')
       var r = rTokens.join(' ')
-      result.cer = _round4(r.length === 0 ? (h.length === 0 ? 0 : 1) : _levenshtein(h, r) / r.length)
-      result.wer = _round4(rTokens.length === 0 ? (hTokens.length === 0 ? 0 : 1) : _levenshtein(hTokens, rTokens) / rTokens.length)
+      result.cer = _round4(
+        r.length === 0 ? (h.length === 0 ? 0 : 1) : _levenshtein(h, r) / r.length
+      )
+      result.wer = _round4(
+        rTokens.length === 0
+          ? hTokens.length === 0
+            ? 0
+            : 1
+          : _levenshtein(hTokens, rTokens) / rTokens.length
+      )
 
       var ocrLower = joined.toLowerCase()
       var uniqueRef = {}
-      for (var ri = 0; ri < rTokens.length; ri++) { uniqueRef[rTokens[ri]] = true }
+      for (var ri = 0; ri < rTokens.length; ri++) {
+        uniqueRef[rTokens[ri]] = true
+      }
       var refList = Object.keys(uniqueRef)
       var wrrMatched = 0
       var wrrMissed = []
@@ -188,7 +235,9 @@ try {
       var lower = joined.toLowerCase()
       var wordSet = {}
       var _words = lower.split(/\s+/)
-      for (var wi = 0; wi < _words.length; wi++) { if (_words[wi]) wordSet[_words[wi]] = true }
+      for (var wi = 0; wi < _words.length; wi++) {
+        if (_words[wi]) wordSet[_words[wi]] = true
+      }
       var found = []
       var missing = []
       for (var ki = 0; ki < gt.required_keywords.length; ki++) {
@@ -198,7 +247,10 @@ try {
           var kwParts = kwTarget.split(/\s+/)
           kwMatch = true
           for (var kp = 0; kp < kwParts.length; kp++) {
-            if (kwParts[kp] && !wordSet[kwParts[kp]]) { kwMatch = false; break }
+            if (kwParts[kp] && !wordSet[kwParts[kp]]) {
+              kwMatch = false
+              break
+            }
           }
         }
         if (kwMatch) found.push(gt.required_keywords[ki])
@@ -214,7 +266,9 @@ try {
       var lowerKV = joined.toLowerCase()
       var kvWordSet = {}
       var _kvWords = lowerKV.split(/\s+/)
-      for (var wj = 0; wj < _kvWords.length; wj++) { if (_kvWords[wj]) kvWordSet[_kvWords[wj]] = true }
+      for (var wj = 0; wj < _kvWords.length; wj++) {
+        if (_kvWords[wj]) kvWordSet[_kvWords[wj]] = true
+      }
       var matched = []
       var unmatched = []
       for (var vi = 0; vi < gt.key_values.length; vi++) {
@@ -225,12 +279,21 @@ try {
           var keyParts = kvKeyLower.split(/\s+/)
           keyFound = true
           for (var kpi = 0; kpi < keyParts.length; kpi++) {
-            if (keyParts[kpi] && !kvWordSet[keyParts[kpi]]) { keyFound = false; break }
+            if (keyParts[kpi] && !kvWordSet[keyParts[kpi]]) {
+              keyFound = false
+              break
+            }
           }
         }
         var valueFound = lowerKV.includes(String(pair.value).toLowerCase())
         if (keyFound && valueFound) matched.push(pair)
-        else unmatched.push({ key: pair.key, value: pair.value, key_found: keyFound, value_found: valueFound })
+        else
+          unmatched.push({
+            key: pair.key,
+            value: pair.value,
+            key_found: keyFound,
+            value_found: valueFound
+          })
       }
       result.key_value_accuracy = _round4(matched.length / gt.key_values.length)
       result.key_values_matched = matched.length
@@ -269,7 +332,10 @@ try {
     for (var ci = 0; ci < candidates.length; ci++) {
       try {
         var exists = false
-        try { fs.statSync(candidates[ci]); exists = true } catch (_) {}
+        try {
+          fs.statSync(candidates[ci])
+          exists = true
+        } catch (_) {}
         if (exists) {
           var data = fs.readFileSync(candidates[ci], 'utf-8')
           return JSON.parse(data)
@@ -293,14 +359,14 @@ const _perfReporter = createPerformanceReporter({
 const _reportPath = path.resolve('.', 'test/results/performance-report.json')
 let _reportScheduled = false
 
-function _flushPerfReport () {
+function _flushPerfReport() {
   if (_perfReporter.length > 0) {
     _perfReporter.writeReport(_reportPath)
     _perfReporter.writeToConsole()
   }
 }
 
-function _scheduleReportWrite () {
+function _scheduleReportWrite() {
   if (_reportScheduled) return
   _reportScheduled = true
   process.on('exit', _flushPerfReport)
@@ -356,7 +422,7 @@ const mobileAssetMapping = {
  * @param {string} relativePath - Relative path from root (e.g., '/test/images/basic_test.bmp')
  * @returns {string} Full path to the file
  */
-function getImagePath (relativePath) {
+function getImagePath(relativePath) {
   if (isMobile && global.assetPaths) {
     const originalFilename = path.basename(relativePath)
     // Use renamed filename if mapping exists, otherwise use original
@@ -377,7 +443,7 @@ function getImagePath (relativePath) {
  * @param {string} url - URL to download from
  * @param {string} destPath - Destination file path
  */
-async function downloadFile (url, destPath) {
+async function downloadFile(url, destPath) {
   const fetch = require('bare-fetch')
   console.log(`   Downloading: ${url.substring(0, 60)}...`)
 
@@ -397,7 +463,7 @@ async function downloadFile (url, destPath) {
  * @param {Buffer} buffer
  * @returns {string} hex digest
  */
-function sha256 (buffer) {
+function sha256(buffer) {
   const crypto = require('bare-crypto')
   const hash = crypto.createHash('sha256')
   hash.update(buffer)
@@ -409,7 +475,7 @@ function sha256 (buffer) {
  * On mobile, checks ocr-model-urls.json first (supports S3 presigned URLs),
  * then falls back to the hardcoded GitHub release URL.
  */
-function _resolveDoctrUrl (filename) {
+function _resolveDoctrUrl(filename) {
   const model = DOCTR_MODELS[filename]
   if (!model) return null
 
@@ -428,7 +494,10 @@ function _resolveDoctrUrl (filename) {
   if (!urlConfig) {
     for (const p of ['../../testAssets/ocr-model-urls.json', '../testAssets/ocr-model-urls.json']) {
       if (fs.existsSync(p)) {
-        try { urlConfig = JSON.parse(fs.readFileSync(p, 'utf8')); break } catch (_) {}
+        try {
+          urlConfig = JSON.parse(fs.readFileSync(p, 'utf8'))
+          break
+        } catch (_) {}
       }
     }
   }
@@ -443,7 +512,7 @@ function _resolveDoctrUrl (filename) {
  * Verifies SHA-256 checksum after download.
  * @param {string} filename - Model filename (e.g., 'db_resnet50.onnx')
  */
-async function downloadDoctrModel (filename) {
+async function downloadDoctrModel(filename) {
   const destPath = path.join(DOCTR_MODELS_DIR, filename)
   if (fs.existsSync(destPath)) return
 
@@ -465,7 +534,9 @@ async function downloadDoctrModel (filename) {
       if (model.sha256) {
         const actual = sha256(buffer)
         if (actual !== model.sha256) {
-          throw new Error(`Checksum mismatch for ${filename}: expected ${model.sha256}, got ${actual}`)
+          throw new Error(
+            `Checksum mismatch for ${filename}: expected ${model.sha256}, got ${actual}`
+          )
         }
         console.log(`   Checksum verified: ${filename}`)
       }
@@ -476,8 +547,10 @@ async function downloadDoctrModel (filename) {
       lastError = e
       if (attempt < maxAttempts) {
         const delayMs = isMobile ? attempt * 10000 : attempt * 5000
-        console.log(`   Attempt ${attempt}/${maxAttempts} failed: ${e.message}. Retrying in ${delayMs / 1000}s...`)
-        await new Promise(resolve => setTimeout(resolve, delayMs))
+        console.log(
+          `   Attempt ${attempt}/${maxAttempts} failed: ${e.message}. Retrying in ${delayMs / 1000}s...`
+        )
+        await new Promise((resolve) => setTimeout(resolve, delayMs))
       }
     }
   }
@@ -492,7 +565,7 @@ async function downloadDoctrModel (filename) {
  * @param {string[]} [models] - Model filenames to ensure. Defaults to all 4 models.
  * @returns {Promise<Object|null>} Map of model name (without extension) to full path, or null on mobile failure
  */
-async function ensureDoctrModels (models) {
+async function ensureDoctrModels(models) {
   if (!models) models = Object.keys(DOCTR_MODEL_URLS)
   fs.mkdirSync(DOCTR_MODELS_DIR, { recursive: true })
 
@@ -502,7 +575,9 @@ async function ensureDoctrModels (models) {
     } catch (e) {
       if (isMobile) {
         console.log(`[ensureDoctrModels] Failed to download ${filename}: ${e.message}`)
-        console.log('[ensureDoctrModels] Returning null — DocTR tests will be skipped on this device')
+        console.log(
+          '[ensureDoctrModels] Returning null — DocTR tests will be skipped on this device'
+        )
         return null
       }
       throw e
@@ -524,7 +599,7 @@ async function ensureDoctrModels (models) {
  * @param {string} modelName - Model name (e.g., 'detector_craft' or 'recognizer_latin')
  * @returns {Promise<string>} Path to the model file
  */
-async function ensureModelPath (modelName) {
+async function ensureModelPath(modelName) {
   const modelFilename = `${modelName}.onnx`
   // Models are now in rec_dyn subdirectory (dynamic width models)
   const relativePath = `models/ocr/rec_dyn/${modelFilename}`
@@ -623,7 +698,7 @@ async function ensureModelPath (modelName) {
  * @param {Object} [opts.groundTruth] - Explicit ground truth (overrides auto-discovery)
  * @returns {string} Formatted performance metrics string
  */
-function formatOCRPerformanceMetrics (label, stats, outputTexts = [], opts) {
+function formatOCRPerformanceMetrics(label, stats, outputTexts = [], opts) {
   const totalTimeMs = stats.totalTime ? stats.totalTime * 1000 : 0
   const detectionTimeMs = stats.detectionTime ? stats.detectionTime * 1000 : 0
   const recognitionTimeMs = stats.recognitionTime ? stats.recognitionTime * 1000 : 0
@@ -633,7 +708,8 @@ function formatOCRPerformanceMetrics (label, stats, outputTexts = [], opts) {
   const ep = /\[gpu\]/i.test(label) ? 'gpu' : /\[cpu\]/i.test(label) ? 'cpu' : null
 
   let quality = null
-  const gt = (opts && opts.groundTruth) || (opts && opts.imagePath ? findGroundTruth(opts.imagePath) : null)
+  const gt =
+    (opts && opts.groundTruth) || (opts && opts.imagePath ? findGroundTruth(opts.imagePath) : null)
   if (gt && outputTexts.length > 0) {
     try {
       quality = evaluateQuality(outputTexts, gt)
@@ -643,17 +719,21 @@ function formatOCRPerformanceMetrics (label, stats, outputTexts = [], opts) {
   }
 
   if (!(opts && opts.skipReport)) {
-    _perfReporter.record(label, {
-      total_time_ms: Math.round(totalTimeMs),
-      detection_time_ms: Math.round(detectionTimeMs),
-      recognition_time_ms: Math.round(recognitionTimeMs),
-      text_regions: textRegionsCount
-    }, {
-      execution_provider: ep,
-      output: JSON.stringify(outputTexts),
-      quality,
-      image_path: (opts && opts.imagePath) || null
-    })
+    _perfReporter.record(
+      label,
+      {
+        total_time_ms: Math.round(totalTimeMs),
+        detection_time_ms: Math.round(detectionTimeMs),
+        recognition_time_ms: Math.round(recognitionTimeMs),
+        text_regions: textRegionsCount
+      },
+      {
+        execution_provider: ep,
+        output: JSON.stringify(outputTexts),
+        quality,
+        image_path: (opts && opts.imagePath) || null
+      }
+    )
     _scheduleReportWrite()
 
     if (isMobile) {
@@ -687,7 +767,7 @@ function formatOCRPerformanceMetrics (label, stats, outputTexts = [], opts) {
       out += `\n    - Missing keywords: ${JSON.stringify(quality.keywords_missing)}`
     }
     if (quality.key_values_unmatched && quality.key_values_unmatched.length > 0) {
-      const unmatchedKeys = quality.key_values_unmatched.map(u => u.key)
+      const unmatchedKeys = quality.key_values_unmatched.map((u) => u.key)
       out += `\n    - Unmatched KV keys: ${JSON.stringify(unmatchedKeys)}`
     }
   }
@@ -704,7 +784,7 @@ function formatOCRPerformanceMetrics (label, stats, outputTexts = [], opts) {
  * @param {number} [timeoutMs=10000] - Max time to wait for unload
  * @returns {Promise<void>}
  */
-async function safeUnload (onnxOcr, timeoutMs = 10000) {
+async function safeUnload(onnxOcr, timeoutMs = 10000) {
   try {
     let timeoutId
     const unloadPromise = onnxOcr.unload()
@@ -728,7 +808,7 @@ async function safeUnload (onnxOcr, timeoutMs = 10000) {
  * @param {string} imagePath - Path to the image file
  * @returns {Promise<{results: Array, stats: Object}>}
  */
-async function runDoctrOCR (t, params, imagePath) {
+async function runDoctrOCR(t, params, imagePath) {
   const { ONNXOcr } = require('../..')
 
   const onnxOcr = new ONNXOcr({
@@ -755,13 +835,13 @@ async function runDoctrOCR (t, params, imagePath) {
     let results = []
 
     await response
-      .onUpdate(output => {
+      .onUpdate((output) => {
         t.ok(Array.isArray(output), 'output should be an array')
         console.log('[runDoctrOCR] onUpdate: got ' + output.length + ' items')
-        results = output.map(o => ({ text: o[1], confidence: o[2], bbox: o[0] }))
+        results = output.map((o) => ({ text: o[1], confidence: o[2], bbox: o[0] }))
         console.log('[runDoctrOCR] onUpdate: mapped ' + results.length + ' results')
       })
-      .onError(error => {
+      .onError((error) => {
         t.fail('unexpected error: ' + JSON.stringify(error))
       })
       .await()
@@ -771,7 +851,7 @@ async function runDoctrOCR (t, params, imagePath) {
   } finally {
     await safeUnload(onnxOcr)
     // Allow ONNX Runtime to fully clean up async operations before next test
-    await new Promise(resolve => setTimeout(resolve, 2000))
+    await new Promise((resolve) => setTimeout(resolve, 2000))
   }
 }
 

@@ -12,7 +12,7 @@ const ImgStableDiffusion = require('../index')
  * features like skin tone and structure while generating a new image.
  */
 
-async function main () {
+async function main() {
   const modelDir = path.join(__dirname, '../models')
   const inputImagePath = path.join(__dirname, '../assets/von-neumann.jpg')
   const outputImagePath = path.join(__dirname, '../temp/von-neumann_transformed_flux2.png')
@@ -69,8 +69,8 @@ async function main () {
     let lastStepTime = tGenStart
 
     const response = await model.run({
-
-      prompt: 'same person, studio lighting, professional corporate blazer, keep everything the same except add the jacket, same position',
+      prompt:
+        'same person, studio lighting, professional corporate blazer, keep everything the same except add the jacket, same position',
 
       // prompt: 'same person, change my hair into an orange spiky-blonde hair with blue eyes, and put me in an orange/blue tracksuit, black studio background, studio lighting',
       // prompt: 'same person, a mountain climber posing for a magazine photo, with a climbing backpack, and climbing axes, black studio background, studio lighting',

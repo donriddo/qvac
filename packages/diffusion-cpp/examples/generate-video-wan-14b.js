@@ -31,11 +31,10 @@ const T5XXL_MODEL = 'umt5_xxl_fp16.safetensors'
 // CFG scale a notch (5.5-7.0) compared to the 1.3B defaults --
 // 14B is more sample-efficient and tends to over-saturate at CFG 8+.
 // ---------------------------------------------------------------------------
-const PROMPT = process.env.PROMPT ||
-  'a colorful bird flapping its wings, dynamic motion, sharp detail'
+const PROMPT =
+  process.env.PROMPT || 'a colorful bird flapping its wings, dynamic motion, sharp detail'
 
-const NEG_PROMPT = process.env.NEG_PROMPT ||
-  'blurry, low quality, static, jittery, watermark'
+const NEG_PROMPT = process.env.NEG_PROMPT || 'blurry, low quality, static, jittery, watermark'
 
 const WIDTH = parseInt(process.env.WIDTH || '480', 10)
 const HEIGHT = parseInt(process.env.HEIGHT || '832', 10)
@@ -55,7 +54,7 @@ const CFG_SCALE = parseFloat(process.env.CFG_SCALE || '6.0')
 const FLOW_SHIFT = parseFloat(process.env.FLOW_SHIFT || '3.0')
 const SEED = parseInt(process.env.SEED || '42', 10)
 
-async function main () {
+async function main() {
   fs.mkdirSync(OUTPUT_DIR, { recursive: true })
 
   if (VIDEO_FRAMES < 5 || (VIDEO_FRAMES - 1) % 4 !== 0) {
@@ -150,7 +149,7 @@ async function main () {
               const bar = '█'.repeat(Math.floor(pct / 5)).padEnd(20, '░')
               process.stdout.write(
                 `\r  [${bar}] ${tick.step}/${tick.total} | ` +
-                `step ${(stepMs / 1000).toFixed(1)}s | wall ${(wallMs / 1000).toFixed(1)}s  `
+                  `step ${(stepMs / 1000).toFixed(1)}s | wall ${(wallMs / 1000).toFixed(1)}s  `
               )
             }
           } catch (_) {}
@@ -176,7 +175,7 @@ async function main () {
   }
 }
 
-main().catch(err => {
+main().catch((err) => {
   console.error('Fatal:', err.message || err)
   process.exit(1)
 })

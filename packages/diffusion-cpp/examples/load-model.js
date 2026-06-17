@@ -14,7 +14,7 @@ const MODEL_NAME = 'flux-2-klein-4b-Q8_0.gguf'
 const LLM_MODEL = 'Qwen3-4B-Q4_K_M.gguf'
 const VAE_MODEL = 'flux2-vae.safetensors'
 
-async function main () {
+async function main() {
   console.log('FLUX.2 [klein] 4B — load/unload example')
   console.log('========================================')
   console.log('Models dir :', MODELS_DIR)
@@ -56,7 +56,7 @@ async function main () {
   }
 }
 
-main().catch(err => {
+main().catch((err) => {
   console.error('Fatal:', err.message || err)
   process.exit(1)
 })

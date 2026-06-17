@@ -25,7 +25,7 @@ const ImgStableDiffusion = require('../index')
  *   bare examples/generate-fusion.js
  */
 
-async function main () {
+async function main() {
   const modelDir = path.join(__dirname, '../models')
   const refPaths = [
     path.join(__dirname, '../assets/von-neumann.jpg'),

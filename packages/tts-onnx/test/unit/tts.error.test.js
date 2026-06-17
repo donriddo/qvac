@@ -4,7 +4,7 @@ const test = require('brittle')
 const { TTSInterface } = require('../../tts.js')
 const { QvacErrorAddonTTS, ERR_CODES } = require('../../lib/error.js')
 
-function createErrorBinding (errorMethods = {}) {
+function createErrorBinding(errorMethods = {}) {
   return {
     createInstance: () => ({ id: 1 }),
     activate: (handle) => {

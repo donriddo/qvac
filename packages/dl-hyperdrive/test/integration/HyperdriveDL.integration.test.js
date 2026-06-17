@@ -14,7 +14,7 @@ const { QvacErrorHyperdrive, ERR_CODES } = require('../../src/lib/error')
 
 const HYPERDRIVE_PROTOCOL_PREFIX = 'hd://'
 
-async function testenv (t) {
+async function testenv(t) {
   const { teardown } = t
 
   const corestore = new Corestore(await getTmpDir())
@@ -71,8 +71,14 @@ test('HyperDriveDL with drive key', async (t) => {
   const files = await hyperDriveDL.list('/')
   t.ok(Array.isArray(files), 'list should return array')
   t.ok(files.length > 0, 'list should find files')
-  t.ok(files.some(f => f.key === testFilePath), 'list should include test file')
-  t.ok(files.some(f => f.cached), 'list should show cached status')
+  t.ok(
+    files.some((f) => f.key === testFilePath),
+    'list should include test file'
+  )
+  t.ok(
+    files.some((f) => f.cached),
+    'list should show cached status'
+  )
 
   // Test download
   const downloaded = await hyperDriveDL.download(testFilePath)
@@ -82,18 +88,25 @@ test('HyperDriveDL with drive key', async (t) => {
   await hyperDriveDL.deleteLocal(testFilePath) // Clear cache first
   const progressCalls = []
   const progressCallback = (data) => progressCalls.push(data)
-  const progressReport = new ProgressReport({ [testFilePath]: testContent.length }, progressCallback)
+  const progressReport = new ProgressReport(
+    { [testFilePath]: testContent.length },
+    progressCallback
+  )
 
   const downloadedWithProgress = await hyperDriveDL.download(testFilePath, progressReport)
   t.ok(downloadedWithProgress, 'Download with progress should succeed')
 
-  await new Promise(resolve => setTimeout(resolve, 100)) // wait for download to complete
+  await new Promise((resolve) => setTimeout(resolve, 100)) // wait for download to complete
 
-  t.ok(progressCalls.some(call =>
-    call.action === 'completeFile' &&
-    call.currentFile === testFilePath &&
-    call.currentFileProgress === '100.00'
-  ), 'Should report completion')
+  t.ok(
+    progressCalls.some(
+      (call) =>
+        call.action === 'completeFile' &&
+        call.currentFile === testFilePath &&
+        call.currentFileProgress === '100.00'
+    ),
+    'Should report completion'
+  )
 
   // Test deleteLocal
   const deleted = await hyperDriveDL.deleteLocal(testFilePath)
@@ -138,7 +151,10 @@ test('HyperDriveDL with external drive', async (t) => {
   const files = await hyperDriveDL.list('/')
   t.ok(Array.isArray(files), 'list should return array with external drive')
   t.ok(files.length > 0, 'list should find files with external drive')
-  t.ok(files.some(f => f.key === testFilePath), 'list should include test file with external drive')
+  t.ok(
+    files.some((f) => f.key === testFilePath),
+    'list should include test file with external drive'
+  )
 
   // Test download
   const downloaded = await hyperDriveDL.download(testFilePath)
@@ -148,7 +164,11 @@ test('HyperDriveDL with external drive', async (t) => {
   const deleted = await hyperDriveDL.deleteLocal(testFilePath)
   t.ok(deleted, 'deleteLocal should return true when file exists with external drive')
   const deletedAgain = await hyperDriveDL.deleteLocal(testFilePath)
-  t.is(deletedAgain, false, 'deleteLocal should return false when file does not exist with external drive')
+  t.is(
+    deletedAgain,
+    false,
+    'deleteLocal should return false when file does not exist with external drive'
+  )
 
   await hyperDriveDL.close()
 })
@@ -172,7 +192,10 @@ test('HyperDriveDL directory operations', async (t) => {
   // Test directory listing
   const files = await hyperDriveDL.list('/dir')
   t.is(files.length, 3, 'Should list all files in directory')
-  t.ok(files.every(f => !f.cached), 'All files should not be cached')
+  t.ok(
+    files.every((f) => !f.cached),
+    'All files should not be cached'
+  )
 
   // Test directory cached status
   const dirCached = await hyperDriveDL.cached('/dir/')
@@ -182,9 +205,13 @@ test('HyperDriveDL directory operations', async (t) => {
   const downloaded = await hyperDriveDL.download('/dir/')
   t.ok(downloaded, 'Should return true when directory is downloaded')
   const filesAfterDownload = await hyperDriveDL.list('/dir/')
-  t.ok(filesAfterDownload.every(async f => {
-    return await hyperDriveDL.cached(f.key)
-  }), 'All files should be cached after directory download', filesAfterDownload)
+  t.ok(
+    filesAfterDownload.every(async (f) => {
+      return await hyperDriveDL.cached(f.key)
+    }),
+    'All files should be cached after directory download',
+    filesAfterDownload
+  )
 
   // Verify individual files are accessible
   const file1Stream = await hyperDriveDL.getStream('/dir/file1.txt')
@@ -199,13 +226,20 @@ test('HyperDriveDL directory operations', async (t) => {
   await hyperDriveDL.deleteLocal('/dir/file2.txt')
   await hyperDriveDL.deleteLocal('/dir/subdir/file3.txt')
   const remainingFiles = await hyperDriveDL.list('/dir')
-  t.ok(remainingFiles.every(f => !f.cached), 'All files should be cleared after individual deletion')
+  t.ok(
+    remainingFiles.every((f) => !f.cached),
+    'All files should be cleared after individual deletion'
+  )
 
   // Test deletion of all files
   await hyperDriveDL.deleteLocal()
   const remainingFilesAfterDeleteAll = await hyperDriveDL.list()
-  const remainingFilesAfterDeleteAllNotCached = remainingFilesAfterDeleteAll.filter(f => f.cached)
-  t.is(remainingFilesAfterDeleteAllNotCached.length, 0, 'All files should be cleared after deletion of all files')
+  const remainingFilesAfterDeleteAllNotCached = remainingFilesAfterDeleteAll.filter((f) => f.cached)
+  t.is(
+    remainingFilesAfterDeleteAllNotCached.length,
+    0,
+    'All files should be cleared after deletion of all files'
+  )
 
   await hyperDriveDL.close()
 })
@@ -265,7 +299,7 @@ test('HyperDriveDL cancel downloads functionality', async (t) => {
   ]
 
   const mockProgressReport = {
-    update: async () => await new Promise(resolve => setTimeout(resolve, 2000)), // simulate some latency during download
+    update: async () => await new Promise((resolve) => setTimeout(resolve, 2000)), // simulate some latency during download
     completeFile: () => {}
   }
 
@@ -316,7 +350,7 @@ test('HyperDriveDL cancel downloads functionality', async (t) => {
   t.ok(download.trackers.length > 0, 'Should be able to download files after cancellation')
 
   // wait for downloads to complete
-  await new Promise(resolve => setTimeout(resolve, 100))
+  await new Promise((resolve) => setTimeout(resolve, 100))
 
   const isCached = await freshHyperDriveDL.cached(testFiles[0].path)
   t.ok(isCached, 'File should be cached after successful download')
@@ -359,7 +393,7 @@ test('HyperDriveDL cancelDownloads with directory downloads', async (t) => {
   t.ok(download.trackers.length > 0, 'Directory download should start successfully')
 
   // Wait a bit for downloads to start
-  await new Promise(resolve => setTimeout(resolve, 1))
+  await new Promise((resolve) => setTimeout(resolve, 1))
 
   // Check if downloads are in progress
   t.ok(download.trackers.length > 0, 'Directory downloads should be in progress')
@@ -370,7 +404,11 @@ test('HyperDriveDL cancelDownloads with directory downloads', async (t) => {
   // Verify that downloads were cancelled by confirming that the files are not cached
   for (const file of testFiles) {
     const isCached = await hyperDriveDL.cached(file.path)
-    t.is(isCached, false, `File ${file.path} should not be cached after directory download cancellation`)
+    t.is(
+      isCached,
+      false,
+      `File ${file.path} should not be cached after directory download cancellation`
+    )
   }
 
   await hyperDriveDL.close()
@@ -382,7 +420,7 @@ test('HyperDriveDL download with diskPath functionality', async (t) => {
 
   const testFiles = [
     { path: '/simple.txt', content: 'Hello World from Hyperdrive!' },
-    { path: '/binary.dat', content: Buffer.from([0x01, 0x02, 0x03, 0x04, 0xFF, 0xFE]) },
+    { path: '/binary.dat', content: Buffer.from([0x01, 0x02, 0x03, 0x04, 0xff, 0xfe]) },
     { path: '/nested/deep/file.json', content: JSON.stringify({ test: 'data', nested: true }) },
     { path: '/large.txt', content: 'A'.repeat(10000) } // 10KB file
   ]
@@ -401,8 +439,7 @@ test('HyperDriveDL download with diskPath functionality', async (t) => {
     try {
       // Clean up downloaded files
       fs.rmSync(downloadDir, { recursive: true, force: true })
-    } catch (err) {
-    }
+    } catch (err) {}
   })
 
   // Test 1: Basic file downloading to disk
@@ -458,7 +495,10 @@ test('HyperDriveDL download with diskPath functionality', async (t) => {
   }
 
   // Create a proper ProgressReport instance
-  const progressReporter = new ProgressReport({ 'large.txt': testFiles[3].content.length }, progressCallback)
+  const progressReporter = new ProgressReport(
+    { 'large.txt': testFiles[3].content.length },
+    progressCallback
+  )
 
   const download4 = await hyperDriveDL.download('large.txt', {
     diskPath: downloadDir,
@@ -478,8 +518,8 @@ test('HyperDriveDL download with diskPath functionality', async (t) => {
   t.is(savedLarge, testFiles[3].content, 'Large file content should match original')
 
   // Verify progress reporting was called
-  const updateCalls = progressCalls.filter(call => call.action === 'loadingFile')
-  const completeCalls = progressCalls.filter(call => call.action === 'completeFile')
+  const updateCalls = progressCalls.filter((call) => call.action === 'loadingFile')
+  const completeCalls = progressCalls.filter((call) => call.action === 'completeFile')
   t.ok(updateCalls.length > 0, 'Should have received progress updates')
   t.is(completeCalls.length, 1, 'Should have received one completion call')
   t.is(completeCalls[0].currentFile, 'large.txt', 'Completion should be for correct file')
@@ -500,7 +540,7 @@ test('HyperDriveDL download with diskPath functionality', async (t) => {
 
   // Test 6: Verify no .part files remain
   const files = fs.readdirSync(downloadDir, { recursive: true })
-  const partFiles = files.filter(file => file.toString().endsWith('.part'))
+  const partFiles = files.filter((file) => file.toString().endsWith('.part'))
   t.is(partFiles.length, 0, 'No temporary .part files should remain')
 
   await hyperDriveDL.close()
@@ -525,7 +565,10 @@ test('HyperDriveDL download with diskPath error handling', async (t) => {
   t.is(results1.length, 1, 'Should return one result for non-existent file')
   t.is(results1[0].file, 'nonexistent.txt', 'Result should have correct file name')
   t.ok(results1[0].error, 'Result should have an error for non-existent file')
-  t.ok(results1[0].error instanceof QvacErrorHyperdrive, 'Error should be QvacErrorHyperdrive instance')
+  t.ok(
+    results1[0].error instanceof QvacErrorHyperdrive,
+    'Error should be QvacErrorHyperdrive instance'
+  )
 
   // Test 2: Drive not ready
   const notReadyDL = new HyperDriveDL({ key: validKey })
@@ -533,7 +576,10 @@ test('HyperDriveDL download with diskPath error handling', async (t) => {
     await notReadyDL.download('test-error.txt', { diskPath: downloadDir })
     t.fail('Should throw error when drive not ready')
   } catch (err) {
-    t.ok(err instanceof QvacErrorHyperdrive, 'Should throw QvacErrorHyperdrive when drive not ready')
+    t.ok(
+      err instanceof QvacErrorHyperdrive,
+      'Should throw QvacErrorHyperdrive when drive not ready'
+    )
   }
 
   // Test 3: Invalid disk path (trying to write to a file instead of directory)
@@ -546,7 +592,10 @@ test('HyperDriveDL download with diskPath error handling', async (t) => {
   t.is(results3.length, 1, 'Should return one result for invalid disk path')
   t.is(results3[0].file, 'test-error.txt', 'Result should have correct file name')
   t.ok(results3[0].error, 'Result should have an error for invalid disk path')
-  t.ok(results3[0].error instanceof QvacErrorHyperdrive, 'Error should be QvacErrorHyperdrive instance')
+  t.ok(
+    results3[0].error instanceof QvacErrorHyperdrive,
+    'Error should be QvacErrorHyperdrive instance'
+  )
 
   await hyperDriveDL.close()
 })
@@ -577,7 +626,10 @@ test('HyperDriveDL cancelDownloads with progress reporting', async (t) => {
     progressCalls.push(data)
   }
 
-  const mockProgressReport = new ProgressReport({ 'progress-test.txt': testContent.length }, mockProgressCallback)
+  const mockProgressReport = new ProgressReport(
+    { 'progress-test.txt': testContent.length },
+    mockProgressCallback
+  )
 
   // Start download with progress tracking
   const download = await hyperDriveDL.download(testFilePath, mockProgressReport)
@@ -590,7 +642,11 @@ test('HyperDriveDL cancelDownloads with progress reporting', async (t) => {
 
   // Verify that downloads were cancelled by confirming that the files are not cached
   const fileCached = await hyperDriveDL.cached(testFilePath)
-  t.is(fileCached, false, `File ${testFilePath} should not be cached after cancellation with progress tracking`)
+  t.is(
+    fileCached,
+    false,
+    `File ${testFilePath} should not be cached after cancellation with progress tracking`
+  )
 
   // Test cancelling when no downloads are pending
   await download.cancel() // should be a no-op

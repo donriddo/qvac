@@ -36,7 +36,7 @@ const HEIGHT = 768
 const CFG = 7.5 // classifier-free guidance scale
 const SEED = -1 // -1 = random
 
-async function main () {
+async function main() {
   fs.mkdirSync(OUTPUT_DIR, { recursive: true })
 
   console.log('Stable Diffusion 2.1 — text-to-image inference')
@@ -123,7 +123,7 @@ async function main () {
   }
 }
 
-main().catch(err => {
+main().catch((err) => {
   console.error('Fatal:', err.message || err)
   process.exit(1)
 })

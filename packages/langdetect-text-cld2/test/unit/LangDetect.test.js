@@ -7,7 +7,10 @@ test('Should detect one language for English text', async (t) => {
   t.ok(result, 'Result should not be empty')
   t.is(typeof result, 'object', 'Result should be an object')
   t.is(typeof result.code, 'string', 'Result code should be a string')
-  t.ok(result.code.length === 2 || result.code.length === 3, 'Result code should be a 2 or 3-letter ISO code')
+  t.ok(
+    result.code.length === 2 || result.code.length === 3,
+    'Result code should be a 2 or 3-letter ISO code'
+  )
   t.is(typeof result.language, 'string', 'Result language should be a string')
   t.comment(`Detected language: ${result.language} (code: ${result.code})`)
 
@@ -27,8 +30,7 @@ test('Should detect multiple languages (topK=2)', async (t) => {
   // Check for expected language codes
   // If the text is predominantly recognized as French or English
   t.ok(
-    results.some(r => r.language === 'French') ||
-    results.some(r => r.language === 'English'),
+    results.some((r) => r.language === 'French') || results.some((r) => r.language === 'English'),
     'Should detect either French or English in the results'
   )
 })
@@ -147,7 +149,10 @@ test('Should handle edge cases with whitespace in new functions', (t) => {
   // Test whitespace handling in getLangName
   t.is(getLangName(' en '), 'English', 'Should trim whitespace in getLangName')
   const trimmedEng = getLangName('  eng  ')
-  t.ok(trimmedEng === 'English' || trimmedEng === null, 'Should handle whitespace in getLangName for ISO3')
+  t.ok(
+    trimmedEng === 'English' || trimmedEng === null,
+    'Should handle whitespace in getLangName for ISO3'
+  )
 
   // Test whitespace handling in getISO2FromName
   t.is(getISO2FromName(' English '), 'en', 'Should trim whitespace in getISO2FromName')
