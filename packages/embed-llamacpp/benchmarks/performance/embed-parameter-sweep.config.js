@@ -21,10 +21,9 @@ const BENCH_DEFAULT_RUNTIME = {
 
 // Optional per-model runtime overrides. Only add entries when a model needs
 // non-global defaults (for example because of VRAM limitations).
-const MODEL_RUNTIME_OVERRIDES = {
-}
+const MODEL_RUNTIME_OVERRIDES = {}
 
-function toModelRelativePath (localPath) {
+function toModelRelativePath(localPath) {
   const normalized = String(localPath || '')
     .trim()
     .replace(/\\/g, '/')
@@ -34,12 +33,10 @@ function toModelRelativePath (localPath) {
   // resolved-models.json stores paths relative to benchmark root (for example
   // "models/<repo>/<revision>/<file>.gguf"). The runtime loader uses modelDir
   // as root, so strip the leading "models/" segment when present.
-  return normalized.startsWith('models/')
-    ? normalized.slice('models/'.length)
-    : normalized
+  return normalized.startsWith('models/') ? normalized.slice('models/'.length) : normalized
 }
 
-function buildQuantizationFiles (manifestModel, resolvedModelEntry) {
+function buildQuantizationFiles(manifestModel, resolvedModelEntry) {
   const manifestQuants = Array.isArray(manifestModel.gguf && manifestModel.gguf.quantizations)
     ? manifestModel.gguf.quantizations
     : []
@@ -61,7 +58,7 @@ function buildQuantizationFiles (manifestModel, resolvedModelEntry) {
   return fallback
 }
 
-function loadModelsFromManifest () {
+function loadModelsFromManifest() {
   const manifest = JSON.parse(fs.readFileSync(MANIFEST_PATH, 'utf8'))
   let resolved = null
   if (fs.existsSync(RESOLVED_MODELS_PATH)) {

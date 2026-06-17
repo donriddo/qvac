@@ -4,7 +4,7 @@ const path = require('bare-path')
 const GGMLBert = require('../index')
 const { downloadModel } = require('./utils')
 
-async function main () {
+async function main() {
   console.log('Quickstart Example: Basic model loading and inference demonstration')
   console.log('===================================================================')
 

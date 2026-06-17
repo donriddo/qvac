@@ -3,17 +3,11 @@
 const fs = require('bare-fs')
 const path = require('bare-path')
 const process = require('bare-process')
-const {
-  elapsedMs,
-  round,
-  similarityStats,
-  cartesianProduct,
-  average
-} = require('./math')
+const { elapsedMs, round, similarityStats, cartesianProduct, average } = require('./math')
 
 const INPUT_MODES = ['single', 'array']
 
-function createAddonRuntimeLogger (debugEnabled) {
+function createAddonRuntimeLogger(debugEnabled) {
   if (!debugEnabled) {
     return {
       error: () => {},
@@ -31,14 +25,14 @@ function createAddonRuntimeLogger (debugEnabled) {
   }
 }
 
-function normalizeEmbeddings (rawEmbeddings) {
+function normalizeEmbeddings(rawEmbeddings) {
   if (!Array.isArray(rawEmbeddings) || !Array.isArray(rawEmbeddings[0])) {
     throw new Error('Invalid embedding response structure')
   }
   return rawEmbeddings[0].map((vector) => Array.from(vector))
 }
 
-function buildAddonConfig (runtimeConfig, options = {}) {
+function buildAddonConfig(runtimeConfig, options = {}) {
   const debugEnabled = !!options.debugEnabled
   const config = { verbosity: debugEnabled ? '2' : '0' }
   if (runtimeConfig.device != null) config.device = String(runtimeConfig.device)
@@ -49,22 +43,21 @@ function buildAddonConfig (runtimeConfig, options = {}) {
   return config
 }
 
-function resolveModelName (modelDef, quantization) {
+function resolveModelName(modelDef, quantization) {
   return modelDef.quantizationFiles[quantization] || null
 }
 
-function checkModelExists (modelDir, modelName) {
+function checkModelExists(modelDir, modelName) {
   return fs.existsSync(path.join(modelDir, modelName))
 }
 
-function buildCases (modelDef, sweep) {
+function buildCases(modelDef, sweep) {
   const baseQuant = modelDef.quantizations[0]
   const defaults = modelDef.defaults
   if (baseQuant == null) {
     throw new Error(`No baseline quantization configured for model "${modelDef.id}"`)
   }
-  const supportedQuants = sweep.quantization
-    .filter((quant) => !!resolveModelName(modelDef, quant))
+  const supportedQuants = sweep.quantization.filter((quant) => !!resolveModelName(modelDef, quant))
 
   if (supportedQuants.length === 0) {
     throw new Error(`No supported quantizations found for model "${modelDef.id}"`)
@@ -115,7 +108,7 @@ function buildCases (modelDef, sweep) {
   return cases
 }
 
-function aggregateRunMetrics (runMetrics) {
+function aggregateRunMetrics(runMetrics) {
   const runMsValues = runMetrics.map((x) => x.runMs)
   const tpsValues = runMetrics.map((x) => x.tps).filter((x) => x != null)
   const repeatsSucceeded = runMetrics.length
@@ -139,7 +132,16 @@ function aggregateRunMetrics (runMetrics) {
   }
 }
 
-async function runCaseWithRepeats ({ AddonCtor, modelDir, modelName, runtimeConfig, inputs, repeats, onRepeatComplete, debugEnabled }) {
+async function runCaseWithRepeats({
+  AddonCtor,
+  modelDir,
+  modelName,
+  runtimeConfig,
+  inputs,
+  repeats,
+  onRepeatComplete,
+  debugEnabled
+}) {
   const addonConfig = buildAddonConfig(runtimeConfig, { debugEnabled })
   const addonRuntimeLogger = createAddonRuntimeLogger(debugEnabled)
 
@@ -200,7 +202,9 @@ async function runCaseWithRepeats ({ AddonCtor, modelDir, modelName, runtimeConf
         unloadMs = elapsedMs(unloadStart)
       }
     } catch (unloadError) {
-      cleanupErrors.push(`unload_error=${unloadError && unloadError.message ? unloadError.message : String(unloadError)}`)
+      cleanupErrors.push(
+        `unload_error=${unloadError && unloadError.message ? unloadError.message : String(unloadError)}`
+      )
     }
   }
 
@@ -229,7 +233,7 @@ async function runCaseWithRepeats ({ AddonCtor, modelDir, modelName, runtimeConf
   }
 }
 
-function buildCaseResult ({
+function buildCaseResult({
   testCase,
   executionResult,
   baselineEmbeddingsByInputMode,
@@ -254,27 +258,29 @@ function buildCaseResult ({
     baselineEmbeddingsByInputMode.set(testCase.inputMode, executionResult.embeddings)
   }
 
-  const similarity = testCase.parameter === 'baseline'
-    ? (
-        executionResult.embeddings
-          ? { avg: 1, min: 1, max: 1, count: executionResult.embeddings.length }
-          : null
-      )
-    : similarityStats(
-      baselineEmbeddingsByInputMode.get(testCase.inputMode),
-      executionResult.embeddings
-    )
+  const similarity =
+    testCase.parameter === 'baseline'
+      ? executionResult.embeddings
+        ? { avg: 1, min: 1, max: 1, count: executionResult.embeddings.length }
+        : null
+      : similarityStats(
+          baselineEmbeddingsByInputMode.get(testCase.inputMode),
+          executionResult.embeddings
+        )
 
   const hasRepeatErrors = Array.isArray(executionResult.errors) && executionResult.errors.length > 0
   const status = hasRepeatErrors
-    ? (executionResult.repeatsSucceeded > 0 ? 'partial-failure' : 'failed')
+    ? executionResult.repeatsSucceeded > 0
+      ? 'partial-failure'
+      : 'failed'
     : 'ok'
   const error = hasRepeatErrors
     ? (() => {
         const uniqueMessages = [...new Set(executionResult.errors.map((entry) => entry.message))]
-        const detail = uniqueMessages.length === 1
-          ? uniqueMessages[0]
-          : `${uniqueMessages.length} distinct errors (first: ${uniqueMessages[0]})`
+        const detail =
+          uniqueMessages.length === 1
+            ? uniqueMessages[0]
+            : `${uniqueMessages.length} distinct errors (first: ${uniqueMessages[0]})`
         return {
           message: `${executionResult.errors.length}/${executionResult.repeatsAttempted} repeats failed: ${detail}`,
           repeats: executionResult.errors
@@ -293,7 +299,7 @@ function buildCaseResult ({
   }
 }
 
-async function runModelCases ({
+async function runModelCases({
   AddonCtor,
   repeats,
   debugEnabled,
@@ -322,7 +328,7 @@ async function runModelCases ({
       if (!checkModelExists(modelDef.modelDir, testCase.modelName)) {
         throw new Error(
           `Missing model file for case ${testCase.caseId}: ${path.join(modelDef.modelDir, testCase.modelName)}. ` +
-          'Run model preparation first (npm run performance:prepare-models).'
+            'Run model preparation first (npm run performance:prepare-models).'
         )
       }
 
@@ -332,8 +338,8 @@ async function runModelCases ({
         const configuredBatchSizes = Object.keys(inputsByBatchSize || {}).sort()
         throw new Error(
           `Invalid inputs.json for case ${testCase.caseId}: missing or empty inputs for batch size ` +
-          `${testCase.runtimeConfig.batchSize}. Configured batch sizes: ` +
-          `${configuredBatchSizes.length ? configuredBatchSizes.join(', ') : '(none)'}`
+            `${testCase.runtimeConfig.batchSize}. Configured batch sizes: ` +
+            `${configuredBatchSizes.length ? configuredBatchSizes.join(', ') : '(none)'}`
         )
       }
       const inputs = testCase.inputMode === 'single' ? inputsRaw[0] : inputsRaw

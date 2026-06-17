@@ -2,17 +2,17 @@
 
 const process = require('bare-process')
 
-function elapsedMs (hrStart) {
+function elapsedMs(hrStart) {
   const [sec, nano] = process.hrtime(hrStart)
   return sec * 1000 + nano / 1e6
 }
 
-function round (num, digits = 4) {
+function round(num, digits = 4) {
   const scale = Math.pow(10, digits)
   return Math.round(num * scale) / scale
 }
 
-function cosineSimilarity (a, b) {
+function cosineSimilarity(a, b) {
   if (a.length !== b.length) {
     throw new Error(`Vector length mismatch: ${a.length} vs ${b.length}`)
   }
@@ -29,7 +29,7 @@ function cosineSimilarity (a, b) {
   return dotProduct / denominator
 }
 
-function similarityStats (baseline, candidate) {
+function similarityStats(baseline, candidate) {
   if (!baseline || !candidate) return null
   if (baseline.length !== candidate.length) return null
   const scores = []
@@ -53,21 +53,21 @@ function similarityStats (baseline, candidate) {
   }
 }
 
-function cartesianProduct (arrays) {
+function cartesianProduct(arrays) {
   return arrays.reduce(
     (acc, curr) => acc.flatMap((prefix) => curr.map((x) => [...prefix, x])),
     [[]]
   )
 }
 
-function average (values) {
+function average(values) {
   if (!values.length) return null
   let sum = 0
   for (const value of values) sum += value
   return sum / values.length
 }
 
-function stddev (values) {
+function stddev(values) {
   if (!values.length) return null
   if (values.length === 1) return 0
   const avg = average(values)

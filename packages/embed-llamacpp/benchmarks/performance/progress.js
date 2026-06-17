@@ -2,7 +2,7 @@
 
 const process = require('bare-process')
 
-function formatDurationMs (ms) {
+function formatDurationMs(ms) {
   if (typeof ms !== 'number' || Number.isNaN(ms) || ms < 0) return '?:??:??'
   const totalSeconds = Math.round(ms / 1000)
   const hours = Math.floor(totalSeconds / 3600)
@@ -11,7 +11,7 @@ function formatDurationMs (ms) {
   return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
 }
 
-function truncateText (text, maxLen) {
+function truncateText(text, maxLen) {
   const value = String(text ?? '')
   if (!Number.isInteger(maxLen) || maxLen <= 0) return ''
   if (value.length <= maxLen) return value
@@ -19,7 +19,7 @@ function truncateText (text, maxLen) {
   return `${value.slice(0, maxLen - 3)}...`
 }
 
-function createProgressReporter (totalRuns) {
+function createProgressReporter(totalRuns) {
   const startTime = Date.now()
   let completedRuns = 0
   let lastNonTtyPercent = -1
@@ -31,20 +31,21 @@ function createProgressReporter (totalRuns) {
   )
   const barWidth = 24
 
-  function render (context) {
+  function render(context) {
     const percent = totalRuns > 0 ? (completedRuns / totalRuns) * 100 : 100
     const elapsedMs = Date.now() - startTime
-    const etaMs = completedRuns > 0
-      ? (elapsedMs / completedRuns) * (totalRuns - completedRuns)
-      : null
+    const etaMs =
+      completedRuns > 0 ? (elapsedMs / completedRuns) * (totalRuns - completedRuns) : null
 
     const modelLabel = context && context.modelId ? truncateText(context.modelId, 24) : 'unknown'
-    const caseLabel = context && typeof context.caseIndex === 'number' && typeof context.caseCount === 'number'
-      ? `${context.caseIndex}/${context.caseCount}`
-      : '?/?'
-    const repeatLabel = context && typeof context.repeat === 'number' && typeof context.repeats === 'number'
-      ? `${context.repeat}/${context.repeats}`
-      : '?/?'
+    const caseLabel =
+      context && typeof context.caseIndex === 'number' && typeof context.caseCount === 'number'
+        ? `${context.caseIndex}/${context.caseCount}`
+        : '?/?'
+    const repeatLabel =
+      context && typeof context.repeat === 'number' && typeof context.repeats === 'number'
+        ? `${context.repeat}/${context.repeats}`
+        : '?/?'
     const elapsedLabel = formatDurationMs(elapsedMs)
     const etaLabel = etaMs == null ? '--:--:--' : formatDurationMs(etaMs)
 
@@ -54,8 +55,8 @@ function createProgressReporter (totalRuns) {
       lastNonTtyPercent = flooredPercent
       console.log(
         `[progress] ${completedRuns}/${totalRuns} (${percent.toFixed(1)}%)` +
-        ` | model=${modelLabel} case=${caseLabel} repeat=${repeatLabel}` +
-        ` | elapsed=${elapsedLabel} eta=${etaLabel}`
+          ` | model=${modelLabel} case=${caseLabel} repeat=${repeatLabel}` +
+          ` | elapsed=${elapsedLabel} eta=${etaLabel}`
       )
       return
     }
@@ -66,11 +67,13 @@ function createProgressReporter (totalRuns) {
       `[progress] [${bar}] ${completedRuns}/${totalRuns} (${percent.toFixed(1)}%)` +
       ` | m=${modelLabel} c=${caseLabel} r=${repeatLabel}` +
       ` elapsed=${elapsedLabel} eta=${etaLabel}`
-    const columns = process.stdout && Number.isInteger(process.stdout.columns) ? process.stdout.columns : null
+    const columns =
+      process.stdout && Number.isInteger(process.stdout.columns) ? process.stdout.columns : null
     if (columns && columns > 0 && line.length >= columns) {
       line = truncateText(line, columns - 1)
     }
-    const clearPadding = lastRenderedLength > line.length ? ' '.repeat(lastRenderedLength - line.length) : ''
+    const clearPadding =
+      lastRenderedLength > line.length ? ' '.repeat(lastRenderedLength - line.length) : ''
     process.stdout.write(`\r${line}${clearPadding}`)
     lastRenderedLength = line.length
     if (completedRuns === totalRuns) {
@@ -79,11 +82,11 @@ function createProgressReporter (totalRuns) {
   }
 
   return {
-    tick (context) {
+    tick(context) {
       completedRuns += 1
       render(context)
     },
-    start () {
+    start() {
       render({})
     }
   }

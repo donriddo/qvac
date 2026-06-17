@@ -5,7 +5,7 @@ const path = require('bare-path')
 const https = require('bare-https')
 const process = require('bare-process')
 
-async function downloadModel (url, filename) {
+async function downloadModel(url, filename) {
   const modelDir = path.resolve('./models')
   const modelPath = path.join(modelDir, filename)
 
@@ -20,8 +20,18 @@ async function downloadModel (url, filename) {
 
   return new Promise((resolve, reject) => {
     let resolved = false
-    const safeResolve = (val) => { if (!resolved) { resolved = true; resolve(val) } }
-    const safeReject = (err) => { if (!resolved) { resolved = true; reject(err) } }
+    const safeResolve = (val) => {
+      if (!resolved) {
+        resolved = true
+        resolve(val)
+      }
+    }
+    const safeReject = (err) => {
+      if (!resolved) {
+        resolved = true
+        reject(err)
+      }
+    }
 
     const fileStream = fs.createWriteStream(modelPath)
 
@@ -30,7 +40,7 @@ async function downloadModel (url, filename) {
       fs.unlink(modelPath, () => safeReject(err))
     })
 
-    const req = https.request(url, response => {
+    const req = https.request(url, (response) => {
       if ([301, 302, 307, 308].includes(response.statusCode)) {
         fileStream.destroy()
         req.destroy()
@@ -42,8 +52,7 @@ async function downloadModel (url, filename) {
 
           const redirectUrl = new URL(response.headers.location, url).href
 
-          downloadModel(redirectUrl, filename)
-            .then(safeResolve).catch(safeReject)
+          downloadModel(redirectUrl, filename).then(safeResolve).catch(safeReject)
         })
         return
       }
@@ -59,7 +68,7 @@ async function downloadModel (url, filename) {
       const total = parseInt(response.headers['content-length'], 10)
       let downloaded = 0
 
-      response.on('data', chunk => {
+      response.on('data', (chunk) => {
         downloaded += chunk.length
         if (total) {
           const percent = ((downloaded / total) * 100).toFixed(1)
@@ -81,7 +90,7 @@ async function downloadModel (url, filename) {
       })
     })
 
-    req.on('error', err => {
+    req.on('error', (err) => {
       fileStream.destroy()
       fs.unlink(modelPath, () => safeReject(err))
     })

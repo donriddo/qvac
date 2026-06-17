@@ -15,8 +15,8 @@ const DEFAULT_TEXTS = [
   'Multi-GPU inference distributes computation for faster throughput.'
 ]
 
-function parseIntegerArg (name, defaultValue) {
-  const arg = process.argv.find(a => a.startsWith(`--${name}=`))
+function parseIntegerArg(name, defaultValue) {
+  const arg = process.argv.find((a) => a.startsWith(`--${name}=`))
   if (!arg) return defaultValue
   const value = Number.parseInt(arg.split('=')[1], 10)
   if (!Number.isFinite(value) || value < 0) {
@@ -25,37 +25,35 @@ function parseIntegerArg (name, defaultValue) {
   return value
 }
 
-function parseStringArg (name, defaultValue) {
-  const arg = process.argv.find(a => a.startsWith(`--${name}=`))
+function parseStringArg(name, defaultValue) {
+  const arg = process.argv.find((a) => a.startsWith(`--${name}=`))
   if (!arg) return defaultValue
   return arg.slice(`--${name}=`.length)
 }
 
-function median (values) {
+function median(values) {
   if (values.length === 0) return 0
   const sorted = [...values].sort((a, b) => a - b)
   const mid = Math.floor(sorted.length / 2)
-  return sorted.length % 2 === 0
-    ? (sorted[mid - 1] + sorted[mid]) / 2
-    : sorted[mid]
+  return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid]
 }
 
-function mean (values) {
+function mean(values) {
   if (values.length === 0) return 0
   return values.reduce((sum, v) => sum + v, 0) / values.length
 }
 
-function fmt (value, digits = 2) {
+function fmt(value, digits = 2) {
   return Number.isFinite(value) ? value.toFixed(digits) : 'n/a'
 }
 
-async function runInference (model, texts) {
+async function runInference(model, texts) {
   const response = await model.run(texts)
   const embeddings = await response.await()
   return { embeddings, stats: response.stats || {} }
 }
 
-async function benchmarkMode ({ label, config, modelPath, runs, warmup, texts }) {
+async function benchmarkMode({ label, config, modelPath, runs, warmup, texts }) {
   console.log(`\n${'='.repeat(72)}`)
   console.log(`Benchmarking: ${label}`)
   console.log(`Config: ${JSON.stringify(config)}`)
@@ -86,7 +84,7 @@ async function benchmarkMode ({ label, config, modelPath, runs, warmup, texts })
 
       console.log(
         `  [${phase}] run ${i + 1}/${totalRuns} ` +
-        `tokens=${totalTokens} time=${fmt(totalTimeMs, 1)}ms TPS=${fmt(tps, 1)}`
+          `tokens=${totalTokens} time=${fmt(totalTimeMs, 1)}ms TPS=${fmt(tps, 1)}`
       )
 
       if (i >= warmup) {
@@ -97,8 +95,8 @@ async function benchmarkMode ({ label, config, modelPath, runs, warmup, texts })
     await model.unload()
   }
 
-  const tpsValues = samples.map(s => s.tps).filter(Number.isFinite)
-  const timeValues = samples.map(s => s.totalTimeMs).filter(Number.isFinite)
+  const tpsValues = samples.map((s) => s.tps).filter(Number.isFinite)
+  const timeValues = samples.map((s) => s.totalTimeMs).filter(Number.isFinite)
 
   return {
     label,
@@ -108,35 +106,35 @@ async function benchmarkMode ({ label, config, modelPath, runs, warmup, texts })
     tpsMean: mean(tpsValues),
     timeMedian: median(timeValues),
     timeMean: mean(timeValues),
-    avgTokens: mean(samples.map(s => s.totalTokens))
+    avgTokens: mean(samples.map((s) => s.totalTokens))
   }
 }
 
-function printSummary (results) {
+function printSummary(results) {
   console.log(`\n${'='.repeat(72)}`)
   console.log('COMPARISON SUMMARY')
   console.log('='.repeat(72))
   console.log('')
   console.log(
     'Mode'.padEnd(25) +
-    'Load(ms)'.padEnd(10) +
-    'Time med(ms)'.padEnd(14) +
-    'Time avg(ms)'.padEnd(14) +
-    'TPS med'.padEnd(10) +
-    'TPS avg'.padEnd(10) +
-    'Tokens'
+      'Load(ms)'.padEnd(10) +
+      'Time med(ms)'.padEnd(14) +
+      'Time avg(ms)'.padEnd(14) +
+      'TPS med'.padEnd(10) +
+      'TPS avg'.padEnd(10) +
+      'Tokens'
   )
   console.log('-'.repeat(83))
 
   for (const r of results) {
     console.log(
       r.label.padEnd(25) +
-      fmt(r.loadTime, 0).padEnd(10) +
-      fmt(r.timeMedian, 1).padEnd(14) +
-      fmt(r.timeMean, 1).padEnd(14) +
-      fmt(r.tpsMedian, 1).padEnd(10) +
-      fmt(r.tpsMean, 1).padEnd(10) +
-      fmt(r.avgTokens, 0)
+        fmt(r.loadTime, 0).padEnd(10) +
+        fmt(r.timeMedian, 1).padEnd(14) +
+        fmt(r.timeMean, 1).padEnd(14) +
+        fmt(r.tpsMedian, 1).padEnd(10) +
+        fmt(r.tpsMean, 1).padEnd(10) +
+        fmt(r.avgTokens, 0)
     )
   }
 
@@ -146,24 +144,28 @@ function printSummary (results) {
     console.log('Relative to single GPU:')
     for (let i = 1; i < results.length; i++) {
       const r = results[i]
-      const timeDiff = ((r.timeMedian - baseline.timeMedian) / baseline.timeMedian * 100)
-      const tpsDiff = ((r.tpsMedian - baseline.tpsMedian) / baseline.tpsMedian * 100)
+      const timeDiff = ((r.timeMedian - baseline.timeMedian) / baseline.timeMedian) * 100
+      const tpsDiff = ((r.tpsMedian - baseline.tpsMedian) / baseline.tpsMedian) * 100
       console.log(
         `  ${r.label}: time ${timeDiff >= 0 ? '+' : ''}${fmt(timeDiff, 1)}%, ` +
-        `TPS ${tpsDiff >= 0 ? '+' : ''}${fmt(tpsDiff, 1)}%`
+          `TPS ${tpsDiff >= 0 ? '+' : ''}${fmt(tpsDiff, 1)}%`
       )
     }
   }
 }
 
-async function main () {
+async function main() {
   console.log('Multi-GPU Split Mode Benchmark (Embed)')
   console.log('Compares: single GPU vs layer parallelism vs tensor parallelism')
   console.log('')
   console.log('Usage: bare examples/multiGpuBenchmark.js [options]')
   console.log('Options:')
-  console.log(`  --runs=${DEFAULT_RUNS}           Measured runs per mode (default: ${DEFAULT_RUNS})`)
-  console.log(`  --warmup=${DEFAULT_WARMUP}         Warmup runs per mode (default: ${DEFAULT_WARMUP})`)
+  console.log(
+    `  --runs=${DEFAULT_RUNS}           Measured runs per mode (default: ${DEFAULT_RUNS})`
+  )
+  console.log(
+    `  --warmup=${DEFAULT_WARMUP}         Warmup runs per mode (default: ${DEFAULT_WARMUP})`
+  )
   console.log('  --tensor-split=1,1  GPU split proportions (default: 1,1)')
   console.log('  --gpu-layers=999    Layers to offload (default: 999)')
   console.log('')
@@ -225,7 +227,7 @@ async function main () {
   }
 }
 
-main().catch(error => {
+main().catch((error) => {
   console.error('Fatal error:', error.message)
   console.error('Stack:', error.stack)
   process.exit(1)
