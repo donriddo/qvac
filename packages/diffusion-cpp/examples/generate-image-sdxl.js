@@ -38,7 +38,7 @@ const HEIGHT = 1024
 const CFG = 6.5
 const SEED = 15 // -1 = random
 
-async function main () {
+async function main() {
   fs.mkdirSync(OUTPUT_DIR, { recursive: true })
 
   console.log('Stable Diffusion XL Base 1.0 — text-to-image inference')
@@ -125,7 +125,7 @@ async function main () {
   }
 }
 
-main().catch(err => {
+main().catch((err) => {
   console.error('Fatal:', err.message || err)
   process.exit(1)
 })

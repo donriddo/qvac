@@ -30,7 +30,7 @@ const HEIGHT = 512
 const GUIDANCE = 3.5 // distilled guidance scale for FLUX.2
 const SEED = 42 // -1 = random
 
-async function main () {
+async function main() {
   fs.mkdirSync(OUTPUT_DIR, { recursive: true })
 
   console.log('FLUX.2 [klein] 4B — text-to-image inference')
@@ -112,7 +112,7 @@ async function main () {
   }
 }
 
-main().catch(err => {
+main().catch((err) => {
   console.error('Fatal:', err.message || err)
   process.exit(1)
 })

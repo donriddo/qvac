@@ -11,7 +11,7 @@ const ANDROID_GENERATED_IMAGE_ARTIFACT_DIRS = [
 ]
 
 class GeneratedImageSaver {
-  constructor (modelDir) {
+  constructor(modelDir) {
     const platform = os.platform()
 
     try {
@@ -27,16 +27,15 @@ class GeneratedImageSaver {
       }
 
       // Use a separate directory on iOS to avoid pulling the model file on device farm runs.
-      this.artifactDir = platform === 'ios'
-        ? path.resolve(modelDir, '../generated-images')
-        : modelDir
+      this.artifactDir =
+        platform === 'ios' ? path.resolve(modelDir, '../generated-images') : modelDir
       fs.mkdirSync(this.artifactDir, { recursive: true })
     } catch (err) {
       console.log(`Could not prepare artifact directory: ${err.message}`)
     }
   }
 
-  save (filename, imageData) {
+  save(filename, imageData) {
     if (!this.artifactDir) return
 
     const outputPath = path.join(this.artifactDir, filename)
@@ -51,22 +50,32 @@ class GeneratedImageSaver {
 }
 
 const TRANSIENT_ERROR_CODES = new Set([
-  'EAI_NODATA', 'EAI_AGAIN', 'ENOTFOUND', 'ETIMEDOUT',
-  'ECONNRESET', 'EPIPE', 'ECONNABORTED', 'ESIZE'
+  'EAI_NODATA',
+  'EAI_AGAIN',
+  'ENOTFOUND',
+  'ETIMEDOUT',
+  'ECONNRESET',
+  'EPIPE',
+  'ECONNABORTED',
+  'ESIZE'
 ])
 
-function isTransientError (err) {
+function isTransientError(err) {
   if (err.code && TRANSIENT_ERROR_CODES.has(err.code)) return true
   if (err.statusCode === 408 || err.statusCode === 429) return true
   if (err.statusCode >= 500) return true
   return false
 }
 
-function urlHost (url) {
-  try { return new URL(url).host } catch (_) { return url }
+function urlHost(url) {
+  try {
+    return new URL(url).host
+  } catch (_) {
+    return url
+  }
 }
 
-async function downloadFileOnce (url, dest, opts) {
+async function downloadFileOnce(url, dest, opts) {
   opts = opts || {}
   const maxRedirects = opts.maxRedirects != null ? opts.maxRedirects : 10
   const timeoutMs = opts.timeoutMs != null ? opts.timeoutMs : 30000
@@ -77,7 +86,7 @@ async function downloadFileOnce (url, dest, opts) {
     let reqTimer = null
     let idleTimer = null
 
-    function done (err) {
+    function done(err) {
       if (settled) return
       settled = true
       clearTimeout(reqTimer)
@@ -92,7 +101,7 @@ async function downloadFileOnce (url, dest, opts) {
       done(err)
     })
 
-    function makeRequest (reqUrl, redirectsLeft) {
+    function makeRequest(reqUrl, redirectsLeft) {
       const req = https.request(reqUrl, (response) => {
         clearTimeout(reqTimer)
 
@@ -108,15 +117,21 @@ async function downloadFileOnce (url, dest, opts) {
 
         if (response.statusCode !== 200) {
           file.destroy()
-          const err = new Error(`Download failed: HTTP ${response.statusCode} from ${urlHost(reqUrl)}`)
+          const err = new Error(
+            `Download failed: HTTP ${response.statusCode} from ${urlHost(reqUrl)}`
+          )
           err.statusCode = response.statusCode
           return done(err)
         }
 
-        function resetIdleTimer () {
+        function resetIdleTimer() {
           clearTimeout(idleTimer)
           idleTimer = setTimeout(() => {
-            response.destroy(Object.assign(new Error(`Idle timeout downloading ${urlHost(reqUrl)}`), { code: 'ETIMEDOUT' }))
+            response.destroy(
+              Object.assign(new Error(`Idle timeout downloading ${urlHost(reqUrl)}`), {
+                code: 'ETIMEDOUT'
+              })
+            )
           }, idleTimeoutMs)
         }
 
@@ -138,7 +153,11 @@ async function downloadFileOnce (url, dest, opts) {
       })
 
       reqTimer = setTimeout(() => {
-        req.destroy(Object.assign(new Error(`Request timeout downloading ${urlHost(reqUrl)}`), { code: 'ETIMEDOUT' }))
+        req.destroy(
+          Object.assign(new Error(`Request timeout downloading ${urlHost(reqUrl)}`), {
+            code: 'ETIMEDOUT'
+          })
+        )
       }, timeoutMs)
 
       req.on('error', (err) => {
@@ -154,7 +173,7 @@ async function downloadFileOnce (url, dest, opts) {
   })
 }
 
-async function downloadFileWithRetries (urls, dest, opts) {
+async function downloadFileWithRetries(urls, dest, opts) {
   opts = opts || {}
   const retries = opts.retries != null ? opts.retries : 3
   const minBytes = opts.minBytes != null ? opts.minBytes : 1
@@ -176,18 +195,25 @@ async function downloadFileWithRetries (urls, dest, opts) {
 
       const stats = fs.statSync(partPath)
       if (stats.size < minBytes) {
-        throw Object.assign(new Error(`Downloaded file too small: ${stats.size} bytes from ${urlHost(url)}`), { code: 'ESIZE' })
+        throw Object.assign(
+          new Error(`Downloaded file too small: ${stats.size} bytes from ${urlHost(url)}`),
+          { code: 'ESIZE' }
+        )
       }
 
       fs.renameSync(partPath, dest)
       return
     } catch (err) {
       lastErr = err
-      try { fs.unlinkSync(partPath) } catch (_) {}
+      try {
+        fs.unlinkSync(partPath)
+      } catch (_) {}
 
       const attemptsLeft = retries - attempt
       if (attemptsLeft > 0 && isTransientError(err)) {
-        console.log(`[download] Attempt ${attempt + 1} failed (${err.message}), retrying (${attemptsLeft} left)...`)
+        console.log(
+          `[download] Attempt ${attempt + 1} failed (${err.message}), retrying (${attemptsLeft} left)...`
+        )
       } else {
         break
       }
@@ -198,7 +224,7 @@ async function downloadFileWithRetries (urls, dest, opts) {
   throw lastErr
 }
 
-async function ensureModel ({ modelName, downloadUrl }) {
+async function ensureModel({ modelName, downloadUrl }) {
   const modelDir = path.resolve(__dirname, '../model')
   const modelPath = path.join(modelDir, modelName)
 
@@ -222,7 +248,7 @@ async function ensureModel ({ modelName, downloadUrl }) {
   return [modelName, modelDir]
 }
 
-async function ensureModelPath ({ modelName, downloadUrl }) {
+async function ensureModelPath({ modelName, downloadUrl }) {
   const [downloadedModelName, modelDir] = await ensureModel({ modelName, downloadUrl })
   return path.join(modelDir, downloadedModelName)
 }
@@ -232,7 +258,7 @@ async function ensureModelPath ({ modelName, downloadUrl }) {
  * On mobile, media files must be in testAssets/
  * On desktop, media files are in addon root /media/
  */
-function getMediaPath (filename) {
+function getMediaPath(filename) {
   const isMobile = os.platform() === 'ios' || os.platform() === 'android'
   if (isMobile && global.assetPaths) {
     const projectPath = `../../testAssets/${filename}`
@@ -241,7 +267,9 @@ function getMediaPath (filename) {
       const resolvedPath = global.assetPaths[projectPath].replace('file://', '')
       return resolvedPath
     }
-    throw new Error(`Asset not found in testAssets: ${filename}. Make sure ${filename} is in testAssets/ directory and rebuild the app.`)
+    throw new Error(
+      `Asset not found in testAssets: ${filename}. Make sure ${filename} is in testAssets/ directory and rebuild the app.`
+    )
   }
 
   return path.resolve(__dirname, '../../media', filename)
@@ -250,13 +278,13 @@ function getMediaPath (filename) {
 /**
  * Factory to create a shared onOutput handler for image generation.
  */
-function makeOutputCollector (t, logger = console) {
+function makeOutputCollector(t, logger = console) {
   const outputData = {}
   let jobCompleted = false
   let generatedData = null
   let stats = null
 
-  function onOutput (addon, event, jobId, output, error) {
+  function onOutput(addon, event, jobId, output, error) {
     if (event === 'Output') {
       if (!outputData[jobId]) {
         outputData[jobId] = []
@@ -278,17 +306,23 @@ function makeOutputCollector (t, logger = console) {
   return {
     onOutput,
     outputData,
-    get generatedData () { return generatedData },
-    get jobCompleted () { return jobCompleted },
-    get stats () { return stats }
+    get generatedData() {
+      return generatedData
+    },
+    get jobCompleted() {
+      return jobCompleted
+    },
+    get stats() {
+      return stats
+    }
   }
 }
 
-function detectPlatform () {
+function detectPlatform() {
   return `${os.platform()}-${os.arch()}`
 }
 
-function setupJsLogger (binding = addonLogging) {
+function setupJsLogger(binding = addonLogging) {
   const priorityNames = {
     0: 'ERROR',
     1: 'WARNING',
@@ -304,13 +338,13 @@ function setupJsLogger (binding = addonLogging) {
   return binding
 }
 
-function releaseJsLogger (binding = addonLogging) {
+function releaseJsLogger(binding = addonLogging) {
   try {
     binding.releaseLogger()
   } catch (_) {}
 }
 
-function withIntegrationDefaults (args) {
+function withIntegrationDefaults(args) {
   return {
     ...args,
     config: {
@@ -324,23 +358,23 @@ function withIntegrationDefaults (args) {
   }
 }
 
-function isPng (buf) {
+function isPng(buf) {
   if (!buf || buf.length < 8) return false
   return (
     buf[0] === 0x89 &&
     buf[1] === 0x50 &&
-    buf[2] === 0x4E &&
+    buf[2] === 0x4e &&
     buf[3] === 0x47 &&
-    buf[4] === 0x0D &&
-    buf[5] === 0x0A &&
-    buf[6] === 0x1A &&
-    buf[7] === 0x0A
+    buf[4] === 0x0d &&
+    buf[5] === 0x0a &&
+    buf[6] === 0x1a &&
+    buf[7] === 0x0a
   )
 }
 
 const test = require('brittle')
 
-function safeTest (name, opts, fn) {
+function safeTest(name, opts, fn) {
   test(name, opts, async (t) => {
     setupJsLogger()
     try {

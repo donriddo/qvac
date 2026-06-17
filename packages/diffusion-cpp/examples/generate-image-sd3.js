@@ -41,7 +41,7 @@ const HEIGHT = 512
 const CFG = 5.0 // SD3 flow-matching; lower than SD1/SD2 (4.5–7.0 range)
 const SEED = 42 // -1 = random
 
-async function main () {
+async function main() {
   fs.mkdirSync(OUTPUT_DIR, { recursive: true })
 
   console.log('Stable Diffusion 3 Medium — text-to-image inference')
@@ -132,7 +132,7 @@ async function main () {
   }
 }
 
-main().catch(err => {
+main().catch((err) => {
   console.error('Fatal:', err.message || err)
   process.exit(1)
 })

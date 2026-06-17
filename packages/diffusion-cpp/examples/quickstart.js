@@ -19,10 +19,11 @@ const MODELS_DIR = path.resolve(__dirname, '../models')
 const OUTPUT_DIR = path.resolve(__dirname, '../output')
 
 const MODEL_NAME = 'stable-diffusion-v2-1-Q8_0.gguf'
-const PROMPT = 'a cozy cabin in a snowy mountain landscape at sunset, warm light from windows, photorealistic'
+const PROMPT =
+  'a cozy cabin in a snowy mountain landscape at sunset, warm light from windows, photorealistic'
 const NEGATIVE_PROMPT = 'blurry, low quality, watermark, text'
 
-async function main () {
+async function main() {
   console.log('=== Stable Diffusion Quickstart ===\n')
 
   // 1. Setup native logger
@@ -82,7 +83,9 @@ async function main () {
     })
 
     let stats = null
-    response.on('stats', (s) => { stats = s })
+    response.on('stats', (s) => {
+      stats = s
+    })
 
     await response
       .onUpdate((data) => {
@@ -117,9 +120,12 @@ async function main () {
     if (stats) {
       console.log('\n4. Runtime Stats:')
       for (const [key, value] of Object.entries(stats)) {
-        const formatted = typeof value === 'number'
-          ? (Number.isInteger(value) ? String(value) : value.toFixed(4))
-          : String(value)
+        const formatted =
+          typeof value === 'number'
+            ? Number.isInteger(value)
+              ? String(value)
+              : value.toFixed(4)
+            : String(value)
         console.log(`   ${key}: ${formatted}`)
       }
     }
@@ -132,7 +138,7 @@ async function main () {
   }
 }
 
-main().catch(err => {
+main().catch((err) => {
   console.error('Error:', err.message || err)
   binding.releaseLogger()
   process.exit(1)

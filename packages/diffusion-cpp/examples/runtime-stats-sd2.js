@@ -30,23 +30,26 @@ const HEIGHT = 512
 const CFG = 7.5
 const SEED = 42
 
-function printStats (label, stats) {
+function printStats(label, stats) {
   console.log(`\n── ${label} ${'─'.repeat(60 - label.length)}`)
   if (!stats || typeof stats !== 'object') {
     console.log('  (no stats available)')
     return
   }
   const keys = Object.keys(stats)
-  const maxLen = Math.max(...keys.map(k => k.length))
+  const maxLen = Math.max(...keys.map((k) => k.length))
   for (const [key, value] of Object.entries(stats)) {
-    const formatted = typeof value === 'number'
-      ? (Number.isInteger(value) ? String(value) : value.toFixed(4))
-      : String(value)
+    const formatted =
+      typeof value === 'number'
+        ? Number.isInteger(value)
+          ? String(value)
+          : value.toFixed(4)
+        : String(value)
     console.log(`  ${key.padEnd(maxLen)}  ${formatted}`)
   }
 }
 
-async function main () {
+async function main() {
   fs.mkdirSync(OUTPUT_DIR, { recursive: true })
 
   console.log('Stable Diffusion 2.1 — RuntimeStats Example')
@@ -94,7 +97,9 @@ async function main () {
     })
 
     let stats1 = null
-    response1.on('stats', (s) => { stats1 = s })
+    response1.on('stats', (s) => {
+      stats1 = s
+    })
 
     await response1
       .onUpdate((data) => {
@@ -140,7 +145,9 @@ async function main () {
     })
 
     let stats2 = null
-    response2.on('stats', (s) => { stats2 = s })
+    response2.on('stats', (s) => {
+      stats2 = s
+    })
 
     await response2
       .onUpdate((data) => {
@@ -177,7 +184,7 @@ async function main () {
   }
 }
 
-main().catch(err => {
+main().catch((err) => {
   console.error('Fatal:', err.message || err)
   process.exit(1)
 })

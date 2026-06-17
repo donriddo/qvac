@@ -25,14 +25,13 @@ const { setLogger, releaseLogger } = require('../addonLogging')
 const MODELS_DIR = path.resolve(__dirname, '../models')
 const OUTPUT_DIR = path.resolve(__dirname, '../output')
 
-const DIFFUSION_MODEL = process.env.WAN_I2V_MODEL ||
-  'wan2.1-i2v-14b-480p-Q4_K_M.gguf'
+const DIFFUSION_MODEL = process.env.WAN_I2V_MODEL || 'wan2.1-i2v-14b-480p-Q4_K_M.gguf'
 const VAE_MODEL = 'wan_2.1_vae.safetensors'
 const T5XXL_MODEL = 'umt5_xxl_fp16.safetensors'
 const CLIP_VISION_MODEL = 'clip_vision_h.safetensors'
 
-const INIT_IMAGE_PATH = process.env.INIT_IMAGE ||
-  path.resolve(__dirname, '../assets/von-neumann.jpg')
+const INIT_IMAGE_PATH =
+  process.env.INIT_IMAGE || path.resolve(__dirname, '../assets/von-neumann.jpg')
 
 // ---------------------------------------------------------------------------
 // Generation params — edit freely
@@ -42,33 +41,39 @@ const INIT_IMAGE_PATH = process.env.INIT_IMAGE ||
 // prompts work best. Avoid words that describe the static state of the
 // subject ("standing still", "portrait") — describe the movement instead.
 // ---------------------------------------------------------------------------
-const PROMPT = process.env.PROMPT ||
+const PROMPT =
+  process.env.PROMPT ||
   'the man slowly turns his head and smiles, soft natural lighting, ' +
-  'subtle camera push-in, fine film grain, cinematic'
-const NEG_PROMPT = process.env.NEG_PROMPT ||
+    'subtle camera push-in, fine film grain, cinematic'
+const NEG_PROMPT =
+  process.env.NEG_PROMPT ||
   'blurry, distorted, low quality, jittery, static, frozen, ' +
-  'watermark, double face, extra limbs'
+    'watermark, double face, extra limbs'
 
 // Read image dimensions from PNG/JPEG header bytes — no external dependencies.
 // Returns { width, height } or null if the format is unrecognised.
-function readImageDims (buf) {
+function readImageDims(buf) {
   const dv = new DataView(buf.buffer, buf.byteOffset, buf.byteLength)
   // PNG: signature bytes 0–7, IHDR chunk: width @ 16, height @ 20 (big-endian)
-  if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4E && buf[3] === 0x47) {
+  if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47) {
     return { width: dv.getUint32(16, false), height: dv.getUint32(20, false) }
   }
   // JPEG: SOI 0xFF 0xD8, then scan for SOF marker
-  if (buf[0] === 0xFF && buf[1] === 0xD8) {
+  if (buf[0] === 0xff && buf[1] === 0xd8) {
     let i = 2
     while (i + 8 < buf.length) {
-      if (buf[i] !== 0xFF) break
+      if (buf[i] !== 0xff) break
       const m = buf[i + 1]
       // SOF0-SOF3, SOF5-SOF7, SOF9-SOF11, SOF13-SOF15
-      if ((m >= 0xC0 && m <= 0xC3) || (m >= 0xC5 && m <= 0xC7) ||
-          (m >= 0xC9 && m <= 0xCB) || (m >= 0xCD && m <= 0xCF)) {
+      if (
+        (m >= 0xc0 && m <= 0xc3) ||
+        (m >= 0xc5 && m <= 0xc7) ||
+        (m >= 0xc9 && m <= 0xcb) ||
+        (m >= 0xcd && m <= 0xcf)
+      ) {
         return { width: dv.getUint16(i + 7, false), height: dv.getUint16(i + 5, false) }
       }
-      if (m === 0xD9 || m === 0xDA) break
+      if (m === 0xd9 || m === 0xda) break
       i += 2 + dv.getUint16(i + 2, false)
     }
   }
@@ -80,7 +85,9 @@ function readImageDims (buf) {
 // and then uses the aligned value as the row stride when filling the init_image
 // tensor — if our image has a different stride the reads are corrupted.
 // Always snap to multiples of 16 to prevent that misalignment.
-function snapTo16 (n) { return Math.max(16, Math.round(n / 16) * 16) }
+function snapTo16(n) {
+  return Math.max(16, Math.round(n / 16) * 16)
+}
 
 const VIDEO_FRAMES = parseInt(process.env.FRAMES || '33', 10)
 const FPS = parseInt(process.env.FPS || '16', 10)
@@ -91,7 +98,7 @@ const CFG_SCALE = parseFloat(process.env.CFG_SCALE || '6.0')
 const FLOW_SHIFT = parseFloat(process.env.FLOW_SHIFT || '3.0')
 const SEED = parseInt(process.env.SEED || '42', 10)
 
-async function main () {
+async function main() {
   fs.mkdirSync(OUTPUT_DIR, { recursive: true })
 
   // Frame-count validation before spending time loading weights.
@@ -110,7 +117,9 @@ async function main () {
 
   if (!fs.existsSync(INIT_IMAGE_PATH)) {
     console.error(`Init image not found at ${INIT_IMAGE_PATH}`)
-    console.error('Set INIT_IMAGE env var to an absolute path or drop a file at the default location.')
+    console.error(
+      'Set INIT_IMAGE env var to an absolute path or drop a file at the default location.'
+    )
     process.exit(1)
   }
 
@@ -141,7 +150,9 @@ async function main () {
     width = process.env.WIDTH ? parseInt(process.env.WIDTH, 10) : snapTo16(dims.width)
     height = process.env.HEIGHT ? parseInt(process.env.HEIGHT, 10) : snapTo16(dims.height)
     if (dims.width !== width || dims.height !== height) {
-      console.log(`Note: image is ${dims.width}x${dims.height} — snapped to ${width}x${height} (nearest multiples of 16)`)
+      console.log(
+        `Note: image is ${dims.width}x${dims.height} — snapped to ${width}x${height} (nearest multiples of 16)`
+      )
     }
   }
 
@@ -225,7 +236,7 @@ async function main () {
               const bar = '█'.repeat(Math.floor(pct / 5)).padEnd(20, '░')
               process.stdout.write(
                 `\r  [${bar}] ${tick.step}/${tick.total} | ` +
-                `step ${(stepMs / 1000).toFixed(1)}s | wall ${(wallMs / 1000).toFixed(1)}s  `
+                  `step ${(stepMs / 1000).toFixed(1)}s | wall ${(wallMs / 1000).toFixed(1)}s  `
               )
             }
           } catch (_) {}
@@ -251,7 +262,7 @@ async function main () {
   }
 }
 
-main().catch(err => {
+main().catch((err) => {
   console.error('Fatal:', err.message || err)
   process.exit(1)
 })

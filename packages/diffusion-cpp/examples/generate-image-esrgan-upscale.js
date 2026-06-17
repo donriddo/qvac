@@ -47,7 +47,7 @@ const BASE_PARAMS = {
   seed: SEED
 }
 
-function onProgress (data, images) {
+function onProgress(data, images) {
   if (data instanceof Uint8Array) {
     images.push(data)
     return
@@ -65,7 +65,7 @@ function onProgress (data, images) {
   } catch (_) {}
 }
 
-async function runUpscale (model, label, upscale, filenameSuffix) {
+async function runUpscale(model, label, upscale, filenameSuffix) {
   console.log(`Starting ${label}...`)
 
   const images = []
@@ -75,9 +75,7 @@ async function runUpscale (model, label, upscale, filenameSuffix) {
     upscale
   })
 
-  await response
-    .onUpdate(data => onProgress(data, images))
-    .await()
+  await response.onUpdate((data) => onProgress(data, images)).await()
 
   process.stdout.write('\n')
   console.log(`Generated in ${((Date.now() - tGen) / 1000).toFixed(1)}s`)
@@ -92,7 +90,7 @@ async function runUpscale (model, label, upscale, filenameSuffix) {
   console.log()
 }
 
-async function main () {
+async function main() {
   fs.mkdirSync(OUTPUT_DIR, { recursive: true })
 
   console.log('Stable Diffusion 2.1 - ESRGAN post-generation upscale')
@@ -105,7 +103,9 @@ async function main () {
   console.log('CFG    :', CFG)
   console.log('Seed   :', SEED)
   console.log()
-  console.log('The source size is intentionally small because each ESRGAN repeat multiplies output dimensions.')
+  console.log(
+    'The source size is intentionally small because each ESRGAN repeat multiplies output dimensions.'
+  )
   console.log()
 
   const model = new ImgStableDiffusion({
@@ -137,7 +137,7 @@ async function main () {
   }
 }
 
-main().catch(err => {
+main().catch((err) => {
   console.error('Fatal:', err.message || err)
   process.exit(1)
 })
