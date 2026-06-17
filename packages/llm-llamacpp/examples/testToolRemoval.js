@@ -43,14 +43,14 @@ const TOOL_CALCULATOR = {
   }
 }
 
-function stripInternalBlocks (text) {
+function stripInternalBlocks(text) {
   return text
     .replace(/<think>[\s\S]*?<\/think>/g, '')
     .replace(/<tool_call>[\s\S]*?<\/tool_call>/g, '')
     .trim()
 }
 
-function extractToolCalls (response) {
+function extractToolCalls(response) {
   const toolCalls = []
   const toolCallRegex = /<tool_call>([\s\S]*?)<\/tool_call>/g
   let match
@@ -63,7 +63,7 @@ function extractToolCalls (response) {
   return toolCalls
 }
 
-async function loadModel (dirPath, modelName, config) {
+async function loadModel(dirPath, modelName, config) {
   const modelPath = path.join(dirPath, modelName)
   const model = new LlmLlamacpp({
     files: { model: [modelPath] },
@@ -75,14 +75,18 @@ async function loadModel (dirPath, modelName, config) {
   return { model }
 }
 
-async function runAndCollect (model, prompt, runOptions) {
+async function runAndCollect(model, prompt, runOptions) {
   const response = await model.run(prompt, runOptions)
   const chunks = []
-  await response.onUpdate(data => { chunks.push(data) }).await()
+  await response
+    .onUpdate((data) => {
+      chunks.push(data)
+    })
+    .await()
   return { output: chunks.join(''), stats: response.stats }
 }
 
-async function main () {
+async function main() {
   console.log('Test: tool removal correctness with tools_compact')
   console.log('='.repeat(70))
   console.log('')
@@ -102,7 +106,9 @@ async function main () {
 
   const { model } = await loadModel(dirPath, modelName, config)
   const cachePath = path.join(dirPath, 'test-tool-removal.bin')
-  try { fs.unlinkSync(cachePath) } catch (_) {}
+  try {
+    fs.unlinkSync(cachePath)
+  } catch (_) {}
 
   let lastResponse = null
 
@@ -112,7 +118,11 @@ async function main () {
     // ── Turn 1: provide getWeather, ask about weather ──
     console.log('── Turn 1: tools=[getWeather], ask about weather ──')
     const prompt1 = [
-      { role: 'system', content: 'You are a helpful assistant. You must use tools when available. Do not answer without using a tool.' },
+      {
+        role: 'system',
+        content:
+          'You are a helpful assistant. You must use tools when available. Do not answer without using a tool.'
+      },
       { role: 'user', content: 'What is the weather in Paris?' },
       TOOL_WEATHER
     ]
@@ -136,7 +146,9 @@ async function main () {
     const calls2 = extractToolCalls(r2.output)
     console.log(`   Response tools called: [${calls2.join(', ') || 'none'}]`)
     console.log('   Expected: [calculate]')
-    console.log(`   ${calls2.includes('calculate') && !calls2.includes('getWeather') ? 'PASS ✓' : 'FAIL ✗'}`)
+    console.log(
+      `   ${calls2.includes('calculate') && !calls2.includes('getWeather') ? 'PASS ✓' : 'FAIL ✗'}`
+    )
     console.log('')
 
     // ── Turn 3: KEEP only calculate, ask about weather (should NOT call getWeather) ──
@@ -151,9 +163,11 @@ async function main () {
     lastResponse = stripInternalBlocks(r3.output)
     const calls3 = extractToolCalls(r3.output)
     console.log(`   Response tools called: [${calls3.join(', ') || 'none'}]`)
-    console.log('   Expected: NOT getWeather (it\'s not available)')
+    console.log("   Expected: NOT getWeather (it's not available)")
     const weatherLeak = calls3.includes('getWeather')
-    console.log(`   ${weatherLeak ? 'FAIL ✗ — stale tool leak! getWeather was called despite being removed' : 'PASS ✓ — model did not call removed tool'}`)
+    console.log(
+      `   ${weatherLeak ? 'FAIL ✗ — stale tool leak! getWeather was called despite being removed' : 'PASS ✓ — model did not call removed tool'}`
+    )
     console.log('')
 
     // ── Turn 4: bring back getWeather, remove calculate, ask to calculate ──
@@ -168,9 +182,11 @@ async function main () {
     lastResponse = stripInternalBlocks(r4.output)
     const calls4 = extractToolCalls(r4.output)
     console.log(`   Response tools called: [${calls4.join(', ') || 'none'}]`)
-    console.log('   Expected: NOT calculate (it\'s not available)')
+    console.log("   Expected: NOT calculate (it's not available)")
     const calcLeak = calls4.includes('calculate')
-    console.log(`   ${calcLeak ? 'FAIL ✗ — stale tool leak! calculate was called despite being removed' : 'PASS ✓ — model did not call removed tool'}`)
+    console.log(
+      `   ${calcLeak ? 'FAIL ✗ — stale tool leak! calculate was called despite being removed' : 'PASS ✓ — model did not call removed tool'}`
+    )
     console.log('')
 
     // ── Summary ──
@@ -179,27 +195,35 @@ async function main () {
     console.log('='.repeat(70))
     const results = [
       { turn: 1, pass: calls1.includes('getWeather'), desc: 'getWeather available → called it' },
-      { turn: 2, pass: calls2.includes('calculate') && !calls2.includes('getWeather'), desc: 'calculate available, getWeather removed → called calculate' },
+      {
+        turn: 2,
+        pass: calls2.includes('calculate') && !calls2.includes('getWeather'),
+        desc: 'calculate available, getWeather removed → called calculate'
+      },
       { turn: 3, pass: !weatherLeak, desc: 'getWeather removed → did NOT call it' },
       { turn: 4, pass: !calcLeak, desc: 'calculate removed → did NOT call it' }
     ]
     for (const r of results) {
       console.log(`  Turn ${r.turn}: ${r.pass ? 'PASS ✓' : 'FAIL ✗'} — ${r.desc}`)
     }
-    const allPass = results.every(r => r.pass)
+    const allPass = results.every((r) => r.pass)
     console.log('')
-    console.log(allPass
-      ? '  ALL PASSED — tool trimming correctly prevents stale tool usage'
-      : '  FAILURES DETECTED — removed tools leaked through the cache')
+    console.log(
+      allPass
+        ? '  ALL PASSED — tool trimming correctly prevents stale tool usage'
+        : '  FAILURES DETECTED — removed tools leaked through the cache'
+    )
   } finally {
     await model.unload()
-    try { fs.unlinkSync(cachePath) } catch (_) {}
+    try {
+      fs.unlinkSync(cachePath)
+    } catch (_) {}
   }
 }
 
 // ─── Same test but with tools_in_system (full replay) ──────────────────────
 
-async function mainInSystem () {
+async function mainInSystem() {
   console.log('\n\n')
   console.log('Test: tool removal correctness with tools_in_system (full replay)')
   console.log('='.repeat(70))
@@ -220,9 +244,12 @@ async function mainInSystem () {
 
   const { model } = await loadModel(dirPath, modelName, config)
   const cachePath = path.join(dirPath, 'test-tool-removal-insystem.bin')
-  try { fs.unlinkSync(cachePath) } catch (_) {}
+  try {
+    fs.unlinkSync(cachePath)
+  } catch (_) {}
 
-  const SYSTEM = 'You are a helpful assistant. You must use tools when available. Do not answer without using a tool.'
+  const SYSTEM =
+    'You are a helpful assistant. You must use tools when available. Do not answer without using a tool.'
   const history = [] // accumulate {role, content} for replay
 
   try {
@@ -258,7 +285,9 @@ async function mainInSystem () {
     const calls2 = extractToolCalls(r2.output)
     console.log(`   Response tools called: [${calls2.join(', ') || 'none'}]`)
     console.log('   Expected: [calculate]')
-    console.log(`   ${calls2.includes('calculate') && !calls2.includes('getWeather') ? 'PASS ✓' : 'FAIL ✗'}`)
+    console.log(
+      `   ${calls2.includes('calculate') && !calls2.includes('getWeather') ? 'PASS ✓' : 'FAIL ✗'}`
+    )
     console.log('')
 
     // ── Turn 3: KEEP only calculate, ask about weather ──
@@ -275,9 +304,11 @@ async function mainInSystem () {
     history.push({ role: 'assistant', content: stripInternalBlocks(r3.output) })
     const calls3 = extractToolCalls(r3.output)
     console.log(`   Response tools called: [${calls3.join(', ') || 'none'}]`)
-    console.log('   Expected: NOT getWeather (it\'s not available)')
+    console.log("   Expected: NOT getWeather (it's not available)")
     const weatherLeak = calls3.includes('getWeather')
-    console.log(`   ${weatherLeak ? 'FAIL ✗ — stale tool leak! getWeather was called despite being removed' : 'PASS ✓ — model did not call removed tool'}`)
+    console.log(
+      `   ${weatherLeak ? 'FAIL ✗ — stale tool leak! getWeather was called despite being removed' : 'PASS ✓ — model did not call removed tool'}`
+    )
     console.log('')
 
     // ── Turn 4: bring back getWeather, remove calculate, ask to calculate ──
@@ -292,9 +323,11 @@ async function mainInSystem () {
     const r4 = await runAndCollect(model, prompt4)
     const calls4 = extractToolCalls(r4.output)
     console.log(`   Response tools called: [${calls4.join(', ') || 'none'}]`)
-    console.log('   Expected: NOT calculate (it\'s not available)')
+    console.log("   Expected: NOT calculate (it's not available)")
     const calcLeak = calls4.includes('calculate')
-    console.log(`   ${calcLeak ? 'FAIL ✗ — stale tool leak! calculate was called despite being removed' : 'PASS ✓ — model did not call removed tool'}`)
+    console.log(
+      `   ${calcLeak ? 'FAIL ✗ — stale tool leak! calculate was called despite being removed' : 'PASS ✓ — model did not call removed tool'}`
+    )
     console.log('')
 
     // ── Summary ──
@@ -303,30 +336,38 @@ async function mainInSystem () {
     console.log('='.repeat(70))
     const results = [
       { turn: 1, pass: calls1.includes('getWeather'), desc: 'getWeather available → called it' },
-      { turn: 2, pass: calls2.includes('calculate') && !calls2.includes('getWeather'), desc: 'calculate available, getWeather removed → called calculate' },
+      {
+        turn: 2,
+        pass: calls2.includes('calculate') && !calls2.includes('getWeather'),
+        desc: 'calculate available, getWeather removed → called calculate'
+      },
       { turn: 3, pass: !weatherLeak, desc: 'getWeather removed → did NOT call it' },
       { turn: 4, pass: !calcLeak, desc: 'calculate removed → did NOT call it' }
     ]
     for (const r of results) {
       console.log(`  Turn ${r.turn}: ${r.pass ? 'PASS ✓' : 'FAIL ✗'} — ${r.desc}`)
     }
-    const allPass = results.every(r => r.pass)
+    const allPass = results.every((r) => r.pass)
     console.log('')
-    console.log(allPass
-      ? '  ALL PASSED — tool switching correctly prevents stale tool usage'
-      : '  FAILURES DETECTED — removed tools leaked from conversation history')
+    console.log(
+      allPass
+        ? '  ALL PASSED — tool switching correctly prevents stale tool usage'
+        : '  FAILURES DETECTED — removed tools leaked from conversation history'
+    )
   } finally {
     await model.unload()
-    try { fs.unlinkSync(cachePath) } catch (_) {}
+    try {
+      fs.unlinkSync(cachePath)
+    } catch (_) {}
   }
 }
 
-async function runAll () {
+async function runAll() {
   await main()
   await mainInSystem()
 }
 
-runAll().catch(err => {
+runAll().catch((err) => {
   console.error('Fatal:', err.message || err)
   process.exit(1)
 })

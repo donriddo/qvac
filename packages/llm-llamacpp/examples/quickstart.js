@@ -5,7 +5,7 @@ const path = require('bare-path')
 const process = require('bare-process')
 const { downloadModel } = require('./utils')
 
-async function main () {
+async function main() {
   console.log('Quickstart Example: Basic model loading and inference demonstration')
   console.log('===================================================================')
 
@@ -58,7 +58,7 @@ async function main () {
     let fullResponse = ''
 
     await response
-      .onUpdate(data => {
+      .onUpdate((data) => {
         process.stdout.write(data)
         fullResponse += data
       })
@@ -77,7 +77,7 @@ async function main () {
   }
 }
 
-main().catch(error => {
+main().catch((error) => {
   console.error('Fatal error in main function:', {
     error: error.message,
     stack: error.stack,

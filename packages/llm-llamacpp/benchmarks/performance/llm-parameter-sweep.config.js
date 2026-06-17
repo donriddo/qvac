@@ -3,10 +3,7 @@
 const fs = require('bare-fs')
 const path = require('bare-path')
 const os = require('bare-os')
-const {
-  DEFAULT_SWEEP_CTX_SIZES,
-  DEFAULT_SWEEP_BATCH_SIZES
-} = require('./utils')
+const { DEFAULT_SWEEP_CTX_SIZES, DEFAULT_SWEEP_BATCH_SIZES } = require('./utils')
 
 const DEFAULT_RESULTS_DIR = path.resolve(__dirname, 'results', 'parameter-sweep')
 const DEFAULT_MODELS_DIR = path.resolve(__dirname, 'models')
@@ -37,16 +34,15 @@ const BENCH_DEFAULT_RUNTIME = {
 
 // Optional per-model runtime overrides for local testing
 // Example: { 'qwen3-1.7b': { 'gpu-layers': '35' } }
-const MODEL_RUNTIME_OVERRIDES = {
-}
+const MODEL_RUNTIME_OVERRIDES = {}
 
-function getDefaultSweepDevices () {
+function getDefaultSweepDevices() {
   const platform = os.platform()
   // Default to GPU on desktop and most platforms; keep CPU in Android defaults.
   return platform === 'android' ? ['cpu', 'gpu'] : ['gpu']
 }
 
-function buildQuantizationFiles (manifestModel, resolvedModelEntry) {
+function buildQuantizationFiles(manifestModel, resolvedModelEntry) {
   const manifestQuants = Array.isArray(manifestModel.gguf && manifestModel.gguf.quantizations)
     ? manifestModel.gguf.quantizations
     : []
@@ -66,7 +62,7 @@ function buildQuantizationFiles (manifestModel, resolvedModelEntry) {
   return fallback
 }
 
-function loadModelsFromManifest () {
+function loadModelsFromManifest() {
   const manifest = JSON.parse(fs.readFileSync(MANIFEST_PATH, 'utf8'))
   let resolved = null
   if (fs.existsSync(RESOLVED_MODELS_PATH)) {

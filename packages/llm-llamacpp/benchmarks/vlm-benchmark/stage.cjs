@@ -30,8 +30,11 @@ for (const f of CODE) {
 }
 // Images aren't in git — CI syncs them from the fixture object store (URI configured
 // in the benchmark workflow) into images/ before this runs. Fail loudly if skipped.
-const imgs = fs.existsSync(IMAGES) ? fs.readdirSync(IMAGES).filter(f => /\.(png|jpe?g|webp|gif)$/i.test(f)) : []
-if (!imgs.length) throw new Error(`No images in ${IMAGES} — sync the fixture image store into it first`)
+const imgs = fs.existsSync(IMAGES)
+  ? fs.readdirSync(IMAGES).filter((f) => /\.(png|jpe?g|webp|gif)$/i.test(f))
+  : []
+if (!imgs.length)
+  throw new Error(`No images in ${IMAGES} — sync the fixture image store into it first`)
 for (const f of imgs) fs.copyFileSync(path.join(IMAGES, f), path.join(ASSETS, f))
 console.log(`staged ${imgs.length} images -> test/mobile/testAssets`)
 

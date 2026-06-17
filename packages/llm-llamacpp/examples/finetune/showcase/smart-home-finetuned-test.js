@@ -19,9 +19,10 @@ if (!fs.existsSync(LORA_ADAPTER)) {
   process.exit(1)
 }
 
-const SYSTEM_PROMPT = 'You are a specialized Home Automation Controller. ' +
+const SYSTEM_PROMPT =
+  'You are a specialized Home Automation Controller. ' +
   'You must ONLY output valid JSON. Do not engage in conversation. ' +
-  'If the user\'s request requires an action, output a JSON array of tool calls. ' +
+  "If the user's request requires an action, output a JSON array of tool calls. " +
   'Available tools: [get_camera_live_feed(camera_id, stream_quality), ' +
   'control_smart_light(device_id, command), ' +
   'set_thermostat_temperature(device_id, temperature), ' +
@@ -29,15 +30,17 @@ const SYSTEM_PROMPT = 'You are a specialized Home Automation Controller. ' +
   'If the request is unclear, output {"error": "clarification_needed"}.'
 
 const KNOWN_TOOLS = [
-  'get_camera_live_feed', 'control_smart_light',
-  'set_thermostat_temperature', 'lock_all_smart_doors'
+  'get_camera_live_feed',
+  'control_smart_light',
+  'set_thermostat_temperature',
+  'lock_all_smart_doors'
 ]
 
-function separator (char, len) {
+function separator(char, len) {
   return char.repeat(len || 70)
 }
 
-function analyzeResponse (raw) {
+function analyzeResponse(raw) {
   const thinkMatch = raw.match(/<think>([\s\S]*?)<\/think>/)
   const thinkContent = thinkMatch ? thinkMatch[1].trim() : null
   const thinkTokens = thinkContent ? thinkContent.split(/\s+/).length : 0
@@ -58,7 +61,11 @@ function analyzeResponse (raw) {
   while ((tcMatch = toolCallRegex.exec(payload)) !== null) {
     isStructured = true
     let body = tcMatch[1].trim()
-    body = body.replace(/'/g, '"').replace(/\bTrue\b/g, 'true').replace(/\bFalse\b/g, 'false').replace(/\bNone\b/g, 'null')
+    body = body
+      .replace(/'/g, '"')
+      .replace(/\bTrue\b/g, 'true')
+      .replace(/\bFalse\b/g, 'false')
+      .replace(/\bNone\b/g, 'null')
     try {
       const parsed = JSON.parse(body)
       const name = parsed.name
@@ -96,9 +103,8 @@ function analyzeResponse (raw) {
 
   const isConversational = !isStructured && payload.length > 0
   const strictness = isStructured && !isConversational
-  const accuracy = usedTools.length > 0
-    ? validToolsUsed.length / usedTools.length
-    : (isStructured ? 1.0 : 0.0)
+  const accuracy =
+    usedTools.length > 0 ? validToolsUsed.length / usedTools.length : isStructured ? 1.0 : 0.0
 
   return {
     raw,
@@ -115,11 +121,17 @@ function analyzeResponse (raw) {
   }
 }
 
-function printAnalysis (label, analysis) {
+function printAnalysis(label, analysis) {
   console.log(`\n  --- ${label} ---`)
-  console.log(`  Strictness:          ${analysis.strictness ? 'PASS (structured tool calls)' : 'FAIL (no valid tool calls)'}`)
-  console.log(`  Thinking length:     ${analysis.thinkTokens > 0 ? '~' + analysis.thinkTokens + ' tokens' : 'none'}`)
-  console.log(`  Accuracy:            ${(analysis.accuracy * 100).toFixed(0)}% (${analysis.validToolsUsed.length}/${analysis.usedTools.length} valid tools)`)
+  console.log(
+    `  Strictness:          ${analysis.strictness ? 'PASS (structured tool calls)' : 'FAIL (no valid tool calls)'}`
+  )
+  console.log(
+    `  Thinking length:     ${analysis.thinkTokens > 0 ? '~' + analysis.thinkTokens + ' tokens' : 'none'}`
+  )
+  console.log(
+    `  Accuracy:            ${(analysis.accuracy * 100).toFixed(0)}% (${analysis.validToolsUsed.length}/${analysis.usedTools.length} valid tools)`
+  )
   if (analysis.isConversational) {
     console.log('  Drift:               Reverted to conversational text')
   }
@@ -128,18 +140,20 @@ function printAnalysis (label, analysis) {
   }
 }
 
-async function runScenario (client, messages) {
+async function runScenario(client, messages) {
   const response = await client.run(messages)
   let fullResponse = ''
-  await response.onUpdate(token => {
-    process.stdout.write(token)
-    fullResponse += token
-  }).await()
+  await response
+    .onUpdate((token) => {
+      process.stdout.write(token)
+      fullResponse += token
+    })
+    .await()
   console.log('')
   return fullResponse
 }
 
-async function main () {
+async function main() {
   const [modelName, modelDir] = await downloadModel(MODEL.url, MODEL.name)
 
   const modelPath = path.join(modelDir, modelName)
@@ -157,7 +171,8 @@ async function main () {
   const config = { ...sharedConfig, lora: LORA_ADAPTER }
 
   const promptA = 'I want to check the live feed from my front door camera in 1080p quality.'
-  const promptB = "I'm heading to work. Please lock all the smart doors, turn off the living room light, and set the thermostat to 62 degrees."
+  const promptB =
+    "I'm heading to work. Please lock all the smart doors, turn off the living room light, and set the thermostat to 62 degrees."
   const promptC1 = 'Turn on the living room light.'
   const promptC2 = 'Actually, turn it off instead and set the thermostat to 70.'
 
@@ -245,7 +260,9 @@ async function main () {
         try {
           console.log('\nUnloading base model...')
           await baselineClient.unload()
-        } catch (e) { console.error('Failed to unload baseline:', e) }
+        } catch (e) {
+          console.error('Failed to unload baseline:', e)
+        }
       }
     }
 
@@ -326,16 +343,20 @@ async function main () {
         { id: 'C2', name: 'Multi-Turn T2', analysis: analysisC2 }
       ]
 
-      const strictPass = all.filter(s => s.analysis.strictness).length
+      const strictPass = all.filter((s) => s.analysis.strictness).length
       const totalThink = all.reduce((sum, s) => sum + s.analysis.thinkTokens, 0)
       const avgThink = Math.round(totalThink / all.length)
       const avgAccuracy = all.reduce((sum, s) => sum + s.analysis.accuracy, 0) / all.length
       const multiTurnStable = analysisC2.strictness
 
-      const baseStrictPass = baseAll ? baseAll.filter(s => s.analysis.strictness).length : 0
-      const baseTotalThink = baseAll ? baseAll.reduce((sum, s) => sum + s.analysis.thinkTokens, 0) : 0
+      const baseStrictPass = baseAll ? baseAll.filter((s) => s.analysis.strictness).length : 0
+      const baseTotalThink = baseAll
+        ? baseAll.reduce((sum, s) => sum + s.analysis.thinkTokens, 0)
+        : 0
       const baseAvgThink = baseAll ? Math.round(baseTotalThink / baseAll.length) : 0
-      const baseAvgAccuracy = baseAll ? baseAll.reduce((sum, s) => sum + s.analysis.accuracy, 0) / baseAll.length : 0
+      const baseAvgAccuracy = baseAll
+        ? baseAll.reduce((sum, s) => sum + s.analysis.accuracy, 0) / baseAll.length
+        : 0
       const baseMultiTurn = baseAll ? baseAll[3].analysis.strictness : false
 
       console.log('\n' + separator('='))
@@ -353,16 +374,24 @@ async function main () {
         const fStrict = f.analysis.strictness ? 'PASS' : 'FAIL'
         const bThink = b ? (b.analysis.thinkTokens > 0 ? '~' + b.analysis.thinkTokens : '0') : '---'
         const fThink = f.analysis.thinkTokens > 0 ? '~' + f.analysis.thinkTokens : '0'
-        console.log(`  ${(f.id + ' ' + f.name).padEnd(21)} ${bStrict.padEnd(13)}${fStrict.padEnd(13)}${bThink} -> ${fThink}`)
+        console.log(
+          `  ${(f.id + ' ' + f.name).padEnd(21)} ${bStrict.padEnd(13)}${fStrict.padEnd(13)}${bThink} -> ${fThink}`
+        )
       }
       console.log('  ' + '-'.repeat(72))
 
       console.log('\n  Aggregate:')
       console.log('  ' + '-'.repeat(55))
-      console.log(`    Strictness:          ${baseStrictPass}/${all.length} -> ${strictPass}/${all.length}`)
+      console.log(
+        `    Strictness:          ${baseStrictPass}/${all.length} -> ${strictPass}/${all.length}`
+      )
       console.log(`    Avg think tokens:    ~${baseAvgThink} -> ~${avgThink}`)
-      console.log(`    Avg accuracy:        ${(baseAvgAccuracy * 100).toFixed(0)}% -> ${(avgAccuracy * 100).toFixed(0)}%`)
-      console.log(`    Multi-turn stable:   ${baseMultiTurn ? 'YES' : 'NO'} -> ${multiTurnStable ? 'YES' : 'NO'}`)
+      console.log(
+        `    Avg accuracy:        ${(baseAvgAccuracy * 100).toFixed(0)}% -> ${(avgAccuracy * 100).toFixed(0)}%`
+      )
+      console.log(
+        `    Multi-turn stable:   ${baseMultiTurn ? 'YES' : 'NO'} -> ${multiTurnStable ? 'YES' : 'NO'}`
+      )
       console.log('  ' + '-'.repeat(55))
 
       console.log('\n' + separator('='))
@@ -375,7 +404,7 @@ async function main () {
         lora_adapter: LORA_ADAPTER,
         timestamp: new Date().toISOString(),
         system_prompt_length: SYSTEM_PROMPT.length,
-        scenarios: all.map(s => ({
+        scenarios: all.map((s) => ({
           id: s.id,
           name: s.name,
           strictness: s.analysis.strictness,
@@ -402,7 +431,9 @@ async function main () {
           console.log('\nCleaning up...')
           await client.unload()
           console.log('Done.')
-        } catch (e) { console.error('Failed to unload finetuned client:', e) }
+        } catch (e) {
+          console.error('Failed to unload finetuned client:', e)
+        }
       }
     }
   } catch (error) {
@@ -412,7 +443,7 @@ async function main () {
   }
 }
 
-main().catch(error => {
+main().catch((error) => {
   console.error('\nFatal error:', error.message)
   process.exit(1)
 })

@@ -7,7 +7,7 @@ const { downloadModel } = require('./utils')
 
 const MAX_TOOL_TURNS = 5
 
-function parseHarmonyToolCall (rawText) {
+function parseHarmonyToolCall(rawText) {
   const match = rawText.match(
     /commentary to=functions\.(\w+)\s+<\|constrain\|>json<\|message\|>(\{[^}]*\})<\|call\|>/
   )
@@ -19,7 +19,7 @@ function parseHarmonyToolCall (rawText) {
   }
 }
 
-function simulateToolExecution (name, args) {
+function simulateToolExecution(name, args) {
   if (name === 'get_weather') {
     return JSON.stringify({
       city: args.city,
@@ -39,7 +39,7 @@ function simulateToolExecution (name, args) {
   return JSON.stringify({ error: `Unknown tool: ${name}` })
 }
 
-async function main () {
+async function main() {
   console.log('Harmony Multi-Turn Tool Calling Example')
   console.log('========================================')
   console.log('GPT-OSS emits one tool call per turn, ending with <|call|>.')
@@ -99,7 +99,10 @@ async function main () {
   ]
 
   const history = [
-    { role: 'system', content: 'You are a helpful assistant that can use tools to get the weather and horoscope.' },
+    {
+      role: 'system',
+      content: 'You are a helpful assistant that can use tools to get the weather and horoscope.'
+    },
     ...toolDefs,
     { role: 'user', content: "What's the weather in Tokyo and my horoscope for Aquarius?" }
   ]
@@ -115,7 +118,9 @@ async function main () {
       let fullResponse = ''
 
       await response
-        .onUpdate(data => { fullResponse += data })
+        .onUpdate((data) => {
+          fullResponse += data
+        })
         .await()
 
       console.log(`[output length] ${fullResponse.length}`)
@@ -174,16 +179,24 @@ async function main () {
     console.log('Testing if model can emit multiple tool calls in a single generation...\n')
 
     const parallelHistory = [
-      { role: 'system', content: 'You are a helpful assistant. Call ALL required tools in a single response.' },
+      {
+        role: 'system',
+        content: 'You are a helpful assistant. Call ALL required tools in a single response.'
+      },
       ...toolDefs,
-      { role: 'user', content: 'I need both: weather in Tokyo AND horoscope for Aquarius. Call both tools now.' }
+      {
+        role: 'user',
+        content: 'I need both: weather in Tokyo AND horoscope for Aquarius. Call both tools now.'
+      }
     ]
 
     const parallelResponse = await model.run(parallelHistory)
     let parallelOutput = ''
 
     await parallelResponse
-      .onUpdate(data => { parallelOutput += data })
+      .onUpdate((data) => {
+        parallelOutput += data
+      })
       .await()
 
     const callCount = (parallelOutput.match(/<\|call\|>/g) || []).length
@@ -197,8 +210,12 @@ async function main () {
     if (callCount > 1) {
       console.log('\n[RESULT] PARALLEL SUPPORTED — model emitted multiple tool calls in one pass.')
     } else if (callCount === 1) {
-      console.log('\n[RESULT] PARALLEL NOT SUPPORTED — model emits exactly one tool call per generation.')
-      console.log('         GPT-OSS uses sequential multi-turn tool calling (one <|call|> per turn).')
+      console.log(
+        '\n[RESULT] PARALLEL NOT SUPPORTED — model emits exactly one tool call per generation.'
+      )
+      console.log(
+        '         GPT-OSS uses sequential multi-turn tool calling (one <|call|> per turn).'
+      )
     } else {
       console.log('\n[RESULT] UNEXPECTED — no <|call|> found in output.')
       console.log(`[raw output]\n${parallelOutput}`)
@@ -213,7 +230,7 @@ async function main () {
   }
 }
 
-main().catch(error => {
+main().catch((error) => {
   console.error('Fatal error in main function:', {
     error: error.message,
     stack: error.stack,

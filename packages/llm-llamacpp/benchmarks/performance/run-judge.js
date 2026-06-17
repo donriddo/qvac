@@ -12,14 +12,14 @@ const {
 } = require('./utils')
 const { round, average } = require('./math')
 
-function clamp01 (value) {
+function clamp01(value) {
   if (typeof value !== 'number' || Number.isNaN(value)) return null
   if (value < 0) return 0
   if (value > 1) return 1
   return value
 }
 
-function parseJudgeScore (rawText) {
+function parseJudgeScore(rawText) {
   const text = String(rawText || '').trim()
   if (!text) return null
   if (/^[+-]?\d+(\.\d+)?$/.test(text)) {
@@ -30,7 +30,7 @@ function parseJudgeScore (rawText) {
   return clamp01(Number(match[0]))
 }
 
-function buildJudgeMessages (reference, candidate) {
+function buildJudgeMessages(reference, candidate) {
   return [
     {
       role: 'system',
@@ -46,7 +46,7 @@ function buildJudgeMessages (reference, candidate) {
   ]
 }
 
-function findLatestSweepJsonl (resultsDir) {
+function findLatestSweepJsonl(resultsDir) {
   const files = fs.readdirSync(resultsDir)
   const candidates = files
     .filter((name) => /^llm-parameter-sweep-\d{8}-\d{6}\.jsonl$/.test(name))
@@ -57,25 +57,27 @@ function findLatestSweepJsonl (resultsDir) {
   return path.join(resultsDir, candidates[candidates.length - 1])
 }
 
-function readJsonlRecords (jsonlPath) {
+function readJsonlRecords(jsonlPath) {
   const text = fs.readFileSync(jsonlPath, 'utf8')
   const lines = text.split('\n').filter(Boolean)
   return lines.map((line, idx) => {
     try {
       return JSON.parse(line)
     } catch (error) {
-      throw new Error(`Invalid JSONL at ${jsonlPath}:${idx + 1} -> ${error.message || String(error)}`)
+      throw new Error(
+        `Invalid JSONL at ${jsonlPath}:${idx + 1} -> ${error.message || String(error)}`
+      )
     }
   })
 }
 
-function trimForJudge (value, maxChars) {
+function trimForJudge(value, maxChars) {
   const s = String(value || '')
   if (s.length <= maxChars) return s
   return `${s.slice(0, maxChars)}\n...[truncated for judge]...`
 }
 
-function stableHash32 (text) {
+function stableHash32(text) {
   const s = String(text || '')
   let hash = 0x811c9dc5
   for (let i = 0; i < s.length; i++) {
@@ -85,19 +87,19 @@ function stableHash32 (text) {
   return hash.toString(16)
 }
 
-function pairKey (reference, candidate) {
+function pairKey(reference, candidate) {
   const ref = String(reference || '')
   const cand = String(candidate || '')
   return `${ref.length}:${stableHash32(ref)}|${cand.length}:${stableHash32(cand)}`
 }
 
-function createJudgeRuntimeManager (opts) {
+function createJudgeRuntimeManager(opts) {
   let model = null
   const cache = new Map()
   const maxChars = 6000
 
   return {
-    async init () {
+    async init() {
       if (model) return
       const config = buildConfigObject(opts.runtimeConfig)
       const AddonCtor = opts.AddonCtor
@@ -110,11 +112,11 @@ function createJudgeRuntimeManager (opts) {
       await model.load()
     },
 
-    async preflight (reference, candidate) {
+    async preflight(reference, candidate) {
       await this.score(reference, candidate)
     },
 
-    async score (reference, candidate) {
+    async score(reference, candidate) {
       if (reference == null || candidate == null) return null
       const ref = String(reference)
       const cand = String(candidate)
@@ -130,9 +132,11 @@ function createJudgeRuntimeManager (opts) {
           const candTrimmed = trimForJudge(cand, charLimit)
           const response = await model.run(buildJudgeMessages(refTrimmed, candTrimmed))
           const chunks = []
-          await response.onUpdate((data) => {
-            chunks.push(data)
-          }).await()
+          await response
+            .onUpdate((data) => {
+              chunks.push(data)
+            })
+            .await()
           const parsed = parseJudgeScore(chunks.join(''))
           cache.set(cacheKey, parsed)
           return parsed
@@ -148,7 +152,7 @@ function createJudgeRuntimeManager (opts) {
       return null
     },
 
-    async close () {
+    async close() {
       if (model) {
         await model.unload().catch(() => {})
         model = null
@@ -157,12 +161,9 @@ function createJudgeRuntimeManager (opts) {
   }
 }
 
-const {
-  DEFAULT_RESULTS_DIR,
-  MODELS
-} = require('./llm-parameter-sweep.config')
+const { DEFAULT_RESULTS_DIR, MODELS } = require('./llm-parameter-sweep.config')
 
-async function main () {
+async function main() {
   const args = parseArgs(process.argv)
   const debug = Boolean(args.debug)
   const addonSource = parseAddonSource(args['addon-source'])
@@ -194,11 +195,12 @@ async function main () {
   if (!judgeModelDef) throw new Error(`Unknown --judge-model: ${judgeModelId}`)
   const judgeQuant = String(
     args['judge-quantization'] ||
-    (Array.isArray(judgeModelDef.quantizations) ? judgeModelDef.quantizations[0] : null) ||
-    'Q4_0'
+      (Array.isArray(judgeModelDef.quantizations) ? judgeModelDef.quantizations[0] : null) ||
+      'Q4_0'
   )
   const judgeModelName = judgeModelDef.quantizationFiles[judgeQuant]
-  if (!judgeModelName) throw new Error(`Judge quantization "${judgeQuant}" not found for model "${judgeModelId}"`)
+  if (!judgeModelName)
+    throw new Error(`Judge quantization "${judgeQuant}" not found for model "${judgeModelId}"`)
 
   const judgeRuntimeConfig = {
     ...judgeModelDef.defaults,

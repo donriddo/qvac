@@ -43,7 +43,7 @@ const SAFE_FALLBACK_RUNTIME = {
   verbosity: '0'
 }
 
-async function main () {
+async function main() {
   const prompts = JSON.parse(fs.readFileSync(PROMPTS_PATH, 'utf8'))
   const byId = new Map(prompts.map((p) => [p.id, p]))
   const failures = []
@@ -91,7 +91,9 @@ async function main () {
           failures.push(`long: ${n} exceeds minimum ctx budget ${minCtxBudget} (ctx=${minCtxSize})`)
         }
         if (Number.isFinite(n) && n < 650) {
-          failures.push(`long: ${n} too short; expected a substantial long prompt for n-predict=1024`)
+          failures.push(
+            `long: ${n} too short; expected a substantial long prompt for n-predict=1024`
+          )
         }
         console.log(`long: tokens=${n} minCtxBudget=${minCtxBudget}`)
       }
@@ -107,7 +109,8 @@ async function main () {
       const n = await getPromptTokens(model, p.messages)
       const budget = getCtxBudget(ctx)
       if (n > budget) failures.push(`${id}: ${n} exceeds budget ${budget}`)
-      if (n < (budget - CTX_SLACK)) failures.push(`${id}: ${n} does not fill context enough (target near ${budget})`)
+      if (n < budget - CTX_SLACK)
+        failures.push(`${id}: ${n} does not fill context enough (target near ${budget})`)
       console.log(`${id}: tokens=${n} budget=${budget}`)
     }
 
@@ -124,7 +127,8 @@ async function main () {
         if (n > budget) failures.push(`${id}: ${n} exceeds budget ${budget}`)
         if (Number(batch) <= Number(ctx)) {
           const minSpan = Math.max(256, Math.min(budget - CTX_SLACK, Number(batch) + 64))
-          if (n < minSpan) failures.push(`${id}: ${n} too short to span batches (expected >= ${minSpan})`)
+          if (n < minSpan)
+            failures.push(`${id}: ${n} too short to span batches (expected >= ${minSpan})`)
         }
         console.log(`${id}: tokens=${n} budget=${budget}`)
       }

@@ -6,11 +6,11 @@ const process = require('bare-process')
 const { downloadModel } = require('./utils')
 
 // Helper functions
-function createSeparator (char = '=', length = 80) {
+function createSeparator(char = '=', length = 80) {
   return char.repeat(length)
 }
 
-function extractToolCalls (response) {
+function extractToolCalls(response) {
   const toolCalls = []
   const toolCallRegex = /<tool_call>([\s\S]*?)<\/tool_call>/g
   let match
@@ -26,7 +26,7 @@ function extractToolCalls (response) {
   return toolCalls
 }
 
-async function runQuery (model, query) {
+async function runQuery(model, query) {
   console.log(`\n${createSeparator()}`)
   console.log(query.name)
   console.log(createSeparator())
@@ -37,7 +37,7 @@ async function runQuery (model, query) {
   let fullResponse = ''
 
   await response
-    .onUpdate(data => {
+    .onUpdate((data) => {
       process.stdout.write(data)
       fullResponse += data
     })
@@ -53,7 +53,7 @@ async function runQuery (model, query) {
   return { name: query.name, toolCalls: extractToolCalls(fullResponse) }
 }
 
-function printToolCallSummary (results) {
+function printToolCallSummary(results) {
   console.log(`\n${createSeparator()}`)
   console.log('Tool Call Summary')
   console.log(createSeparator())
@@ -70,7 +70,7 @@ function printToolCallSummary (results) {
   console.log(`\n${createSeparator()}`)
 }
 
-async function main () {
+async function main() {
   console.log('Tool Calling Example: Demonstrates tool calling capabilities')
   console.log('============================================================')
 
@@ -103,7 +103,8 @@ async function main () {
     // 4. Defining tool queries with function schemas
     const systemMessageAmbiguous = {
       role: 'system',
-      content: 'You are a helpful assistant with access to various tools. If request is ambiguous,skip tool calls.'
+      content:
+        'You are a helpful assistant with access to various tools. If request is ambiguous,skip tool calls.'
     }
 
     const toolQuery1 = [
@@ -119,7 +120,11 @@ async function main () {
           type: 'object',
           properties: {
             query: { type: 'string', description: 'Query' },
-            category: { type: 'string', enum: ['electronics', 'clothing', 'books'], description: 'Category' },
+            category: {
+              type: 'string',
+              enum: ['electronics', 'clothing', 'books'],
+              description: 'Category'
+            },
             maxPrice: { type: 'number', minimum: 0, description: 'Max price' }
           },
           required: ['query']
@@ -164,7 +169,11 @@ async function main () {
               type: 'object',
               properties: {
                 field: { type: 'string', description: 'Field' },
-                operator: { type: 'string', enum: ['equals', 'greaterThan'], description: 'Operator' },
+                operator: {
+                  type: 'string',
+                  enum: ['equals', 'greaterThan'],
+                  description: 'Operator'
+                },
                 value: { type: 'string', description: 'Value' }
               },
               required: ['field', 'operator', 'value']
@@ -177,7 +186,8 @@ async function main () {
       },
       {
         role: 'user',
-        content: 'Search laptops under $1000 and add 2 with ID "laptop-123" to cart. Also, query users table age > 25 limit 50 with metadata.'
+        content:
+          'Search laptops under $1000 and add 2 with ID "laptop-123" to cart. Also, query users table age > 25 limit 50 with metadata.'
       }
     ]
 
@@ -193,7 +203,13 @@ async function main () {
           type: 'object',
           properties: {
             expression: { type: 'string', description: 'Expression' },
-            precision: { type: 'integer', minimum: 0, maximum: 10, default: 2, description: 'Precision' }
+            precision: {
+              type: 'integer',
+              minimum: 0,
+              maximum: 10,
+              default: 2,
+              description: 'Precision'
+            }
           },
           required: ['expression']
         }
@@ -268,7 +284,8 @@ async function main () {
       },
       {
         role: 'user',
-        content: 'Daily is fine. Also, schedule a team meeting on April 10th at 2 PM for 60 minutes.'
+        content:
+          'Daily is fine. Also, schedule a team meeting on April 10th at 2 PM for 60 minutes.'
       }
     ]
 
@@ -297,7 +314,7 @@ async function main () {
   }
 }
 
-main().catch(error => {
+main().catch((error) => {
   console.error('Fatal error in main function:', {
     error: error.message,
     stack: error.stack,

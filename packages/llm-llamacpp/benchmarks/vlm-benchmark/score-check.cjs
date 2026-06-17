@@ -9,17 +9,87 @@ const DATA = {
   textvqa: {
     metric: 'vqa',
     items: [
-      { gold: ['philippe molitor', 'philippe molitor', 'philippe molitor', 'philippe molitor', 'clardajne', 'phillipe molida', 'l', 'no', 'phillipe meltow', 'philippe molitar'], pred: 'Philippe Molitor' },
-      { gold: ['2010', '2010', '2010', '2010', '2010', '2010', '2010', '2010', 'unanswerable', '2010'], pred: '2010' },
+      {
+        gold: [
+          'philippe molitor',
+          'philippe molitor',
+          'philippe molitor',
+          'philippe molitor',
+          'clardajne',
+          'phillipe molida',
+          'l',
+          'no',
+          'phillipe meltow',
+          'philippe molitar'
+        ],
+        pred: 'Philippe Molitor'
+      },
+      {
+        gold: [
+          '2010',
+          '2010',
+          '2010',
+          '2010',
+          '2010',
+          '2010',
+          '2010',
+          '2010',
+          'unanswerable',
+          '2010'
+        ],
+        pred: '2010'
+      },
       { gold: ['50', ' 50', '50', '50', '50', '50', '50', '50', '50', '50'], pred: '50' }
     ]
   },
   vizwiz: {
     metric: 'vqa',
     items: [
-      { gold: ['no text identifying identification on side card', 'yes', 'unanswerable', 'no', 'no', 'unanswerable', 'unanswerable', 'no', 'no', 'no'], pred: 'yes' },
-      { gold: ['every now then', 'every now then', 'every no then', 'every now then', 'every now then', 'every now then', 'every now then', 'every now then', 'every now then', 'every now then'], pred: 'The title is "Every Now and Then"' },
-      { gold: ['already booted', 'already booted', 'booted', 'already booted', 'already booted', 'no', 'already booted', 'yes booted', 'booted', 'already booted'], pred: 'Yes' }
+      {
+        gold: [
+          'no text identifying identification on side card',
+          'yes',
+          'unanswerable',
+          'no',
+          'no',
+          'unanswerable',
+          'unanswerable',
+          'no',
+          'no',
+          'no'
+        ],
+        pred: 'yes'
+      },
+      {
+        gold: [
+          'every now then',
+          'every now then',
+          'every no then',
+          'every now then',
+          'every now then',
+          'every now then',
+          'every now then',
+          'every now then',
+          'every now then',
+          'every now then'
+        ],
+        pred: 'The title is "Every Now and Then"'
+      },
+      {
+        gold: [
+          'already booted',
+          'already booted',
+          'booted',
+          'already booted',
+          'already booted',
+          'no',
+          'already booted',
+          'yes booted',
+          'booted',
+          'already booted'
+        ],
+        pred: 'Yes'
+      }
     ]
   },
   gqa: {
@@ -48,15 +118,19 @@ const DATA = {
   }
 }
 
-const pct = x => (100 * x).toFixed(1).padStart(6)
-let sum = 0; let n = 0
+const pct = (x) => (100 * x).toFixed(1).padStart(6)
+let sum = 0
+let n = 0
 console.log('task     metric  per-item scores            mean %')
 console.log('-------------------------------------------------------')
 for (const [task, { metric, items }] of Object.entries(DATA)) {
-  const s = items.map(it => score(metric, it.pred, it.gold))
+  const s = items.map((it) => score(metric, it.pred, it.gold))
   const mean = s.reduce((a, b) => a + b, 0) / s.length
-  sum += mean; n++
-  console.log(`${task.padEnd(8)} ${metric.padEnd(6)} [${s.map(x => x.toFixed(2)).join(', ')}]   ${pct(mean)}`)
+  sum += mean
+  n++
+  console.log(
+    `${task.padEnd(8)} ${metric.padEnd(6)} [${s.map((x) => x.toFixed(2)).join(', ')}]   ${pct(mean)}`
+  )
 }
 console.log('-------------------------------------------------------')
 console.log(`Overall % (equal-weight mean across tasks):       ${pct(sum / n)}`)

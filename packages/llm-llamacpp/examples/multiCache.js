@@ -5,7 +5,7 @@ const path = require('bare-path')
 const process = require('bare-process')
 const { downloadModel } = require('./utils')
 
-async function main () {
+async function main() {
   console.log('Multi-Cache Example: Demonstrates cache management with multiple cache files')
   console.log('============================================================================')
 
@@ -58,7 +58,7 @@ async function main () {
     let fullResponse1 = ''
 
     await response1
-      .onUpdate(data => {
+      .onUpdate((data) => {
         process.stdout.write(data)
         fullResponse1 += data
       })
@@ -81,7 +81,7 @@ async function main () {
     let fullResponse2 = ''
 
     await response2
-      .onUpdate(data => {
+      .onUpdate((data) => {
         process.stdout.write(data)
         fullResponse2 += data
       })
@@ -104,7 +104,7 @@ async function main () {
     let fullResponse3 = ''
 
     await response3
-      .onUpdate(data => {
+      .onUpdate((data) => {
         process.stdout.write(data)
         fullResponse3 += data
       })
@@ -124,7 +124,7 @@ async function main () {
   }
 }
 
-main().catch(error => {
+main().catch((error) => {
   console.error('Fatal error in main function:', {
     error: error.message,
     stack: error.stack,

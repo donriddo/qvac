@@ -36,7 +36,7 @@ const {
   PARAMETER_SWEEP
 } = require('./llm-parameter-sweep.config')
 
-async function main () {
+async function main() {
   const args = parseArgs(process.argv)
   const debugEnabled = Boolean(args.debug)
   const debugLogger = createDebugLogger(debugEnabled)
@@ -51,12 +51,15 @@ async function main () {
   if (!fs.existsSync(promptsFilePath)) {
     throw new Error(
       `Missing prompts file: ${promptsFilePath}. ` +
-      'Run `npm run prepare:prompts` to generate test prompts, or pass --prompts-file <path>.'
+        'Run `npm run prepare:prompts` to generate test prompts, or pass --prompts-file <path>.'
     )
   }
   const prompts = loadPromptsFromFile(promptsFilePath)
   const selectedModelIds = args.models
-    ? String(args.models).split(',').map((x) => x.trim()).filter(Boolean)
+    ? String(args.models)
+        .split(',')
+        .map((x) => x.trim())
+        .filter(Boolean)
     : MODELS.map((m) => m.id)
 
   const selectedModels = MODELS.filter((m) => selectedModelIds.includes(m.id))
@@ -75,13 +78,14 @@ async function main () {
     if (progressData.sweepFingerprint && progressData.sweepFingerprint !== sweepFingerprint) {
       console.warn(
         'Progress file sweep parameters differ from current invocation (e.g. --repeats or sweep dimensions changed). ' +
-        'Starting fresh. Delete progress file manually to suppress this warning.'
+          'Starting fresh. Delete progress file manually to suppress this warning.'
       )
     } else {
       completedCases = new Set(progressData.completedCases || [])
-      runStartedAt = typeof progressData.startedAt === 'string' && progressData.startedAt
-        ? progressData.startedAt
-        : null
+      runStartedAt =
+        typeof progressData.startedAt === 'string' && progressData.startedAt
+          ? progressData.startedAt
+          : null
       debugLogger.log(`Resuming: ${completedCases.size} cases already completed`)
     }
   } catch {
@@ -98,11 +102,18 @@ async function main () {
     }
     saveProgressTimeout = setTimeout(() => {
       try {
-        fs.writeFileSync(progressFile, JSON.stringify({
-          startedAt: runStartedAt,
-          sweepFingerprint,
-          completedCases: Array.from(completedCases)
-        }, null, 2))
+        fs.writeFileSync(
+          progressFile,
+          JSON.stringify(
+            {
+              startedAt: runStartedAt,
+              sweepFingerprint,
+              completedCases: Array.from(completedCases)
+            },
+            null,
+            2
+          )
+        )
       } catch (writeError) {
         if (debugEnabled) {
           debugLogger.warn(`Failed to save progress: ${writeError.message || String(writeError)}`)
@@ -118,11 +129,18 @@ async function main () {
       saveProgressTimeout = null
     }
     try {
-      fs.writeFileSync(progressFile, JSON.stringify({
-        startedAt: runStartedAt,
-        sweepFingerprint,
-        completedCases: Array.from(completedCases)
-      }, null, 2))
+      fs.writeFileSync(
+        progressFile,
+        JSON.stringify(
+          {
+            startedAt: runStartedAt,
+            sweepFingerprint,
+            completedCases: Array.from(completedCases)
+          },
+          null,
+          2
+        )
+      )
     } catch (writeError) {
       if (debugEnabled) {
         debugLogger.warn(`Failed to flush progress: ${writeError.message || String(writeError)}`)
@@ -158,12 +176,17 @@ async function main () {
     return { modelDef, cases }
   })
   const totalCases = plannedRunsByModel.reduce((acc, item) => acc + item.cases.length, 0)
-  const totalPlannedRuns = plannedRunsByModel.reduce((acc, item) => acc + (item.cases.length * report.promptsCount * repeats), 0)
+  const totalPlannedRuns = plannedRunsByModel.reduce(
+    (acc, item) => acc + item.cases.length * report.promptsCount * repeats,
+    0
+  )
   report.totalCases = totalCases
   report.totalPlannedRuns = totalPlannedRuns
   const progress = createProgressReporter(totalPlannedRuns)
 
-  debugLogger.log(`Running full-grid parameter sweep for: ${selectedModels.map((m) => m.id).join(', ')}`)
+  debugLogger.log(
+    `Running full-grid parameter sweep for: ${selectedModels.map((m) => m.id).join(', ')}`
+  )
   debugLogger.log(`Addon source: ${addonSource}`)
   debugLogger.log(`Repeats per case: ${repeats}`)
   debugLogger.log(`Sweep dimensions: ${JSON.stringify(sweep)}`)
@@ -216,12 +239,16 @@ async function main () {
     for (let caseIndex = 0; caseIndex < cases.length; caseIndex++) {
       // Wrap each case in try-catch to prevent one case from crashing the entire benchmark
       const testCase = cases[caseIndex]
-      const promptsForCase = [selectPromptForCase(prompts, testCase.runtimeConfig, testCase.promptCase)]
+      const promptsForCase = [
+        selectPromptForCase(prompts, testCase.runtimeConfig, testCase.promptCase)
+      ]
       const caseKey = `${modelDef.id}:${testCase.caseId}`
       if (completedCases.has(caseKey)) {
         const previousRecord = previousCaseRecords.get(caseKey) || null
         if (!previousRecord) {
-          console.warn(`Progress marks case as complete but JSONL record is missing — re-running: ${caseKey}`)
+          console.warn(
+            `Progress marks case as complete but JSONL record is missing — re-running: ${caseKey}`
+          )
           completedCases.delete(caseKey)
           // Fall through to run the case normally
         } else {
@@ -255,13 +282,13 @@ async function main () {
       try {
         if (!testCase.modelName) {
           throw new Error(
-          `Quantization "${testCase.quantization}" is not configured for model "${modelDef.id}" (case ${testCase.caseId})`
+            `Quantization "${testCase.quantization}" is not configured for model "${modelDef.id}" (case ${testCase.caseId})`
           )
         }
         if (!checkModelExists(modelDef.modelDir, testCase.modelName)) {
           throw new Error(
-          `Missing model file for case ${testCase.caseId}: ${path.join(modelDef.modelDir, testCase.modelName)}. ` +
-          'Run model preparation first (npm run prepare:models:addon).'
+            `Missing model file for case ${testCase.caseId}: ${path.join(modelDef.modelDir, testCase.modelName)}. ` +
+              'Run model preparation first (npm run prepare:models:addon).'
           )
         }
 
@@ -287,7 +314,12 @@ async function main () {
           debugLogger.log(`Model loaded for case ${testCase.caseId} in ${loadMs.toFixed(1)}ms`)
         } catch (loadError) {
           const errorMsg = loadError && loadError.message ? loadError.message : String(loadError)
-          if (errorMsg.includes('VRAM') || errorMsg.includes('gpu-layers') || errorMsg.includes('failed to create context') || errorMsg.includes('UnableToLoadModel')) {
+          if (
+            errorMsg.includes('VRAM') ||
+            errorMsg.includes('gpu-layers') ||
+            errorMsg.includes('failed to create context') ||
+            errorMsg.includes('UnableToLoadModel')
+          ) {
             // VRAM error - mark all prompts as failed and skip this case
             for (let promptIndex = 0; promptIndex < promptsForCase.length; promptIndex++) {
               for (let repeat = 1; repeat <= repeats; repeat++) {
@@ -349,12 +381,14 @@ async function main () {
               let timeToFirstToken = null
               const chunks = []
               const response = await model.run(prompt.messages)
-              await response.onUpdate((data) => {
-                if (timeToFirstToken === null) {
-                  timeToFirstToken = elapsedMs(runStart)
-                }
-                chunks.push(data)
-              }).await()
+              await response
+                .onUpdate((data) => {
+                  if (timeToFirstToken === null) {
+                    timeToFirstToken = elapsedMs(runStart)
+                  }
+                  chunks.push(data)
+                })
+                .await()
               const runMs = elapsedMs(runStart)
               const outputText = chunks.join('')
               const stats = response.stats || {}
@@ -374,8 +408,10 @@ async function main () {
               caseMetricSamples.runMs.push(metrics.runMs)
               if (metrics.ttftMs != null) caseMetricSamples.ttftMs.push(metrics.ttftMs)
               if (metrics.tps != null) caseMetricSamples.tps.push(metrics.tps)
-              if (firstPromptTokens == null && metrics.promptTokens != null) firstPromptTokens = metrics.promptTokens
-              if (firstGeneratedTokens == null && metrics.generatedTokens != null) firstGeneratedTokens = metrics.generatedTokens
+              if (firstPromptTokens == null && metrics.promptTokens != null)
+                firstPromptTokens = metrics.promptTokens
+              if (firstGeneratedTokens == null && metrics.generatedTokens != null)
+                firstGeneratedTokens = metrics.generatedTokens
               caseRepeatsAttempted += 1
               caseRepeatsSucceeded += 1
               if (!firstOutput) {
@@ -394,7 +430,7 @@ async function main () {
 
               // Add small delay between repeats (model stays loaded)
               if (repeat < repeats) {
-                await new Promise(resolve => setTimeout(resolve, 50))
+                await new Promise((resolve) => setTimeout(resolve, 50))
               }
             } catch (error) {
               promptError = error
@@ -404,7 +440,7 @@ async function main () {
 
               const isContextOverflow = errorMsg && /context|ctx[- ]?size|overflow/i.test(errorMsg)
               if (isContextOverflow) {
-                await new Promise(resolve => setTimeout(resolve, 15000))
+                await new Promise((resolve) => setTimeout(resolve, 15000))
               }
 
               // Tick progress for the failed repeat and all remaining repeats
@@ -449,7 +485,10 @@ async function main () {
                   baselineReference = firstOutput
                   qualityMatch = 1.0
                 } else {
-                  baselineReference = Object.prototype.hasOwnProperty.call(adaptiveBaselineOutputs, adaptiveKey)
+                  baselineReference = Object.prototype.hasOwnProperty.call(
+                    adaptiveBaselineOutputs,
+                    adaptiveKey
+                  )
                     ? adaptiveBaselineOutputs[adaptiveKey]
                     : null
                   qualityMatch = exactMatch(baselineReference, firstOutput)
@@ -463,9 +502,8 @@ async function main () {
                 baselineReference = Object.prototype.hasOwnProperty.call(baselineOutputs, prompt.id)
                   ? baselineOutputs[prompt.id]
                   : null
-                qualityMatch = baselineReference == null
-                  ? null
-                  : exactMatch(baselineReference, firstOutput)
+                qualityMatch =
+                  baselineReference == null ? null : exactMatch(baselineReference, firstOutput)
               }
             }
 
@@ -478,22 +516,29 @@ async function main () {
             })
           } else if (promptError) {
             // All repeats failed
-            const errorMsg = promptError && promptError.message ? promptError.message : String(promptError)
-            const isVramError = errorMsg.includes('VRAM_ERROR') || errorMsg.includes('VRAM') || errorMsg.includes('gpu-layers') || errorMsg.includes('failed to create context') || errorMsg.includes('UnableToLoadModel')
+            const errorMsg =
+              promptError && promptError.message ? promptError.message : String(promptError)
+            const isVramError =
+              errorMsg.includes('VRAM_ERROR') ||
+              errorMsg.includes('VRAM') ||
+              errorMsg.includes('gpu-layers') ||
+              errorMsg.includes('failed to create context') ||
+              errorMsg.includes('UnableToLoadModel')
 
             promptResults.push({
               promptId: prompt.id,
               metrics: null,
               qualityMatch: null,
               error: errorMsg,
-              errorStack: promptError && promptError.stack ? truncateText(promptError.stack, 1200) : null,
+              errorStack:
+                promptError && promptError.stack ? truncateText(promptError.stack, 1200) : null,
               vramError: isVramError
             })
           }
 
           // Add small delay between prompts (model stays loaded)
           if (promptIndex < promptsForCase.length - 1) {
-            await new Promise(resolve => setTimeout(resolve, 50))
+            await new Promise((resolve) => setTimeout(resolve, 50))
           }
         }
 
@@ -505,7 +550,9 @@ async function main () {
             await model.unload().catch(() => {})
             unloadMs = elapsedMs(unloadStart)
           } catch (unloadError) {
-            debugLogger.warn(`Failed to unload model: ${unloadError.message || String(unloadError)}`)
+            debugLogger.warn(
+              `Failed to unload model: ${unloadError.message || String(unloadError)}`
+            )
           }
         }
 
@@ -520,42 +567,50 @@ async function main () {
         }
 
         // Add delay after case completion to allow cleanup
-        await new Promise(resolve => setTimeout(resolve, 200))
+        await new Promise((resolve) => setTimeout(resolve, 200))
 
         // Aggregate metrics across all successful prompt repeats in this case
-        const successfulResults = promptResults.filter(p => p.metrics != null && !p.error)
-        const aggregatedMetrics = successfulResults.length > 0
-          ? {
-              repeats,
-              loadMsMean: round(loadMs, 3), // Load time is per-case
-              loadMsStd: loadMs != null ? 0 : null,
-              runMsMean: round(average(caseMetricSamples.runMs), 3),
-              runMsStd: round(stddev(caseMetricSamples.runMs), 3),
-              unloadMsMean: round(unloadMs, 3), // Unload time is per-case
-              unloadMsStd: unloadMs != null ? 0 : null,
-              ttftMsMean: round(average(caseMetricSamples.ttftMs), 3),
-              ttftMsStd: round(stddev(caseMetricSamples.ttftMs), 3),
-              tpsMean: round(average(caseMetricSamples.tps), 3),
-              tpsStd: round(stddev(caseMetricSamples.tps), 3),
-              promptTokens: firstPromptTokens,
-              generatedTokens: firstGeneratedTokens
-            }
-          : null
+        const successfulResults = promptResults.filter((p) => p.metrics != null && !p.error)
+        const aggregatedMetrics =
+          successfulResults.length > 0
+            ? {
+                repeats,
+                loadMsMean: round(loadMs, 3), // Load time is per-case
+                loadMsStd: loadMs != null ? 0 : null,
+                runMsMean: round(average(caseMetricSamples.runMs), 3),
+                runMsStd: round(stddev(caseMetricSamples.runMs), 3),
+                unloadMsMean: round(unloadMs, 3), // Unload time is per-case
+                unloadMsStd: unloadMs != null ? 0 : null,
+                ttftMsMean: round(average(caseMetricSamples.ttftMs), 3),
+                ttftMsStd: round(stddev(caseMetricSamples.ttftMs), 3),
+                tpsMean: round(average(caseMetricSamples.tps), 3),
+                tpsStd: round(stddev(caseMetricSamples.tps), 3),
+                promptTokens: firstPromptTokens,
+                generatedTokens: firstGeneratedTokens
+              }
+            : null
 
-        const avgQualityMatch = round(average(promptResults.filter(p => !p.error).map(p => p.qualityMatch).filter(x => x != null)), 6)
-        const hasErrors = promptResults.some(p => p.error != null)
-        const status = hasErrors
-          ? (caseRepeatsSucceeded > 0 ? 'partial-failure' : 'failed')
-          : 'ok'
+        const avgQualityMatch = round(
+          average(
+            promptResults
+              .filter((p) => !p.error)
+              .map((p) => p.qualityMatch)
+              .filter((x) => x != null)
+          ),
+          6
+        )
+        const hasErrors = promptResults.some((p) => p.error != null)
+        const status = hasErrors ? (caseRepeatsSucceeded > 0 ? 'partial-failure' : 'failed') : 'ok'
         const promptErrors = compactPromptErrors(promptResults)
-        const errorSummary = promptErrors.length > 0
-          ? {
-              message: truncateText(
-                `${promptErrors.length} prompt error(s): ${promptErrors[0].error}`,
-                300
-              )
-            }
-          : null
+        const errorSummary =
+          promptErrors.length > 0
+            ? {
+                message: truncateText(
+                  `${promptErrors.length} prompt error(s): ${promptErrors[0].error}`,
+                  300
+                )
+              }
+            : null
 
         persistCaseResult({
           ...testCase,
@@ -589,8 +644,10 @@ async function main () {
         } catch {
           // Ignore cleanup errors
         }
-        debugLogger.error(`Case ${testCase.caseId} failed completely: ${caseError.message || String(caseError)}`)
-        const remainingRepeats = Math.max(0, (promptsForCase.length * repeats) - caseRepeatsAttempted)
+        debugLogger.error(
+          `Case ${testCase.caseId} failed completely: ${caseError.message || String(caseError)}`
+        )
+        const remainingRepeats = Math.max(0, promptsForCase.length * repeats - caseRepeatsAttempted)
         for (let i = 0; i < remainingRepeats; i++) {
           progress.tick({
             modelId: modelDef.id,
@@ -623,12 +680,13 @@ async function main () {
         // Fail fast when the baseline case cannot initialize the model.
         // Continuing the full grid in this state only floods logs with the same fatal error.
         if (testCase.isBaseline) {
-          const baselineError = caseError && caseError.message ? caseError.message : String(caseError)
+          const baselineError =
+            caseError && caseError.message ? caseError.message : String(caseError)
           if (/Failed to initialize model|failed to load model/i.test(baselineError)) {
             throw new Error(
               `Baseline case failed to initialize model "${testCase.modelName}". ` +
-              'Please re-prepare models and verify disk/free space before running the sweep again. ' +
-              `Underlying error: ${baselineError}`
+                'Please re-prepare models and verify disk/free space before running the sweep again. ' +
+                `Underlying error: ${baselineError}`
             )
           }
         }
@@ -645,7 +703,10 @@ async function main () {
 
   report.finishedAt = new Date().toISOString()
   report.totalCompletedRuns = report.models.reduce((acc, model) => {
-    const modelRuns = (model.cases || []).reduce((sum, item) => sum + Number(item.repeatsAttempted || 0), 0)
+    const modelRuns = (model.cases || []).reduce(
+      (sum, item) => sum + Number(item.repeatsAttempted || 0),
+      0
+    )
     return acc + modelRuns
   }, 0)
 

@@ -5,7 +5,7 @@ const path = require('bare-path')
 const https = require('bare-https')
 const process = require('bare-process')
 
-async function downloadModel (url, filename) {
+async function downloadModel(url, filename) {
   const modelDir = path.resolve('./models')
   const modelPath = path.join(modelDir, filename)
 
@@ -20,8 +20,18 @@ async function downloadModel (url, filename) {
 
   return new Promise((resolve, reject) => {
     let resolved = false
-    const safeResolve = (val) => { if (!resolved) { resolved = true; resolve(val) } }
-    const safeReject = (err) => { if (!resolved) { resolved = true; reject(err) } }
+    const safeResolve = (val) => {
+      if (!resolved) {
+        resolved = true
+        resolve(val)
+      }
+    }
+    const safeReject = (err) => {
+      if (!resolved) {
+        resolved = true
+        reject(err)
+      }
+    }
 
     const fileStream = fs.createWriteStream(modelPath)
 
@@ -30,7 +40,7 @@ async function downloadModel (url, filename) {
       fs.unlink(modelPath, () => safeReject(err))
     })
 
-    const req = https.request(url, response => {
+    const req = https.request(url, (response) => {
       if ([301, 302, 307, 308].includes(response.statusCode)) {
         fileStream.destroy()
         req.destroy()
@@ -42,8 +52,7 @@ async function downloadModel (url, filename) {
 
           const redirectUrl = new URL(response.headers.location, url).href
 
-          downloadModel(redirectUrl, filename)
-            .then(safeResolve).catch(safeReject)
+          downloadModel(redirectUrl, filename).then(safeResolve).catch(safeReject)
         })
         return
       }
@@ -59,7 +68,7 @@ async function downloadModel (url, filename) {
       const total = parseInt(response.headers['content-length'], 10)
       let downloaded = 0
 
-      response.on('data', chunk => {
+      response.on('data', (chunk) => {
         downloaded += chunk.length
         if (total) {
           const percent = ((downloaded / total) * 100).toFixed(1)
@@ -81,7 +90,7 @@ async function downloadModel (url, filename) {
       })
     })
 
-    req.on('error', err => {
+    req.on('error', (err) => {
       fileStream.destroy()
       fs.unlink(modelPath, () => safeReject(err))
     })
@@ -90,7 +99,7 @@ async function downloadModel (url, filename) {
   })
 }
 
-function formatTime (ms) {
+function formatTime(ms) {
   if (!Number.isFinite(ms) || ms < 0) return '--:--'
   const totalSec = Math.floor(ms / 1000)
   const h = Math.floor(totalSec / 3600)
@@ -100,14 +109,14 @@ function formatTime (ms) {
   return `${m}:${String(s).padStart(2, '0')}`
 }
 
-function makeProgressBar (current, total, width) {
+function makeProgressBar(current, total, width) {
   width = width || 20
   if (!total || total <= 0) return '[' + ' '.repeat(width) + ']'
   const filled = Math.round((current / total) * width)
   return '[' + '\u2588'.repeat(filled) + '\u2591'.repeat(width - filled) + ']'
 }
 
-function formatProgress (stats, totalEpochs) {
+function formatProgress(stats, totalEpochs) {
   const isTrain = stats.is_train !== false
   const phase = isTrain ? 'train' : 'val  '
   const epoch = Number.isFinite(stats.current_epoch) ? stats.current_epoch + 1 : 1
@@ -121,7 +130,7 @@ function formatProgress (stats, totalEpochs) {
   return `${phase} epoch ${epoch}/${totalEpochs} ${bar} ${batchStr} | loss=${loss} acc=${acc}${stepStr} | ${elapsed}<${eta}`
 }
 
-function createFilteredLogger () {
+function createFilteredLogger() {
   const originalConsoleLog = console.log
   const originalConsoleInfo = console.info
   const originalConsoleWarn = console.warn
@@ -163,7 +172,7 @@ function createFilteredLogger () {
     debug: console.debug.bind(console)
   }
 
-  function restore () {
+  function restore() {
     console.log = originalConsoleLog
     console.info = originalConsoleInfo
     console.warn = originalConsoleWarn

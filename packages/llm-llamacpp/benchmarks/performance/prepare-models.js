@@ -5,7 +5,7 @@ const fs = require('fs')
 const path = require('path')
 const https = require('https')
 
-function parseArgs (argv) {
+function parseArgs(argv) {
   const args = {}
   for (let i = 2; i < argv.length; i++) {
     const token = argv[i]
@@ -22,14 +22,14 @@ function parseArgs (argv) {
   return args
 }
 
-function asArray (value) {
+function asArray(value) {
   return String(value || '')
     .split(',')
     .map((x) => x.trim())
     .filter(Boolean)
 }
 
-function quantizationPatterns (quantization) {
+function quantizationPatterns(quantization) {
   const q = String(quantization || '').toUpperCase()
   const patterns = [q.toLowerCase()]
   if (q === 'F16') patterns.push('f16', 'fp16', 'bf16')
@@ -40,14 +40,11 @@ function quantizationPatterns (quantization) {
   return [...new Set(patterns)]
 }
 
-function filenameCandidates (repo, quantization) {
+function filenameCandidates(repo, quantization) {
   const repoName = String(repo).split('/').slice(-1)[0]
   const stem = repoName.toUpperCase().endsWith('-GGUF') ? repoName.slice(0, -5) : repoName
   const quant = String(quantization).toUpperCase()
-  const candidates = [
-    `${stem}-${quant}.gguf`,
-    `${stem}-${quant.toLowerCase()}.gguf`
-  ]
+  const candidates = [`${stem}-${quant}.gguf`, `${stem}-${quant.toLowerCase()}.gguf`]
   if (quant === 'F16') {
     candidates.push(`${stem}-f16.gguf`)
     candidates.push(`${stem}-bf16.gguf`)
@@ -55,13 +52,13 @@ function filenameCandidates (repo, quantization) {
   return [...new Set(candidates)]
 }
 
-function toPortableRelativePath (baseDir, targetPath) {
+function toPortableRelativePath(baseDir, targetPath) {
   const relative = path.relative(baseDir, targetPath)
   if (!relative) return '.'
   return relative.split(path.sep).join('/')
 }
 
-function requestBuffer (url, headers, redirects = 5) {
+function requestBuffer(url, headers, redirects = 5) {
   return new Promise((resolve, reject) => {
     const req = https.get(url, { headers }, (res) => {
       const status = res.statusCode || 0
@@ -92,7 +89,7 @@ function requestBuffer (url, headers, redirects = 5) {
   })
 }
 
-function downloadFile (url, destination, headers, redirects = 5) {
+function downloadFile(url, destination, headers, redirects = 5) {
   return new Promise((resolve, reject) => {
     fs.mkdirSync(path.dirname(destination), { recursive: true })
     const tmpPath = `${destination}.partial`
@@ -108,7 +105,9 @@ function downloadFile (url, destination, headers, redirects = 5) {
     const fail = (error) => {
       if (settled) return
       settled = true
-      try { out.destroy() } catch {}
+      try {
+        out.destroy()
+      } catch {}
       cleanupTmp()
       reject(error)
     }
@@ -134,7 +133,9 @@ function downloadFile (url, destination, headers, redirects = 5) {
         }
         const nextUrl = new URL(res.headers.location, url).toString()
         settled = true
-        try { out.destroy() } catch {}
+        try {
+          out.destroy()
+        } catch {}
         cleanupTmp()
         resolve(downloadFile(nextUrl, destination, headers, redirects - 1))
         return
@@ -160,7 +161,7 @@ function downloadFile (url, destination, headers, redirects = 5) {
   })
 }
 
-async function listRepoGgufFiles (repo, revision, headers) {
+async function listRepoGgufFiles(repo, revision, headers) {
   const encodedRepo = String(repo)
     .split('/')
     .map((segment) => encodeURIComponent(segment))
@@ -174,7 +175,7 @@ async function listRepoGgufFiles (repo, revision, headers) {
     .filter((name) => typeof name === 'string' && name.endsWith('.gguf'))
 }
 
-async function resolveGgufFilenameForQuantization (repo, revision, quantization, headers) {
+async function resolveGgufFilenameForQuantization(repo, revision, quantization, headers) {
   const ggufFiles = await listRepoGgufFiles(repo, revision, headers)
   if (ggufFiles.length === 0) {
     throw new Error(`No GGUF files found in Hugging Face repo ${repo}@${revision}`)
@@ -190,17 +191,17 @@ async function resolveGgufFilenameForQuantization (repo, revision, quantization,
   if (patternMatches.length > 1) {
     throw new Error(
       `Ambiguous GGUF matches for quantization ${quantization} in ${repo}@${revision}: ${JSON.stringify(patternMatches)}. ` +
-      'Narrow manifest quantizations or add disambiguation logic.'
+        'Narrow manifest quantizations or add disambiguation logic.'
     )
   }
 
   throw new Error(
     `No matching GGUF file found for quantization='${quantization}' in ${repo}@${revision}. ` +
-    `Available files: ${JSON.stringify(ggufFiles)}`
+      `Available files: ${JSON.stringify(ggufFiles)}`
   )
 }
 
-function loadManifest (manifestPath) {
+function loadManifest(manifestPath) {
   if (!fs.existsSync(manifestPath)) {
     throw new Error(`Manifest not found: ${manifestPath}`)
   }
@@ -211,7 +212,7 @@ function loadManifest (manifestPath) {
   return data
 }
 
-function selectModels (models, selectedIds) {
+function selectModels(models, selectedIds) {
   if (selectedIds.size === 0) return models
   const selected = models.filter((m) => selectedIds.has(m.id))
   const missing = [...selectedIds].filter((id) => !selected.some((m) => m.id === id)).sort()
@@ -221,7 +222,7 @@ function selectModels (models, selectedIds) {
   return selected
 }
 
-async function prepareAddonModels (selectedModels, modelsDir, headers, baseDir) {
+async function prepareAddonModels(selectedModels, modelsDir, headers, baseDir) {
   const resolved = {}
   fs.mkdirSync(modelsDir, { recursive: true })
 
@@ -240,7 +241,9 @@ async function prepareAddonModels (selectedModels, modelsDir, headers, baseDir) 
     const quantFiles = {}
     for (const quantization of quantizations) {
       if (!quantization || typeof quantization !== 'string') {
-        throw new Error(`Manifest model ${modelId} has invalid quantization: ${JSON.stringify(quantization)}`)
+        throw new Error(
+          `Manifest model ${modelId} has invalid quantization: ${JSON.stringify(quantization)}`
+        )
       }
 
       let selectedFilename = null
@@ -252,7 +255,9 @@ async function prepareAddonModels (selectedModels, modelsDir, headers, baseDir) 
         if (fs.existsSync(candidateDestination)) {
           selectedFilename = candidateFilename
           destination = candidateDestination
-          console.log(`[addon] ${modelId}:${quantization} already present -> ${candidateDestination}`)
+          console.log(
+            `[addon] ${modelId}:${quantization} already present -> ${candidateDestination}`
+          )
           break
         }
 
@@ -268,21 +273,34 @@ async function prepareAddonModels (selectedModels, modelsDir, headers, baseDir) 
             last404Url = url
             continue
           }
-          throw new Error(`Failed download for ${modelId}:${quantization} (${url}): ${error && error.message ? error.message : String(error)}`)
+          throw new Error(
+            `Failed download for ${modelId}:${quantization} (${url}): ${error && error.message ? error.message : String(error)}`
+          )
         }
       }
 
       if (!selectedFilename || !destination) {
-        selectedFilename = await resolveGgufFilenameForQuantization(repo, revision, quantization, headers)
+        selectedFilename = await resolveGgufFilenameForQuantization(
+          repo,
+          revision,
+          quantization,
+          headers
+        )
         destination = path.join(modelsDir, path.basename(selectedFilename))
         if (fs.existsSync(destination)) {
-          console.log(`[addon] resolved existing file ${selectedFilename} for ${modelId}:${quantization}`)
+          console.log(
+            `[addon] resolved existing file ${selectedFilename} for ${modelId}:${quantization}`
+          )
         } else {
           const url = `https://huggingface.co/${repo}/resolve/${revision}/${selectedFilename}`
           if (last404Url) {
-            console.log(`[addon] retrying after 404 (${last404Url}) with resolved filename ${selectedFilename}`)
+            console.log(
+              `[addon] retrying after 404 (${last404Url}) with resolved filename ${selectedFilename}`
+            )
           } else {
-            console.log(`[addon] downloading ${modelId}:${quantization} from resolved filename ${selectedFilename}`)
+            console.log(
+              `[addon] downloading ${modelId}:${quantization} from resolved filename ${selectedFilename}`
+            )
           }
           await downloadFile(url, destination, headers)
         }
@@ -303,16 +321,20 @@ async function prepareAddonModels (selectedModels, modelsDir, headers, baseDir) 
   return resolved
 }
 
-async function main () {
+async function main() {
   const scriptDir = __dirname
   const args = parseArgs(process.argv)
-  const manifestPath = path.resolve(String(args.manifest || path.join(scriptDir, 'models.manifest.json')))
+  const manifestPath = path.resolve(
+    String(args.manifest || path.join(scriptDir, 'models.manifest.json'))
+  )
   const target = String(args.target || 'addon')
   if (!['addon', 'all'].includes(target)) {
     throw new Error(`Invalid --target: ${target}. Expected addon or all.`)
   }
   const modelsDir = path.resolve(String(args['models-dir'] || path.join(scriptDir, 'models')))
-  const outputPath = path.resolve(String(args.output || path.join(scriptDir, 'resolved-models.json')))
+  const outputPath = path.resolve(
+    String(args.output || path.join(scriptDir, 'resolved-models.json'))
+  )
   const selectedIds = new Set(asArray(args.models))
   const hfToken = process.env.HF_TOKEN || null
 
@@ -342,6 +364,8 @@ async function main () {
 }
 
 main().catch((error) => {
-  console.error(`prepare-models.js failed: ${error && error.message ? error.message : String(error)}`)
+  console.error(
+    `prepare-models.js failed: ${error && error.message ? error.message : String(error)}`
+  )
   process.exit(1)
 })

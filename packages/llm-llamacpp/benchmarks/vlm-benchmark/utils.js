@@ -1,6 +1,6 @@
 'use strict'
 
-function stripSurroundingQuotes (value) {
+function stripSurroundingQuotes(value) {
   const s = String(value)
   if ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'"))) {
     return s.slice(1, -1)
@@ -8,7 +8,7 @@ function stripSurroundingQuotes (value) {
   return s
 }
 
-function normalizeArgValue (value) {
+function normalizeArgValue(value) {
   if (value === true || value == null) return value
   let normalized = String(value).trim()
   if (normalized.startsWith('=')) normalized = normalized.slice(1).trim()
@@ -17,7 +17,7 @@ function normalizeArgValue (value) {
 
 // Permissive CLI parser — matches Ian's framework style. Accepts
 // `--key value`, `--key=value`, and bare `--flag`.
-function parseArgs (argv) {
+function parseArgs(argv) {
   const parsed = {}
   for (let i = 0; i < argv.length; i++) {
     const token = argv[i]
@@ -39,13 +39,16 @@ function parseArgs (argv) {
   return parsed
 }
 
-function csvOrArray (value) {
+function csvOrArray(value) {
   if (Array.isArray(value)) return value.slice()
   if (value == null || value === true) return []
-  return String(value).split(',').map((x) => x.trim()).filter(Boolean)
+  return String(value)
+    .split(',')
+    .map((x) => x.trim())
+    .filter(Boolean)
 }
 
-function truncate (s, n) {
+function truncate(s, n) {
   if (s == null) return null
   const str = String(s)
   return str.length > n ? str.slice(0, n) + '...[truncated]' : str

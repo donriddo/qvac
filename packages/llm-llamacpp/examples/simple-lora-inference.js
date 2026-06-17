@@ -11,7 +11,7 @@ const MODEL = {
   url: 'https://huggingface.co/unsloth/Qwen3-0.6B-GGUF/resolve/main/Qwen3-0.6B-Q8_0.gguf'
 }
 
-async function downloadFile (url, dest) {
+async function downloadFile(url, dest) {
   return new Promise((resolve, reject) => {
     let resolved = false
     const safeResolve = () => {
@@ -34,7 +34,7 @@ async function downloadFile (url, dest) {
       fs.unlink(dest, () => safeReject(err))
     })
 
-    const req = https.request(url, response => {
+    const req = https.request(url, (response) => {
       if ([301, 302, 307, 308].includes(response.statusCode)) {
         file.destroy()
         fs.unlink(dest, (unlinkErr) => {
@@ -48,16 +48,16 @@ async function downloadFile (url, dest) {
             redirectUrl = `${originalUrl.protocol}//${originalUrl.host}${redirectUrl}`
           }
 
-          downloadFile(redirectUrl, dest)
-            .then(safeResolve)
-            .catch(safeReject)
+          downloadFile(redirectUrl, dest).then(safeResolve).catch(safeReject)
         })
         return
       }
 
       if (response.statusCode !== 200) {
         file.destroy()
-        fs.unlink(dest, () => safeReject(new Error(`Download failed: HTTP ${response.statusCode} from ${url}`)))
+        fs.unlink(dest, () =>
+          safeReject(new Error(`Download failed: HTTP ${response.statusCode} from ${url}`))
+        )
         return
       }
 
@@ -73,7 +73,7 @@ async function downloadFile (url, dest) {
       })
     })
 
-    req.on('error', err => {
+    req.on('error', (err) => {
       file.destroy()
       fs.unlink(dest, () => safeReject(err))
     })
@@ -82,7 +82,7 @@ async function downloadFile (url, dest) {
   })
 }
 
-async function ensureModel ({ modelName, downloadUrl }) {
+async function ensureModel({ modelName, downloadUrl }) {
   const modelDir = path.resolve('./models')
 
   const modelPath = path.join(modelDir, modelName)
@@ -103,7 +103,7 @@ async function ensureModel ({ modelName, downloadUrl }) {
   return [modelName, modelDir]
 }
 
-async function main () {
+async function main() {
   const [modelName, modelDir] = await ensureModel({
     modelName: MODEL.name,
     downloadUrl: MODEL.url
@@ -141,9 +141,11 @@ async function main () {
     ]
 
     const response = await client.run(messages)
-    await response.onUpdate(token => {
-      process.stdout.write(token)
-    }).await()
+    await response
+      .onUpdate((token) => {
+        process.stdout.write(token)
+      })
+      .await()
   } finally {
     if (client) {
       console.log('\n Cleaning up...')
@@ -153,7 +155,7 @@ async function main () {
   }
 }
 
-main().catch(async error => {
+main().catch(async (error) => {
   console.error('\n Fatal error in LoRA demo:', error.message)
   process.exit(1)
 })

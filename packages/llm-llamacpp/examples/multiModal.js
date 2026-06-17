@@ -6,7 +6,7 @@ const fs = require('bare-fs')
 const process = require('bare-process')
 const { downloadModel } = require('./utils')
 
-async function main () {
+async function main() {
   console.log('Multimodal Example: Demonstrates file processing capabilities')
   console.log('=============================================================')
 
@@ -65,7 +65,7 @@ async function main () {
     let fullResponse1 = ''
 
     await response1
-      .onUpdate(data => {
+      .onUpdate((data) => {
         process.stdout.write(data)
         fullResponse1 += data
       })
@@ -97,7 +97,7 @@ async function main () {
     let fullResponse2 = ''
 
     await response2
-      .onUpdate(data => {
+      .onUpdate((data) => {
         process.stdout.write(data)
         fullResponse2 += data
       })
@@ -117,7 +117,7 @@ async function main () {
   }
 }
 
-main().catch(error => {
+main().catch((error) => {
   console.error('Fatal error in main function:', {
     error: error.message,
     stack: error.stack,

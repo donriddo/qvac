@@ -140,14 +140,16 @@ const CONVERSATION_TURNS_DYNAMIC = [
   { user: 'Translate "good morning" to Spanish and email the result to alice@example.com' },
   { user: 'Set a reminder to check the weather in Berlin tomorrow and search for flight deals' },
   { user: 'Calculate 2^10 and translate the result to German' },
-  { user: 'Send an email to team@example.com with a summary of today\'s tasks' },
+  { user: "Send an email to team@example.com with a summary of today's tasks" },
   { user: 'What is the weather in Tokyo and calculate 42 * 17' },
   { user: 'Search for latest Python tutorials' },
   { user: 'Set a reminder for lunch at noon and translate "thank you" to Japanese' },
   { user: 'What is the weather in Sydney and email the forecast to weather@example.com' },
   { user: 'Calculate the square root of 144 and search for math resources' },
   { user: 'Translate "goodbye" to Italian' },
-  { user: 'Set a reminder to call the dentist, email jane@example.com about it, and check weather in Rome' },
+  {
+    user: 'Set a reminder to call the dentist, email jane@example.com about it, and check weather in Rome'
+  },
   { user: 'Search for healthy recipes and translate the top result to Portuguese' },
   { user: 'Calculate 365 * 24' },
   { user: 'What is the weather in Berlin and set a reminder to pack an umbrella' }
@@ -155,14 +157,14 @@ const CONVERSATION_TURNS_DYNAMIC = [
 
 // ─── Tool call extraction & validation ──────────────────────────────────────
 
-function stripInternalBlocks (text) {
+function stripInternalBlocks(text) {
   return text
     .replace(/<think>[\s\S]*?<\/think>/g, '')
     .replace(/<tool_call>[\s\S]*?<\/tool_call>/g, '')
     .trim()
 }
 
-function extractToolCalls (response) {
+function extractToolCalls(response) {
   const toolCalls = []
   const toolCallRegex = /<tool_call>([\s\S]*?)<\/tool_call>/g
   let match
@@ -175,9 +177,9 @@ function extractToolCalls (response) {
   return toolCalls
 }
 
-function validateToolCalls (turnIndex, output, availableTools) {
+function validateToolCalls(turnIndex, output, availableTools) {
   const calledTools = extractToolCalls(output)
-  const availableNames = availableTools.map(t => t.name)
+  const availableNames = availableTools.map((t) => t.name)
   const violations = []
 
   for (const called of calledTools) {
@@ -197,7 +199,7 @@ function validateToolCalls (turnIndex, output, availableTools) {
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
-function makeBaseConfig (toolsCompact) {
+function makeBaseConfig(toolsCompact) {
   return {
     device: useCpu ? 'cpu' : 'gpu',
     gpu_layers: '999',
@@ -211,7 +213,7 @@ function makeBaseConfig (toolsCompact) {
   }
 }
 
-async function loadModel (dirPath, modelName, config) {
+async function loadModel(dirPath, modelName, config) {
   const modelPath = path.join(dirPath, modelName)
   const model = new LlmLlamacpp({
     files: { model: [modelPath] },
@@ -223,11 +225,13 @@ async function loadModel (dirPath, modelName, config) {
   return { model }
 }
 
-async function runAndCollect (model, prompt, runOptions) {
+async function runAndCollect(model, prompt, runOptions) {
   const response = await model.run(prompt, runOptions)
   const chunks = []
   await response
-    .onUpdate(data => { chunks.push(data) })
+    .onUpdate((data) => {
+      chunks.push(data)
+    })
     .await()
   return {
     output: chunks.join(''),
@@ -235,17 +239,19 @@ async function runAndCollect (model, prompt, runOptions) {
   }
 }
 
-function hrMs (hrtime) {
+function hrMs(hrtime) {
   return (hrtime[0] * 1e3 + hrtime[1] / 1e6).toFixed(2)
 }
 
-function cleanCache (cachePath) {
-  try { fs.unlinkSync(cachePath) } catch (_) {}
+function cleanCache(cachePath) {
+  try {
+    fs.unlinkSync(cachePath)
+  } catch (_) {}
 }
 
 // ─── Generic scenario runner ────────────────────────────────────────────────
 
-async function runScenario (dirPath, modelName, opts) {
+async function runScenario(dirPath, modelName, opts) {
   const { name, toolsCompact, dynamicTools, conversationTurns, getToolsForTurn, cacheName } = opts
 
   console.log('\n' + '='.repeat(70))
@@ -275,9 +281,14 @@ async function runScenario (dirPath, modelName, opts) {
         // tools_compact: session cache + re-send last assistant response + new user + tools
         prompt = [
           ...(i === 0
-            ? [{ role: 'system', content: 'You are a helpful assistant.' }, { role: 'user', content: turn.user }]
+            ? [
+                { role: 'system', content: 'You are a helpful assistant.' },
+                { role: 'user', content: turn.user }
+              ]
             : [
-                ...(lastAssistantResponse ? [{ role: 'assistant', content: lastAssistantResponse }] : []),
+                ...(lastAssistantResponse
+                  ? [{ role: 'assistant', content: lastAssistantResponse }]
+                  : []),
                 { role: 'user', content: turn.user }
               ]),
           ...turnTools
@@ -295,7 +306,10 @@ async function runScenario (dirPath, modelName, opts) {
         // tools_in_system with same tools: session cache + only new user msg (tools cached from turn 1)
         prompt = [
           ...(i === 0
-            ? [{ role: 'system', content: 'You are a helpful assistant.' }, { role: 'user', content: turn.user }]
+            ? [
+                { role: 'system', content: 'You are a helpful assistant.' },
+                { role: 'user', content: turn.user }
+              ]
             : [{ role: 'user', content: turn.user }]),
           ...(i === 0 ? turnTools : [])
         ]
@@ -323,18 +337,20 @@ async function runScenario (dirPath, modelName, opts) {
         tps: result.stats?.TPS || 0
       })
 
-      const toolStatus = validation.status === 'OK' ? 'OK' : `VIOLATION: called [${validation.violations.join(', ')}]`
-      const calledStr = validation.calledTools.length > 0 ? validation.calledTools.join(', ') : 'none'
+      const toolStatus =
+        validation.status === 'OK'
+          ? 'OK'
+          : `VIOLATION: called [${validation.violations.join(', ')}]`
+      const calledStr =
+        validation.calledTools.length > 0 ? validation.calledTools.join(', ') : 'none'
       const availStr = validation.availableNames.join(', ')
 
       console.log(
         `  Turn ${i + 1}: wall=${hrMs(elapsed)}ms  prompt=${turnStats[i].promptTokens}  ` +
-        `gen=${turnStats[i].generatedTokens}  cache=${turnStats[i].cacheTokens}  ` +
-        `TTFT=${turnStats[i].ttft}ms  TPS=${turnStats[i].tps}`
+          `gen=${turnStats[i].generatedTokens}  cache=${turnStats[i].cacheTokens}  ` +
+          `TTFT=${turnStats[i].ttft}ms  TPS=${turnStats[i].tps}`
       )
-      console.log(
-        `         tools=[${availStr}]  called=[${calledStr}]  validation=${toolStatus}`
-      )
+      console.log(`         tools=[${availStr}]  called=[${calledStr}]  validation=${toolStatus}`)
     }
   } finally {
     await model.unload()
@@ -346,13 +362,17 @@ async function runScenario (dirPath, modelName, opts) {
 
 // ─── Summary ────────────────────────────────────────────────────────────────
 
-function printComparison (labelA, statsA, labelB, statsB) {
+function printComparison(labelA, statsA, labelB, statsB) {
   console.log('\n' + '='.repeat(80))
   console.log(`COMPARISON: ${labelA} (A) vs ${labelB} (B)`)
   console.log('='.repeat(80))
   console.log('')
-  console.log('Turn | Wall A (ms) | Wall B (ms) | Δ ms     | Prompt A | Prompt B | Cache A | Cache B | TTFT A  | TTFT B')
-  console.log('-----|-------------|-------------|----------|----------|----------|---------|---------|---------|--------')
+  console.log(
+    'Turn | Wall A (ms) | Wall B (ms) | Δ ms     | Prompt A | Prompt B | Cache A | Cache B | TTFT A  | TTFT B'
+  )
+  console.log(
+    '-----|-------------|-------------|----------|----------|----------|---------|---------|---------|--------'
+  )
 
   let totalA = 0
   let totalB = 0
@@ -369,36 +389,42 @@ function printComparison (labelA, statsA, labelB, statsB) {
 
     console.log(
       `  ${a.turn}  ` +
-      `| ${a.wallMs.padStart(11)} ` +
-      `| ${b.wallMs.padStart(11)} ` +
-      `| ${delta.padStart(8)} ` +
-      `| ${String(a.promptTokens).padStart(8)} ` +
-      `| ${String(b.promptTokens).padStart(8)} ` +
-      `| ${String(a.cacheTokens).padStart(7)} ` +
-      `| ${String(b.cacheTokens).padStart(7)} ` +
-      `| ${ttftA.padStart(7)} ` +
-      `| ${ttftB.padStart(7)}`
+        `| ${a.wallMs.padStart(11)} ` +
+        `| ${b.wallMs.padStart(11)} ` +
+        `| ${delta.padStart(8)} ` +
+        `| ${String(a.promptTokens).padStart(8)} ` +
+        `| ${String(b.promptTokens).padStart(8)} ` +
+        `| ${String(a.cacheTokens).padStart(7)} ` +
+        `| ${String(b.cacheTokens).padStart(7)} ` +
+        `| ${ttftA.padStart(7)} ` +
+        `| ${ttftB.padStart(7)}`
     )
   }
 
-  console.log('-----|-------------|-------------|----------|----------|----------|---------|---------|---------|--------')
+  console.log(
+    '-----|-------------|-------------|----------|----------|----------|---------|---------|---------|--------'
+  )
   console.log(
     ' TOT ' +
-    `| ${totalA.toFixed(2).padStart(11)} ` +
-    `| ${totalB.toFixed(2).padStart(11)} ` +
-    `| ${(totalA - totalB).toFixed(2).padStart(8)} |`
+      `| ${totalA.toFixed(2).padStart(11)} ` +
+      `| ${totalB.toFixed(2).padStart(11)} ` +
+      `| ${(totalA - totalB).toFixed(2).padStart(8)} |`
   )
   console.log('')
 
-  const pctDiff = ((totalA - totalB) / totalB * 100).toFixed(1)
+  const pctDiff = (((totalA - totalB) / totalB) * 100).toFixed(1)
   if (totalA > totalB) {
-    console.log(`  → A is ${pctDiff}% SLOWER overall (${(totalA - totalB).toFixed(0)}ms extra across ${NUM_TURNS} turns)`)
+    console.log(
+      `  → A is ${pctDiff}% SLOWER overall (${(totalA - totalB).toFixed(0)}ms extra across ${NUM_TURNS} turns)`
+    )
   } else {
-    console.log(`  → A is ${Math.abs(pctDiff)}% FASTER overall (${(totalB - totalA).toFixed(0)}ms saved across ${NUM_TURNS} turns)`)
+    console.log(
+      `  → A is ${Math.abs(pctDiff)}% FASTER overall (${(totalB - totalA).toFixed(0)}ms saved across ${NUM_TURNS} turns)`
+    )
   }
 }
 
-function printToolValidationSummary (label, validations) {
+function printToolValidationSummary(label, validations) {
   console.log(`\n─── Tool Call Validation: ${label} ───`)
   let allOk = true
   for (let i = 0; i < validations.length; i++) {
@@ -407,19 +433,27 @@ function printToolValidationSummary (label, validations) {
     if (v.status !== 'OK') allOk = false
 
     if (v.calledTools.length === 0) {
-      console.log(`  Turn ${i + 1} [${icon}]: no tool calls  (available: ${v.availableNames.join(', ')})`)
+      console.log(
+        `  Turn ${i + 1} [${icon}]: no tool calls  (available: ${v.availableNames.join(', ')})`
+      )
     } else if (v.violations.length > 0) {
-      console.log(`  Turn ${i + 1} [${icon}]: called [${v.calledTools.join(', ')}]  available [${v.availableNames.join(', ')}]  STALE TOOLS USED: [${v.violations.join(', ')}]`)
+      console.log(
+        `  Turn ${i + 1} [${icon}]: called [${v.calledTools.join(', ')}]  available [${v.availableNames.join(', ')}]  STALE TOOLS USED: [${v.violations.join(', ')}]`
+      )
     } else {
-      console.log(`  Turn ${i + 1} [${icon}]: called [${v.calledTools.join(', ')}]  (available: ${v.availableNames.join(', ')})`)
+      console.log(
+        `  Turn ${i + 1} [${icon}]: called [${v.calledTools.join(', ')}]  (available: ${v.availableNames.join(', ')})`
+      )
     }
   }
-  console.log(`  Result: ${allOk ? 'ALL PASSED — no stale/trimmed tools were called' : 'FAILURES DETECTED — model called tools that should have been trimmed'}`)
+  console.log(
+    `  Result: ${allOk ? 'ALL PASSED — no stale/trimmed tools were called' : 'FAILURES DETECTED — model called tools that should have been trimmed'}`
+  )
 }
 
 // ─── Main ───────────────────────────────────────────────────────────────────
 
-async function main () {
+async function main() {
   console.log('Benchmark: tools_compact vs tools_in_system — performance & correctness')
   console.log(`Model: ${MODEL.name}`)
   console.log(`Turns: ${NUM_TURNS}`)
@@ -483,12 +517,19 @@ async function main () {
   console.log('#'.repeat(80))
 
   printToolValidationSummary('Scenario C — tools_compact, dynamic tools', resultC.toolValidations)
-  printToolValidationSummary('Scenario D — tools_in_system, dynamic tools (full replay)', resultD.toolValidations)
+  printToolValidationSummary(
+    'Scenario D — tools_in_system, dynamic tools (full replay)',
+    resultD.toolValidations
+  )
 
   console.log('\n' + '─'.repeat(80))
   console.log('Key:')
-  console.log('  Scenario C: tools_compact=true with dynamic tools — trims & re-sends prev response')
-  console.log('  Scenario D: tools_compact=false with dynamic tools — replay full history without cache')
+  console.log(
+    '  Scenario C: tools_compact=true with dynamic tools — trims & re-sends prev response'
+  )
+  console.log(
+    '  Scenario D: tools_compact=false with dynamic tools — replay full history without cache'
+  )
   console.log('  PASS = model only called tools available in that turn')
   console.log('  FAIL = model called a tool from a previous turn (stale/trimmed tool leak)')
   console.log('─'.repeat(80))
@@ -501,12 +542,12 @@ async function main () {
 
   const BAR_WIDTH = 50
   const allTimes = [
-    ...resultC.turnStats.map(s => parseFloat(s.wallMs)),
-    ...resultD.turnStats.map(s => parseFloat(s.wallMs))
+    ...resultC.turnStats.map((s) => parseFloat(s.wallMs)),
+    ...resultD.turnStats.map((s) => parseFloat(s.wallMs))
   ]
   const maxTime = Math.max(...allTimes)
 
-  function makeBar (value, max, width) {
+  function makeBar(value, max, width) {
     const filled = Math.round((value / max) * width)
     return '\u2588'.repeat(filled) + '\u2591'.repeat(width - filled)
   }
@@ -521,15 +562,15 @@ async function main () {
     const dBar = makeBar(dMs, maxTime, BAR_WIDTH)
     console.log(
       `  ${String(i + 1).padStart(2)} ` +
-      `| ${String(Math.round(cMs)).padStart(8)} ` +
-      `| ${String(Math.round(dMs)).padStart(8)} ` +
-      `| C:${cBar} D:${dBar}`
+        `| ${String(Math.round(cMs)).padStart(8)} ` +
+        `| ${String(Math.round(dMs)).padStart(8)} ` +
+        `| C:${cBar} D:${dBar}`
     )
   }
   console.log('')
 }
 
-main().catch(err => {
+main().catch((err) => {
   console.error('Fatal:', err.message || err)
   process.exit(1)
 })

@@ -28,33 +28,49 @@ const DEFAULT_BUILDS_DIR = path.join(BENCH_DIR, 'cli-builds')
 const RESOLVED_PATH = path.join(BENCH_DIR, 'cli-sources-resolved.json')
 const BINARY_NAME = os.platform() === 'win32' ? 'llama-mtmd-cli.exe' : 'llama-mtmd-cli'
 
-function log (...args) { console.log('[build-cli-sources]', ...args) }
-function logErr (...args) { console.error('[build-cli-sources]', ...args) }
+function log(...args) {
+  console.log('[build-cli-sources]', ...args)
+}
+function logErr(...args) {
+  console.error('[build-cli-sources]', ...args)
+}
 
-function parseArgs (argv) {
+function parseArgs(argv) {
   const out = {}
   for (let i = 0; i < argv.length; i++) {
     const t = argv[i]
     if (!t.startsWith('--')) continue
     const eq = t.indexOf('=')
-    if (eq !== -1) { out[t.slice(2, eq)] = t.slice(eq + 1); continue }
+    if (eq !== -1) {
+      out[t.slice(2, eq)] = t.slice(eq + 1)
+      continue
+    }
     const k = t.slice(2)
     const n = argv[i + 1]
-    if (!n || n.startsWith('--')) { out[k] = true } else { out[k] = n; i++ }
+    if (!n || n.startsWith('--')) {
+      out[k] = true
+    } else {
+      out[k] = n
+      i++
+    }
   }
   return out
 }
 
-function which (cmd) {
+function which(cmd) {
   try {
     const r = execSync(os.platform() === 'win32' ? `where ${cmd}` : `which ${cmd}`, {
-      encoding: 'utf8', timeout: 5000, stdio: ['ignore', 'pipe', 'ignore']
+      encoding: 'utf8',
+      timeout: 5000,
+      stdio: ['ignore', 'pipe', 'ignore']
     })
     return r.trim().split('\n')[0].trim()
-  } catch { return null }
+  } catch {
+    return null
+  }
 }
 
-function validatePrereqs () {
+function validatePrereqs() {
   const cmake = which('cmake')
   if (!cmake) throw new Error('cmake not found on PATH — install cmake >= 3.14')
 
@@ -77,17 +93,21 @@ function validatePrereqs () {
   log(`cc:    ${cc || '(deferred to cmake/MSVC)'}`)
 }
 
-function resolveRemoteSha (repo, ref) {
+function resolveRemoteSha(repo, ref) {
   try {
     const out = execFileSync('git', ['ls-remote', repo, ref], {
-      encoding: 'utf8', timeout: 30000, stdio: ['ignore', 'pipe', 'ignore']
+      encoding: 'utf8',
+      timeout: 30000,
+      stdio: ['ignore', 'pipe', 'ignore']
     })
     const match = out.match(/^([0-9a-f]{40})/)
     return match ? match[1] : null
-  } catch { return null }
+  } catch {
+    return null
+  }
 }
 
-function cacheKey (sourceKey, sha, backend) {
+function cacheKey(sourceKey, sha, backend) {
   return `${sourceKey}-${os.platform()}-${os.arch()}-${backend}-${sha.slice(0, 12)}`
 }
 
@@ -95,7 +115,7 @@ function cacheKey (sourceKey, sha, backend) {
 // per-source CPU flags so the GPU code paths get compiled in. Vulkan
 // is chosen on linux/win to match the addon's qvac-fabric build
 // (which links the Vulkan ggml backend); macOS uses Metal natively.
-function backendCmakeFlags (backend) {
+function backendCmakeFlags(backend) {
   if (backend !== 'gpu') return {}
   if (os.platform() === 'darwin') {
     return { GGML_METAL: 'ON' }
@@ -103,7 +123,7 @@ function backendCmakeFlags (backend) {
   return { GGML_VULKAN: 'ON' }
 }
 
-function buildOne (sourceKey, sourceConfig, buildsDir, forceRebuild, backend) {
+function buildOne(sourceKey, sourceConfig, buildsDir, forceRebuild, backend) {
   log(`--- ${sourceKey} (${backend}) ---`)
   log(`repo: ${sourceConfig.repo}`)
   log(`ref:  ${sourceConfig.ref}`)
@@ -126,23 +146,34 @@ function buildOne (sourceKey, sourceConfig, buildsDir, forceRebuild, backend) {
     const provenance = fs.existsSync(provenancePath)
       ? JSON.parse(fs.readFileSync(provenancePath, 'utf8'))
       : null
-    return { binaryPath, commitSha: remoteSha, ref: sourceConfig.ref, label: `${sourceConfig.label}@${sourceConfig.ref}`, provenance }
+    return {
+      binaryPath,
+      commitSha: remoteSha,
+      ref: sourceConfig.ref,
+      label: `${sourceConfig.label}@${sourceConfig.ref}`,
+      provenance
+    }
   }
 
   const tmpDir = path.join(os.tmpdir(), `vlm-bench-build-${sourceKey}-${Date.now()}`)
   log(`cloning into ${tmpDir}`)
 
   try {
-    execFileSync('git', ['clone', '--depth', '1', '-b', sourceConfig.ref, sourceConfig.repo, tmpDir], {
-      stdio: 'inherit', timeout: 120000
-    })
+    execFileSync(
+      'git',
+      ['clone', '--depth', '1', '-b', sourceConfig.ref, sourceConfig.repo, tmpDir],
+      {
+        stdio: 'inherit',
+        timeout: 120000
+      }
+    )
 
     const localSha = execFileSync('git', ['-C', tmpDir, 'rev-parse', 'HEAD'], {
-      encoding: 'utf8', timeout: 5000
+      encoding: 'utf8',
+      timeout: 5000
     }).trim()
 
-    const cmakeDefines = Object.entries(mergedFlags)
-      .map(([k, v]) => `-D${k}=${v}`)
+    const cmakeDefines = Object.entries(mergedFlags).map(([k, v]) => `-D${k}=${v}`)
 
     const buildDir = path.join(tmpDir, 'build')
     const nproc = os.cpus().length
@@ -206,17 +237,27 @@ function buildOne (sourceKey, sourceConfig, buildsDir, forceRebuild, backend) {
     fs.writeFileSync(provenancePath, JSON.stringify(provenance, null, 2))
 
     log(`installed: ${binaryPath} (${provenance.binarySizeMb} MB)`)
-    return { binaryPath, commitSha: localSha, ref: sourceConfig.ref, label: `${sourceConfig.label}@${sourceConfig.ref}`, provenance }
+    return {
+      binaryPath,
+      commitSha: localSha,
+      ref: sourceConfig.ref,
+      label: `${sourceConfig.label}@${sourceConfig.ref}`,
+      provenance
+    }
   } finally {
-    try { fs.rmSync(tmpDir, { recursive: true, force: true }) } catch {}
+    try {
+      fs.rmSync(tmpDir, { recursive: true, force: true })
+    } catch {}
   }
 }
 
-function main () {
+function main() {
   const args = parseArgs(process.argv.slice(2))
 
   const enabledSources = (args.sources || 'fabric,upstream')
-    .split(',').map((s) => s.trim()).filter(Boolean)
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
 
   const buildsDir = path.resolve(args['builds-dir'] || DEFAULT_BUILDS_DIR)
   const forceRebuild = Boolean(args['force-rebuild'])

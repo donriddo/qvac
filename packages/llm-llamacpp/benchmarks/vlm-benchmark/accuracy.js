@@ -17,37 +17,35 @@
 const PUNCT_REGEX = /^[\s.,;:!?"'`()[\]{}<>*-]+|[\s.,;:!?"'`()[\]{}<>*-]+$/g
 const THINK_BLOCK_REGEX = /<think>[\s\S]*?<\/think>/gi
 
-function normaliseToken (raw) {
+function normaliseToken(raw) {
   if (raw == null) return ''
   return String(raw).toLowerCase().replace(PUNCT_REGEX, '').trim()
 }
 
-function stripThinkBlocks (answer) {
+function stripThinkBlocks(answer) {
   if (answer == null) return ''
   return String(answer).replace(THINK_BLOCK_REGEX, '').trim()
 }
 
-function splitAnswer (answer) {
+function splitAnswer(answer) {
   if (answer == null) return []
   const byComma = String(answer).split(',')
-  const tokens = byComma.length > 1
-    ? byComma
-    : String(answer).split(/[\n\r\t ]+/)
+  const tokens = byComma.length > 1 ? byComma : String(answer).split(/[\n\r\t ]+/)
   return tokens.map(normaliseToken).filter(Boolean)
 }
 
-function escapeRegex (s) {
+function escapeRegex(s) {
   return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
 // Word-boundary substring match — case-insensitive. "umbrella" matches
 // inside "**Top Center:** A black umbrella.".
-function answerContainsForm (haystack, form) {
+function answerContainsForm(haystack, form) {
   const re = new RegExp(`\\b${escapeRegex(form)}\\b`, 'i')
   return re.test(haystack)
 }
 
-function scoreAnswer (answer, groundTruth) {
+function scoreAnswer(answer, groundTruth) {
   const cleaned = stripThinkBlocks(answer)
   const predicted = splitAnswer(cleaned)
   const predictedSet = new Set(predicted)
@@ -59,7 +57,8 @@ function scoreAnswer (answer, groundTruth) {
     // Strict comma-token match first; fall back to word-bounded
     // substring search over the whole cleaned answer for prose-style
     // responses.
-    const found = accepts.some((form) => predictedSet.has(form)) ||
+    const found =
+      accepts.some((form) => predictedSet.has(form)) ||
       accepts.some((form) => answerContainsForm(cleaned, form))
     if (found) matched.push(entry.canonical)
     else missed.push(entry.canonical)
@@ -70,12 +69,8 @@ function scoreAnswer (answer, groundTruth) {
   // answers we surface an empty list rather than mis-flagging every
   // English word.
   const looksLikeList = String(cleaned).split(',').length > 1
-  const allAccepted = new Set(
-    groundTruth.flatMap((e) => (e.accepts || []).map(normaliseToken))
-  )
-  const extras = looksLikeList
-    ? predicted.filter((tok) => !allAccepted.has(tok))
-    : []
+  const allAccepted = new Set(groundTruth.flatMap((e) => (e.accepts || []).map(normaliseToken)))
+  const extras = looksLikeList ? predicted.filter((tok) => !allAccepted.has(tok)) : []
 
   const total = groundTruth.length
   return {

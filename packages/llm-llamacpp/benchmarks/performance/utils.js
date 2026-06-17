@@ -14,21 +14,23 @@ const PROMPT_OVERHEAD_RESERVE = 128
 
 // --- Prompt helpers (formerly prompt-shared-utils.js) ---
 
-function shouldFallbackToCpu (err) {
+function shouldFallbackToCpu(err) {
   const msg = err && err.message ? String(err.message) : String(err)
-  return /vram|gpu|metal|cuda|opencl|failed to create context|unabletoloadmodel|failed to initialize model|device/i.test(msg)
+  return /vram|gpu|metal|cuda|opencl|failed to create context|unabletoloadmodel|failed to initialize model|device/i.test(
+    msg
+  )
 }
 
-function getCtxBudget (ctxSize) {
+function getCtxBudget(ctxSize) {
   return Math.max(256, Number(ctxSize) - N_PREDICT_RESERVE - PROMPT_OVERHEAD_RESERVE)
 }
 
-function getBatchBudget (ctxSize, batchSize) {
+function getBatchBudget(ctxSize, batchSize) {
   const desired = Math.max(512, Number(batchSize) * 3)
   return Math.max(256, Math.min(getCtxBudget(ctxSize), desired))
 }
 
-async function getPromptTokens (model, messages) {
+async function getPromptTokens(model, messages) {
   try {
     const response = await model.run(messages)
     await response.onUpdate(() => {}).await()
@@ -44,35 +46,37 @@ async function getPromptTokens (model, messages) {
 
 // --- Addon shared helpers (extracted from sweep / judge) ---
 
-function loadLocalLlmAddon () {
+function loadLocalLlmAddon() {
   return require('../../index')
 }
 
-function loadNpmLlmAddon () {
+function loadNpmLlmAddon() {
   return require('@qvac/llm-llamacpp')
 }
 
-function parseAddonSource (value) {
-  const normalized = String(value || 'local').trim().toLowerCase()
+function parseAddonSource(value) {
+  const normalized = String(value || 'local')
+    .trim()
+    .toLowerCase()
   if (normalized === 'local' || normalized === 'npm') return normalized
   throw new Error(`Invalid --addon-source value "${value}". Expected "local" or "npm".`)
 }
 
-function resolveAddonCtor (addonSource) {
+function resolveAddonCtor(addonSource) {
   try {
     return addonSource === 'npm' ? loadNpmLlmAddon() : loadLocalLlmAddon()
   } catch (error) {
     const message = error && error.message ? error.message : String(error)
     throw new Error(
       `Failed to load addon source "${addonSource}": ${message}. ` +
-      (addonSource === 'local'
-        ? 'Run `npm run build` for local addon artifacts.'
-        : 'Run `npm run performance:install` to install npm addon package.')
+        (addonSource === 'local'
+          ? 'Run `npm run build` for local addon artifacts.'
+          : 'Run `npm run performance:install` to install npm addon package.')
     )
   }
 }
 
-function createAddonRuntimeLogger (debugEnabled) {
+function createAddonRuntimeLogger(debugEnabled) {
   if (!debugEnabled) {
     return {
       error: () => {},
@@ -89,7 +93,7 @@ function createAddonRuntimeLogger (debugEnabled) {
   }
 }
 
-function stripSurroundingQuotes (value) {
+function stripSurroundingQuotes(value) {
   const s = String(value)
   if ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'"))) {
     return s.slice(1, -1)
@@ -97,7 +101,7 @@ function stripSurroundingQuotes (value) {
   return s
 }
 
-function normalizeArgValue (value) {
+function normalizeArgValue(value) {
   if (value === true || value == null) return value
   let normalized = String(value).trim()
   if (normalized.startsWith('=')) {
@@ -107,7 +111,7 @@ function normalizeArgValue (value) {
   return normalized
 }
 
-function parseArgs (argv) {
+function parseArgs(argv) {
   const parsed = {}
   for (let i = 2; i < argv.length; i++) {
     const token = argv[i]
@@ -131,7 +135,7 @@ function parseArgs (argv) {
   return parsed
 }
 
-function buildConfigObject (runtimeConfig) {
+function buildConfigObject(runtimeConfig) {
   const config = {}
   for (const [key, value] of Object.entries(runtimeConfig)) {
     if (value === null || value === undefined) continue

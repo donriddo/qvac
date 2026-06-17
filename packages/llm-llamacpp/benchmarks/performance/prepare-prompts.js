@@ -41,11 +41,11 @@ const SAFE_FALLBACK_RUNTIME = {
   verbosity: '0'
 }
 
-function cloneMessages (messages) {
+function cloneMessages(messages) {
   return messages.map((m) => ({ role: m.role, content: String(m.content) }))
 }
 
-function buildMessagesFromWords (templateMessages, wordCount) {
+function buildMessagesFromWords(templateMessages, wordCount) {
   const out = cloneMessages(templateMessages)
   let userIndex = -1
   for (let i = out.length - 1; i >= 0; i--) {
@@ -55,24 +55,31 @@ function buildMessagesFromWords (templateMessages, wordCount) {
     }
   }
   if (userIndex === -1) return out
-  const words = String(out[userIndex].content || '').split(/\s+/).filter(Boolean)
+  const words = String(out[userIndex].content || '')
+    .split(/\s+/)
+    .filter(Boolean)
   out[userIndex].content = words.slice(0, Math.max(1, Math.min(words.length, wordCount))).join(' ')
   return out
 }
 
-async function tuneToBudget (model, templateMessages, budget) {
-  const words = String(templateMessages[templateMessages.length - 1].content || '').split(/\s+/).filter(Boolean)
+async function tuneToBudget(model, templateMessages, budget) {
+  const words = String(templateMessages[templateMessages.length - 1].content || '')
+    .split(/\s+/)
+    .filter(Boolean)
   if (words.length === 0) throw new Error('Template has no user words to tune')
 
   // Start with a safe calibration probe to estimate words->tokens for this template/model.
   const probeWords = Math.min(words.length, 200)
-  const probeTokens = await getPromptTokens(model, buildMessagesFromWords(templateMessages, probeWords))
+  const probeTokens = await getPromptTokens(
+    model,
+    buildMessagesFromWords(templateMessages, probeWords)
+  )
   if (!Number.isFinite(probeTokens) || probeTokens <= 0) {
     throw new Error(`Calibration probe failed (words=${probeWords}, tokens=${probeTokens})`)
   }
 
   const tokenByWords = new Map()
-  async function tokensForWords (wordCount) {
+  async function tokensForWords(wordCount) {
     const w = Math.max(1, Math.min(words.length, Number(wordCount)))
     if (tokenByWords.has(w)) return tokenByWords.get(w)
     const tokenCount = await getPromptTokens(model, buildMessagesFromWords(templateMessages, w))
@@ -85,7 +92,10 @@ async function tuneToBudget (model, templateMessages, budget) {
   let bestTokens = -1
 
   // Initial guess close to target.
-  const guessWords = Math.max(1, Math.min(words.length, Math.floor((budget / probeTokens) * probeWords * 0.95)))
+  const guessWords = Math.max(
+    1,
+    Math.min(words.length, Math.floor((budget / probeTokens) * probeWords * 0.95))
+  )
   const guessTokens = await tokensForWords(guessWords)
   if (Number.isFinite(guessTokens) && guessTokens <= budget) {
     bestWords = guessWords
@@ -153,7 +163,7 @@ async function tuneToBudget (model, templateMessages, budget) {
   }
 }
 
-function basePrompts () {
+function basePrompts() {
   return [
     {
       id: 'long',
@@ -172,7 +182,7 @@ function basePrompts () {
   ]
 }
 
-function ctxTemplateMessages () {
+function ctxTemplateMessages() {
   return [
     { role: 'system', content: 'You are a helpful assistant. Be detailed and exhaustive.' },
     {
@@ -185,7 +195,7 @@ function ctxTemplateMessages () {
   ]
 }
 
-function batchTemplateMessages () {
+function batchTemplateMessages() {
   return [
     { role: 'system', content: 'You are a helpful assistant. Analyze thoroughly.' },
     {
@@ -198,7 +208,7 @@ function batchTemplateMessages () {
   ]
 }
 
-async function main () {
+async function main() {
   const modelPath = path.join(MODEL_DIR, MODEL_NAME)
   if (!fs.existsSync(modelPath)) {
     throw new Error(`Missing tokenizer model at ${modelPath}. Run model prep first.`)
@@ -253,9 +263,10 @@ async function main () {
       for (const batch of PROMPT_BATCH_SIZES) {
         const target = getBatchBudget(ctx, batch)
         const tuned = await tuneToBudget(model, batchTemplate, target)
-        const note = Number(batch) > Number(ctx)
-          ? 'batch-size exceeds ctx-size; uses longest safe prompt under ctx budget'
-          : 'targets long prompt to span multiple prefill batches where feasible'
+        const note =
+          Number(batch) > Number(ctx)
+            ? 'batch-size exceeds ctx-size; uses longest safe prompt under ctx budget'
+            : 'targets long prompt to span multiple prefill batches where feasible'
         prompts.push({
           id: `batch-spanning__ctx=${ctx}__bs=${batch}`,
           messages: tuned.messages,
@@ -265,7 +276,9 @@ async function main () {
             note
           }
         })
-        console.log(`batch-spanning__ctx=${ctx}__bs=${batch}: target=${target} actual=${tuned.promptTokens}`)
+        console.log(
+          `batch-spanning__ctx=${ctx}__bs=${batch}: target=${target} actual=${tuned.promptTokens}`
+        )
       }
     }
 

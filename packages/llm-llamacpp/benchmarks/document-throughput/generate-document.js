@@ -470,7 +470,7 @@ const SECTIONS = [
   }
 ]
 
-function generateDocument () {
+function generateDocument() {
   const lines = []
   const title = '10-Page Technical Document: AI Infrastructure and Embedding Systems'
   lines.push(title)
@@ -490,7 +490,7 @@ function generateDocument () {
   return lines.join('\n')
 }
 
-function chunkDocument (text, chunkSize, overlap) {
+function chunkDocument(text, chunkSize, overlap) {
   const words = text.split(/\s+/).filter(Boolean)
   const chunks = []
   let start = 0
@@ -505,7 +505,7 @@ function chunkDocument (text, chunkSize, overlap) {
   return chunks
 }
 
-function getDocumentStats (text) {
+function getDocumentStats(text) {
   const words = text.split(/\s+/).filter(Boolean)
   const chars = text.length
   const sentences = text.split(/[.!?]+/).filter(Boolean).length
