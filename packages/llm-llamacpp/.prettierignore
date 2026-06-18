@@ -13,3 +13,4 @@ benchmarks/client/venv
 benchmarks/results
 benchmarks/performance/resolved-models.json
 benchmarks/performance/results
+benchmarks/vlm-benchmark/fixture.data.cjs
