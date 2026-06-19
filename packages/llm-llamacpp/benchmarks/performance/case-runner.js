@@ -5,7 +5,9 @@ const path = require('bare-path')
 const { round, average, stddev, cartesianProduct } = require('./math')
 const { stripSurroundingQuotes, normalizeArgValue } = require('./utils')
 
-const PROMPT_CASES = ['long', 'ctx-filling', 'span-fill']
+// The focused sweep uses a single ~512-token prompt. Add 'ctx-filling' /
+// 'span-fill' back to also sweep context-fill and batch-spanning prompts.
+const PROMPT_CASES = ['long']
 const PROMPTS_PER_CASE = 1
 
 const SWEEP_OVERRIDE_KEYS = [
@@ -17,7 +19,8 @@ const SWEEP_OVERRIDE_KEYS = [
   'ubatch-size',
   'flash-attn',
   'cache-type-k',
-  'cache-type-v'
+  'cache-type-v',
+  'reasoning-budget'
 ]
 
 function splitCsvArg(value, key) {
@@ -84,6 +87,7 @@ function buildCases(modelDef, sweep) {
   const threadsValues = sweep.threads || []
   const cacheTypeKValues = sweep['cache-type-k'] || []
   const cacheTypeVValues = sweep['cache-type-v'] || []
+  const reasoningBudgetValues = sweep['reasoning-budget'] || []
 
   const cases = []
   for (const promptCase of PROMPT_CASES) {
@@ -109,6 +113,7 @@ function buildCases(modelDef, sweep) {
     cacheTypeKValues.length > 0 &&
     cacheTypeVValues.length > 0
   ) {
+    const rbValues = reasoningBudgetValues.length > 0 ? reasoningBudgetValues : [null]
     const combos = cartesianProduct([
       supportedQuants,
       devices,
@@ -118,7 +123,8 @@ function buildCases(modelDef, sweep) {
       flashAttnValues,
       threadsValues,
       cacheTypeKValues,
-      cacheTypeVValues
+      cacheTypeVValues,
+      rbValues
     ])
 
     for (const [
@@ -130,7 +136,8 @@ function buildCases(modelDef, sweep) {
       flashAttn,
       threads,
       cacheTypeK,
-      cacheTypeV
+      cacheTypeV,
+      reasoningBudget
     ] of combos) {
       if (Number(ubatchSize) > Number(batchSize)) {
         continue // Skip combinations where ubatchSize is greater than batchSize
@@ -146,8 +153,10 @@ function buildCases(modelDef, sweep) {
         'cache-type-k': cacheTypeK,
         'cache-type-v': cacheTypeV
       }
+      if (reasoningBudget !== null) runtimeConfig['reasoning-budget'] = reasoningBudget
 
-      const caseId = `${modelDef.id}__q=${quantization}__dev=${device}__ctx=${ctxSize}__bs=${batchSize}__ubs=${ubatchSize}__fa=${flashAttn}__t=${threads}__ck=${cacheTypeK}__cv=${cacheTypeV}`
+      const rbSuffix = reasoningBudget !== null ? `__rb=${reasoningBudget}` : ''
+      const caseId = `${modelDef.id}__q=${quantization}__dev=${device}__ctx=${ctxSize}__bs=${batchSize}__ubs=${ubatchSize}__fa=${flashAttn}__t=${threads}__ck=${cacheTypeK}__cv=${cacheTypeV}${rbSuffix}`
 
       for (const promptCase of PROMPT_CASES) {
         cases.push({
@@ -226,6 +235,7 @@ function aggregateRunMetrics(runMetrics) {
   const unloadMsValues = runMetrics.map((x) => x.unloadMs).filter((x) => x != null)
   const ttftMsValues = runMetrics.map((x) => x.ttftMs).filter((x) => x != null)
   const tpsValues = runMetrics.map((x) => x.tps).filter((x) => x != null)
+  const ppTpsValues = runMetrics.map((x) => x.ppTps).filter((x) => x != null)
   const firstPromptTokens = runMetrics.find((x) => x.promptTokens != null)?.promptTokens ?? null
   const firstGeneratedTokens =
     runMetrics.find((x) => x.generatedTokens != null)?.generatedTokens ?? null
@@ -242,6 +252,8 @@ function aggregateRunMetrics(runMetrics) {
     ttftMsStd: round(stddev(ttftMsValues), 3),
     tpsMean: round(average(tpsValues), 3),
     tpsStd: round(stddev(tpsValues), 3),
+    ppTpsMean: round(average(ppTpsValues), 3),
+    ppTpsStd: round(stddev(ppTpsValues), 3),
     promptTokens: firstPromptTokens,
     generatedTokens: firstGeneratedTokens
   }

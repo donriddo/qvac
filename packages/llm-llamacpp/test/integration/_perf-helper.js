@@ -301,6 +301,7 @@ function recordPerformance(label, totalTime, extra) {
 
   const ttftMs = stats ? _num(stats.TTFT) : null
   const tps = stats ? _num(stats.TPS) : null
+  const ppTps = stats ? _num(stats.ppTPS) : null
   const generatedTokens = stats ? _num(stats.generatedTokens) : null
   const promptTokens = stats ? _num(stats.promptTokens) : null
 
@@ -336,7 +337,8 @@ function recordPerformance(label, totalTime, extra) {
       ttft_ms: ttftMs !== null ? Math.round(ttftMs) : null,
       generated_tokens: generatedTokens,
       prompt_tokens: promptTokens,
-      tps: tps !== null ? Number(tps.toFixed(2)) : null
+      tps: tps !== null ? Number(tps.toFixed(2)) : null,
+      pp_tps: ppTps !== null ? Number(ppTps.toFixed(2)) : null
     },
     {
       scenario: (extra && extra.scenario) || 'default',
@@ -371,6 +373,7 @@ function recordPerformance(label, totalTime, extra) {
     `    - Prefill / TTFT: ${ttftMs !== null ? Math.round(ttftMs) + 'ms' : 'n/a'}`,
     `    - Decode: ${decodeMs !== null ? decodeMs + 'ms' : 'n/a'}`,
     `    - TPS: ${tps !== null ? tps.toFixed(2) : 'n/a'}`,
+    `    - ppTPS: ${ppTps !== null ? ppTps.toFixed(2) : 'n/a'}`,
     `    - Tokens: ${generatedTokens !== null ? generatedTokens : 'n/a'} gen / ${promptTokens !== null ? promptTokens : 'n/a'} prompt`
   ]
   return lines.join('\n')
