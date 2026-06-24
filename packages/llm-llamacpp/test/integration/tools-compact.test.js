@@ -202,6 +202,29 @@ async function runAndCollect(model, prompt, runOptions) {
   }
 }
 
+// Fence for `saveCacheToDisk: true`: the addon resolves `chain.await()` once
+// inference is done, but the session-write hits the disk on a background
+// thread. On a fast runner an immediate `model.unload()` can race the flush
+// and leave a truncated file; the next model's session-load then blocks
+// indefinitely waiting for bytes that never arrive. Poll until size has
+// been stable for one tick to make sure the writer has finalized.
+async function waitForStableSessionFile(filePath, { maxMs = 5000 } = {}) {
+  const start = Date.now()
+  let lastSize = -1
+  while (Date.now() - start < maxMs) {
+    let size = 0
+    try {
+      size = fs.statSync(filePath).size
+    } catch {
+      size = 0
+    }
+    if (size > 0 && size === lastSize) return size
+    lastSize = size
+    await new Promise((resolve) => setTimeout(resolve, 50))
+  }
+  return lastSize
+}
+
 async function runExpectingInvalidPrompt(t, model, prompt, expectedReason, runOptions) {
   cleanupRunOptionsCache(runOptions)
   const response = await model.run(prompt, runOptions)
@@ -863,6 +886,9 @@ safeTest(
     )
     t.ok(r1.output.length > 0, 'turn 1 produces output')
     t.ok(r1.stats.CacheTokens > 0, 'turn 1 has cache tokens')
+
+    const persistedSize = await waitForStableSessionFile(sessionName)
+    t.ok(persistedSize > 0, `session file flushed to disk (${persistedSize} bytes)`)
 
     await model1.unload()
 

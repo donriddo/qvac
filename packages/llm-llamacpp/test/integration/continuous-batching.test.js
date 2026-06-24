@@ -1,11 +1,10 @@
 'use strict'
 
-const test = require('brittle')
 const path = require('bare-path')
 const os = require('bare-os')
 const process = require('bare-process')
 const LlmLlamacpp = require('../../index.js')
-const { ensureModel } = require('./utils')
+const { ensureModel, safeTest } = require('./utils')
 const { attachSpecLogger } = require('./spec-logger')
 
 const platform = os.platform()
@@ -215,7 +214,7 @@ function logStreamingProgress(response) {
 // 1B throughput/correctness run is too slow or complicated for mobile and legacy macOS x64.
 const skipHeavyPlatform = isMobile || isDarwin
 
-test(
+safeTest(
   'continuous batching answers 16 prompts correctly and improves Linux GPU TPS',
   { timeout: 900_000, skip: skipHeavyPlatform },
   async (t) => {
