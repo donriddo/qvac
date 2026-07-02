@@ -409,8 +409,16 @@ jobs:
       # of malware"). No-op (warns) until the signing credentials are present,
       # so it is safe to land ahead of the secrets. Local ./ ref matches the
       # existing local-action precedent in this file (see ./setup-rocm).
+      #
+      # Restricted to non-PR events. pull_request_target callers (on-pr-*.yml)
+      # reach this reusable with `secrets: inherit` while checked out at fork PR
+      # HEAD, so running the signing here would expose the Developer ID cert to
+      # untrusted PR code and sign binaries that are never published. Only the
+      # publish path (on-merge-*.yml, push/workflow_dispatch) produces shipped
+      # artifacts and should notarize. github.event_name is read from the
+      # trusted base workflow, so a PR cannot spoof it.
       - name: Notarize darwin prebuilds
-        if: matrix.platform == 'darwin'
+        if: matrix.platform == 'darwin' && github.event_name != 'pull_request' && github.event_name != 'pull_request_target'
         uses: ./.github/actions/notarize-prebuilds
         with:
           workdir: ${{ env.WORKDIR }}
