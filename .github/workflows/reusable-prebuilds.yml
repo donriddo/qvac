@@ -407,8 +407,8 @@ jobs:
       # Developer ID sign + notarize darwin prebuilds so macOS Gatekeeper does
       # not block the ad-hoc-signed .bare on first load ("cannot verify ... free
       # of malware"). No-op (warns) until the signing credentials are present,
-      # so it is safe to land ahead of the secrets. Local ./ ref because the
-      # action is new and has no pinned SHA yet; pin after merge.
+      # so it is safe to land ahead of the secrets. Local ./ ref matches the
+      # existing local-action precedent in this file (see ./setup-rocm).
       - name: Notarize darwin prebuilds
         if: matrix.platform == 'darwin'
         uses: ./.github/actions/notarize-prebuilds

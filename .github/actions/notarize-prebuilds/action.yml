@@ -4,9 +4,10 @@ description: >-
   does not block the addon on first load with the "cannot verify ... is free of
   malware" dialog. Without this, prebuilt .bare modules ship only ad-hoc /
   linker-signed (Signature=adhoc, TeamIdentifier=not set), which trips
-  Gatekeeper's first-load assessment on end-user machines. Signs every
-  .bare/.dylib/.so under the workdir's prebuilds/ tree with a hardened runtime
-  and secure timestamp, then submits the bundle to Apple's notary service.
+  Gatekeeper's first-load assessment on end-user machines. Signs every Mach-O
+  object under the workdir's prebuilds/ tree (detected by content) with a
+  hardened runtime and secure timestamp, then submits the bundle to Apple's
+  notary service.
   Loose .bare dylibs cannot be stapled, so Gatekeeper resolves the notarization
   ticket online. No-op (warns) until the signing credentials are provisioned,
   so it is safe to land ahead of the secrets.
@@ -59,33 +60,60 @@ runs:
           echo "prebuilds/ does not exist; nothing to notarize"
           exit 0
         fi
-        if [ -z "$CERT_P12_BASE64" ] || [ -z "$NOTARY_KEY_BASE64" ] || [ -z "$SIGN_IDENTITY" ]; then
-          echo "::warning title=darwin prebuilds not notarized::Signing credentials not provisioned; shipping ad-hoc-signed prebuilds (Gatekeeper may warn on first load). Provide the Developer ID cert + notary key secrets to enable notarization."
+        # No-op (green) unless ALL credentials are present, so partial
+        # provisioning does not fail mid-run.
+        if [ -z "$CERT_P12_BASE64" ] || [ -z "$CERT_PASSWORD" ] || [ -z "$SIGN_IDENTITY" ] || \
+           [ -z "$NOTARY_KEY_BASE64" ] || [ -z "$NOTARY_KEY_ID" ] || [ -z "$NOTARY_ISSUER_ID" ]; then
+          echo "::warning title=darwin prebuilds not notarized::Signing credentials not fully provisioned; shipping ad-hoc-signed prebuilds (Gatekeeper may warn on first load). Provide all six MACOS_* secrets to enable notarization."
           exit 0
         fi
         set -e
         KEYCHAIN="$RUNNER_TEMP/notarize.keychain-db"
+        # Always scrub key material + the temp keychain, even on failure.
+        trap 'rm -f "$RUNNER_TEMP/devid.p12" "$RUNNER_TEMP/notary.p8"; security delete-keychain "$KEYCHAIN" 2>/dev/null || true' EXIT
         KCPASS="$(uuidgen)"
         security create-keychain -p "$KCPASS" "$KEYCHAIN"
         security set-keychain-settings -lut 21600 "$KEYCHAIN"
         security unlock-keychain -p "$KCPASS" "$KEYCHAIN"
-        echo "$CERT_P12_BASE64" | base64 -d > "$RUNNER_TEMP/devid.p12"
+        echo "$CERT_P12_BASE64" | base64 --decode > "$RUNNER_TEMP/devid.p12"
         security import "$RUNNER_TEMP/devid.p12" -k "$KEYCHAIN" -P "$CERT_PASSWORD" -T /usr/bin/codesign
         security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KCPASS" "$KEYCHAIN" >/dev/null
         security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | sed s/\"//g)
-        # Sign every native binary in the prebuild tree with hardened runtime.
-        find prebuilds \( -name '*.bare' -o -name '*.dylib' -o -name '*.so' \) -print0 |
+        # Sign every Mach-O object in the prebuild tree (detect by content, not
+        # by suffix: notary rejects the whole zip if any Mach-O is unsigned, and
+        # addons may ship sibling dylibs / extension-less loader stubs).
+        find prebuilds -type f -print0 |
           while IFS= read -r -d '' f; do
-            echo "signing: $f"
-            codesign --force --timestamp --options runtime --sign "$SIGN_IDENTITY" "$f"
+            if file "$f" | grep -q 'Mach-O'; then
+              echo "signing: $f"
+              codesign --force --timestamp --options runtime --sign "$SIGN_IDENTITY" "$f"
+            fi
           done
-        # Notarize the bundle (loose .bare cannot be stapled -> online ticket).
-        echo "$NOTARY_KEY_BASE64" | base64 -d > "$RUNNER_TEMP/notary.p8"
+        # Notarize the bundle (loose .bare cannot be stapled -> Gatekeeper
+        # resolves the ticket online at first load).
+        echo "$NOTARY_KEY_BASE64" | base64 --decode > "$RUNNER_TEMP/notary.p8"
         ditto -c -k --keepParent prebuilds "$RUNNER_TEMP/prebuilds.zip"
+        NOTARY_OUT="$RUNNER_TEMP/notary-submit.txt"
+        set +e
         xcrun notarytool submit "$RUNNER_TEMP/prebuilds.zip" \
           --key "$RUNNER_TEMP/notary.p8" \
           --key-id "$NOTARY_KEY_ID" \
           --issuer "$NOTARY_ISSUER_ID" \
-          --wait
-        rm -f "$RUNNER_TEMP/devid.p12" "$RUNNER_TEMP/notary.p8"
-        security delete-keychain "$KEYCHAIN" || true
+          --wait 2>&1 | tee "$NOTARY_OUT"
+        NOTARY_RC=${PIPESTATUS[0]}
+        set -e
+        SUBMISSION_ID="$(awk '/id:/{print $2; exit}' "$NOTARY_OUT")"
+        # Assert the terminal status explicitly; do not trust exit code alone,
+        # and fetch the per-binary rejection log so failures are diagnosable.
+        if ! grep -qE 'status: Accepted' "$NOTARY_OUT"; then
+          echo "::error title=Notarization failed::terminal status was not Accepted (rc=$NOTARY_RC)"
+          if [ -n "$SUBMISSION_ID" ]; then
+            echo "notary log for submission $SUBMISSION_ID:"
+            xcrun notarytool log "$SUBMISSION_ID" \
+              --key "$RUNNER_TEMP/notary.p8" \
+              --key-id "$NOTARY_KEY_ID" \
+              --issuer "$NOTARY_ISSUER_ID" || true
+          fi
+          exit 1
+        fi
+        echo "notarization accepted (submission $SUBMISSION_ID)"
