@@ -1,0 +1,91 @@
+name: Notarize darwin prebuilds
+description: >-
+  Developer ID sign + notarize the darwin native prebuilds so macOS Gatekeeper
+  does not block the addon on first load with the "cannot verify ... is free of
+  malware" dialog. Without this, prebuilt .bare modules ship only ad-hoc /
+  linker-signed (Signature=adhoc, TeamIdentifier=not set), which trips
+  Gatekeeper's first-load assessment on end-user machines. Signs every
+  .bare/.dylib/.so under the workdir's prebuilds/ tree with a hardened runtime
+  and secure timestamp, then submits the bundle to Apple's notary service.
+  Loose .bare dylibs cannot be stapled, so Gatekeeper resolves the notarization
+  ticket online. No-op (warns) until the signing credentials are provisioned,
+  so it is safe to land ahead of the secrets.
+
+inputs:
+  workdir:
+    description: Directory containing the prebuilds/ folder
+    required: true
+  sign-identity:
+    description: 'Developer ID Application identity, e.g. "Developer ID Application: Tether ... (TEAMID)"'
+    required: false
+    default: ""
+  cert-p12-base64:
+    description: base64 of the Developer ID Application certificate (.p12)
+    required: false
+    default: ""
+  cert-password:
+    description: Export password for the .p12 certificate
+    required: false
+    default: ""
+  notary-key-base64:
+    description: base64 of the App Store Connect API key (.p8)
+    required: false
+    default: ""
+  notary-key-id:
+    description: App Store Connect API key id
+    required: false
+    default: ""
+  notary-issuer-id:
+    description: App Store Connect API key issuer id
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - name: Developer ID sign + notarize
+      shell: bash
+      working-directory: ${{ inputs.workdir }}
+      env:
+        SIGN_IDENTITY: ${{ inputs.sign-identity }}
+        CERT_P12_BASE64: ${{ inputs.cert-p12-base64 }}
+        CERT_PASSWORD: ${{ inputs.cert-password }}
+        NOTARY_KEY_BASE64: ${{ inputs.notary-key-base64 }}
+        NOTARY_KEY_ID: ${{ inputs.notary-key-id }}
+        NOTARY_ISSUER_ID: ${{ inputs.notary-issuer-id }}
+      run: |
+        set -uo pipefail
+        if [ ! -d prebuilds ]; then
+          echo "prebuilds/ does not exist; nothing to notarize"
+          exit 0
+        fi
+        if [ -z "$CERT_P12_BASE64" ] || [ -z "$NOTARY_KEY_BASE64" ] || [ -z "$SIGN_IDENTITY" ]; then
+          echo "::warning title=darwin prebuilds not notarized::Signing credentials not provisioned; shipping ad-hoc-signed prebuilds (Gatekeeper may warn on first load). Provide the Developer ID cert + notary key secrets to enable notarization."
+          exit 0
+        fi
+        set -e
+        KEYCHAIN="$RUNNER_TEMP/notarize.keychain-db"
+        KCPASS="$(uuidgen)"
+        security create-keychain -p "$KCPASS" "$KEYCHAIN"
+        security set-keychain-settings -lut 21600 "$KEYCHAIN"
+        security unlock-keychain -p "$KCPASS" "$KEYCHAIN"
+        echo "$CERT_P12_BASE64" | base64 -d > "$RUNNER_TEMP/devid.p12"
+        security import "$RUNNER_TEMP/devid.p12" -k "$KEYCHAIN" -P "$CERT_PASSWORD" -T /usr/bin/codesign
+        security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KCPASS" "$KEYCHAIN" >/dev/null
+        security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | sed s/\"//g)
+        # Sign every native binary in the prebuild tree with hardened runtime.
+        find prebuilds \( -name '*.bare' -o -name '*.dylib' -o -name '*.so' \) -print0 |
+          while IFS= read -r -d '' f; do
+            echo "signing: $f"
+            codesign --force --timestamp --options runtime --sign "$SIGN_IDENTITY" "$f"
+          done
+        # Notarize the bundle (loose .bare cannot be stapled -> online ticket).
+        echo "$NOTARY_KEY_BASE64" | base64 -d > "$RUNNER_TEMP/notary.p8"
+        ditto -c -k --keepParent prebuilds "$RUNNER_TEMP/prebuilds.zip"
+        xcrun notarytool submit "$RUNNER_TEMP/prebuilds.zip" \
+          --key "$RUNNER_TEMP/notary.p8" \
+          --key-id "$NOTARY_KEY_ID" \
+          --issuer "$NOTARY_ISSUER_ID" \
+          --wait
+        rm -f "$RUNNER_TEMP/devid.p12" "$RUNNER_TEMP/notary.p8"
+        security delete-keychain "$KEYCHAIN" || true

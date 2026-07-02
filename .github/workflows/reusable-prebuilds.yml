@@ -404,6 +404,23 @@ jobs:
           platform: ${{ matrix.platform }}
           workdir: ${{ env.WORKDIR }}
 
+      # Developer ID sign + notarize darwin prebuilds so macOS Gatekeeper does
+      # not block the ad-hoc-signed .bare on first load ("cannot verify ... free
+      # of malware"). No-op (warns) until the signing credentials are present,
+      # so it is safe to land ahead of the secrets. Local ./ ref because the
+      # action is new and has no pinned SHA yet; pin after merge.
+      - name: Notarize darwin prebuilds
+        if: matrix.platform == 'darwin'
+        uses: ./.github/actions/notarize-prebuilds
+        with:
+          workdir: ${{ env.WORKDIR }}
+          sign-identity: ${{ secrets.MACOS_SIGN_IDENTITY }}
+          cert-p12-base64: ${{ secrets.MACOS_CERT_P12_BASE64 }}
+          cert-password: ${{ secrets.MACOS_CERT_PASSWORD }}
+          notary-key-base64: ${{ secrets.MACOS_NOTARY_KEY_BASE64 }}
+          notary-key-id: ${{ secrets.MACOS_NOTARY_KEY_ID }}
+          notary-issuer-id: ${{ secrets.MACOS_NOTARY_ISSUER_ID }}
+
       # Guards against regressing the static-runtime build: addons must link the
       # static MSVC runtime, so the shipped .bare/.dll must not import the dynamic
       # Visual C++ runtime (vcruntime140.dll / msvcp140.dll / ucrtbase.dll / the
