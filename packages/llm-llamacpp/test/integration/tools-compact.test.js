@@ -197,6 +197,25 @@ async function runAndCollect (model, prompt, runOptions) {
   }
 }
 
+// Fence for `saveCacheToDisk: true`: the addon resolves `chain.await()` once
+// inference is done, but the session-write hits the disk on a background
+// thread. On a fast runner an immediate `model.unload()` can race the flush
+// and leave a truncated file; the next model's session-load then blocks
+// indefinitely waiting for bytes that never arrive. Poll until size has
+// been stable for one tick to make sure the writer has finalized.
+async function waitForStableSessionFile (filePath, { maxMs = 5000 } = {}) {
+  const start = Date.now()
+  let lastSize = -1
+  while (Date.now() - start < maxMs) {
+    let size = 0
+    try { size = fs.statSync(filePath).size } catch { size = 0 }
+    if (size > 0 && size === lastSize) return size
+    lastSize = size
+    await new Promise(resolve => setTimeout(resolve, 50))
+  }
+  return lastSize
+}
+
 async function runExpectingInvalidPrompt (t, model, prompt, expectedReason, runOptions) {
   cleanupRunOptionsCache(runOptions)
   const response = await model.run(prompt, runOptions)
@@ -385,7 +404,29 @@ safeTest('[tools-compact] multi-turn session with same tools works correctly', {
   const rTool2 = await runAndCollect(model, toolResponse2, opts)
   t.ok(rTool2.output.length > 0, 'turn rTool2 produces output')
   t.ok(rTool2.stats.CacheTokens > 0, 'turn rTool2 has cache tokens')
-  t.ok(rTool2.stats.CacheTokens < TOOL_A_TOKENS, 'turn rTool2 has all tools removed')
+  // Two model-output shapes are both correct here, and the compactor must
+  // preserve cache accordingly (see ToolsCompactController::onGenerationComplete):
+  //   1. Chain terminated  → assistant answers in natural language, no
+  //      `<tool_call>` marker → compactor trims the tool region →
+  //      CacheTokens should drop below TOOL_A_TOKENS.
+  //   2. Chain continued   → assistant emits another `<tool_call>` (model
+  //      decides another tool call is needed) → compactor MUST NOT trim
+  //      (the next hop needs the tool schemas in cache) → CacheTokens
+  //      cannot shrink below the previous turn.
+  // Which branch fires is model/sampler dependent; each branch is asserted
+  // independently so a future compactor bug in either direction is caught.
+  const rTool2ChainContinued = rTool2.output.includes('<tool_call>')
+  if (rTool2ChainContinued) {
+    t.ok(
+      rTool2.stats.CacheTokens >= r2.stats.CacheTokens,
+      `chain continued at turn rTool2; tools must remain in cache — CacheTokens must not shrink (rTool2=${rTool2.stats.CacheTokens} vs r2=${r2.stats.CacheTokens})`
+    )
+  } else {
+    t.ok(
+      rTool2.stats.CacheTokens < TOOL_A_TOKENS,
+      `turn rTool2 has all tools removed (CacheTokens=${rTool2.stats.CacheTokens} < ${TOOL_A_TOKENS})`
+    )
+  }
   t.ok(
     r2.stats.CacheTokens < 2 * r1.stats.CacheTokens,
     `CacheTokens after turn 2 (${r2.stats.CacheTokens}) should be less than 2x turn 1 (${2 * r1.stats.CacheTokens})`
@@ -758,6 +799,9 @@ safeTest('[tools-compact] session save, destroy, reload with different tools', {
   ], { cacheKey: sessionName, saveCacheToDisk: true })
   t.ok(r1.output.length > 0, 'turn 1 produces output')
   t.ok(r1.stats.CacheTokens > 0, 'turn 1 has cache tokens')
+
+  const persistedSize = await waitForStableSessionFile(sessionName)
+  t.ok(persistedSize > 0, `session file flushed to disk (${persistedSize} bytes)`)
 
   await model1.unload()
 
