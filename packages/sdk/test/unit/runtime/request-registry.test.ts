@@ -1198,7 +1198,11 @@ test('policy: a per-request slotGroup serializes a subset onto its own lane whil
     return ctx
   })
   await settle()
-  t.is(cached2Resolved, false, 'the second cached completion queues behind the first on the cap-1 cache lane')
+  t.is(
+    cached2Resolved,
+    false,
+    'the second cached completion queues behind the first on the cap-1 cache lane'
+  )
 
   await cached1[Symbol.asyncDispose]()
   const cached2ctx = await cached2
@@ -1216,7 +1220,12 @@ test('policy: completion and batchCompletion share one lane and run concurrently
   // Mirrors the singleton: both kinds share the lane; the per-request cap is
   // the model's `parallel` (2 here), so a single and a batch run together.
   r.policy({ kind: 'completion', maxConcurrentPerModel: 1, onOverflow: 'queue', sharedSlotGroup })
-  r.policy({ kind: 'batchCompletion', maxConcurrentPerModel: 1, onOverflow: 'queue', sharedSlotGroup })
+  r.policy({
+    kind: 'batchCompletion',
+    maxConcurrentPerModel: 1,
+    onOverflow: 'queue',
+    sharedSlotGroup
+  })
 
   const single = await r.begin({
     requestId: 's-1',
