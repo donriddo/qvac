@@ -785,10 +785,9 @@ test("queue: onOverflow 'reject' still throws RequestRejectedByPolicyError", asy
 })
 
 test('queue: a sharedSlotGroup serializes different kinds on the same model', async (t) => {
-  // Exercises the `sharedSlotGroup` primitive: two kinds opted into one group
-  // contend for a single admission lane per model rather than each getting an
-  // independent (kind, modelId) slot. (The default singleton policies no longer
-  // share a lane, but the primitive remains supported.)
+  // Mirrors the singleton wiring: completion + batchCompletion share one lane
+  // so a completion and a batch on the same model contend for a single
+  // admission pool rather than each getting an independent (kind, modelId) slot.
   const r = createRequestRegistry()
   const sharedSlotGroup = 'llamacppCompletion'
   r.policy({
@@ -1208,5 +1207,46 @@ test('policy: a per-request slotGroup serializes a subset onto its own lane whil
   await plain1[Symbol.asyncDispose]()
   await plain2[Symbol.asyncDispose]()
   await cached2ctx[Symbol.asyncDispose]()
+  t.is(keyStateProbe(r).__keyStateSize(), 0, 'no KeyState leak after drain')
+})
+
+test('policy: completion and batchCompletion share one lane and run concurrently up to the cap', async (t) => {
+  const r = createRequestRegistry()
+  const sharedSlotGroup = 'llamacppCompletion'
+  // Mirrors the singleton: both kinds share the lane; the per-request cap is
+  // the model's `parallel` (2 here), so a single and a batch run together.
+  r.policy({ kind: 'completion', maxConcurrentPerModel: 1, onOverflow: 'queue', sharedSlotGroup })
+  r.policy({ kind: 'batchCompletion', maxConcurrentPerModel: 1, onOverflow: 'queue', sharedSlotGroup })
+
+  const single = await r.begin({
+    requestId: 's-1',
+    kind: 'completion',
+    modelId: 'm1',
+    maxConcurrentPerModel: 2
+  })
+  const batch = await r.begin({
+    requestId: 'b-1',
+    kind: 'batchCompletion',
+    modelId: 'm1',
+    maxConcurrentPerModel: 2
+  })
+  t.is(r.list().length, 2, 'a single completion and a batch run concurrently on the shared lane')
+
+  let thirdResolved = false
+  const third = r
+    .begin({ requestId: 's-2', kind: 'completion', modelId: 'm1', maxConcurrentPerModel: 2 })
+    .then((ctx) => {
+      thirdResolved = true
+      return ctx
+    })
+  await settle()
+  t.is(thirdResolved, false, 'a third request queues once the shared lane is at its 2-slot cap')
+
+  await batch[Symbol.asyncDispose]()
+  const thirdCtx = await third
+  t.is(thirdResolved, true, 'freeing a shared slot admits the queued request regardless of kind')
+
+  await single[Symbol.asyncDispose]()
+  await thirdCtx[Symbol.asyncDispose]()
   t.is(keyStateProbe(r).__keyStateSize(), 0, 'no KeyState leak after drain')
 })

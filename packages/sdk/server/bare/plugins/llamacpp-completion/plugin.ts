@@ -73,6 +73,15 @@ function createLlmModel(
 
   const modelFiles = expandGGUFIntoShards(modelPath)
 
+  // Overflow policy for the multi-job scheduler: a single-slot model
+  // (`parallel <= 1`) throws when busy, preserving today's single-prompt
+  // behavior; an N-way model queues surplus sequences first-come-first-serve
+  // instead of erroring (e.g. a batch with more prompts than slots runs in
+  // waves). Not exposed on the SDK surface — the SDK models overflow at the
+  // admission layer and this default covers the common cases.
+  const rejectWhenBusy = (Number(llmConfig.parallel) || 1) <= 1
+  const modelOpts = { stats: true, rejectWhenBusy }
+
   const model = new LlmLlamacpp({
     files: {
       model: modelFiles,
@@ -80,7 +89,7 @@ function createLlmModel(
     },
     config: llmConfigStrings,
     logger,
-    opts: { stats: true }
+    opts: modelOpts
   })
 
   return { model }
@@ -185,10 +194,15 @@ export const llmPlugin = definePlugin({
           return normalizer
         }
 
+        // Batches share the completion lane and admit up to the model's own
+        // `parallel` jobs, so a batch and single completions run concurrently
+        // and compete for the model's sequence slots first-come-first-serve.
+        const parallel = Number((modelCfg as { parallel?: number }).parallel) || 1
         await using ctx = await getRequestRegistry().begin({
           requestId: request.requestId ?? generateServerRequestId(),
           kind: 'batchCompletion',
-          modelId: request.modelId
+          modelId: request.modelId,
+          maxConcurrentPerModel: parallel
         })
         const requestLogger = withRequestContext(getServerLogger(), ctx)
 
@@ -360,18 +374,20 @@ export const llmPlugin = definePlugin({
         // client can target this run with `cancel({ requestId })`.
         // Falls back to a server-generated id if the client (e.g. an
         // older release) didn't send one.
-        // Continuous batching: admit up to the model's own `parallel` slots so
-        // independent completions on this model decode together. A completion
-        // that persists a disk KV-cache is instead pinned to a dedicated cap-1
-        // lane — concurrent cache turns would corrupt shared on-disk state.
+        // Continuous batching: admit up to the model's own `parallel` jobs on
+        // the shared completion lane so independent completions decode together.
+        // A disk-KV-cache completion on an N-way model is pinned to a dedicated
+        // cap-1 lane instead — concurrent turns to the same cache file would
+        // corrupt shared on-disk state. At parallel=1 the shared lane is already
+        // serial, so cache turns need no separate lane.
         const parallel = Number((modelCfg as { parallel?: number }).parallel) || 1
-        const usesDiskCache = Boolean(request.kvCache)
+        const useCachedLane = Boolean(request.kvCache) && parallel > 1
         await using ctx = await getRequestRegistry().begin({
           requestId: request.requestId ?? generateServerRequestId(),
           kind: 'completion',
           modelId: request.modelId,
-          maxConcurrentPerModel: usesDiskCache ? 1 : parallel,
-          ...(usesDiskCache && { slotGroup: LLAMACPP_COMPLETION_CACHED_SLOT_GROUP })
+          maxConcurrentPerModel: useCachedLane ? 1 : parallel,
+          ...(useCachedLane && { slotGroup: LLAMACPP_COMPLETION_CACHED_SLOT_GROUP })
         })
 
         const requestLogger = withRequestContext(getServerLogger(), ctx)

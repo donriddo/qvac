@@ -16,36 +16,41 @@ import {
  */
 let registry: RequestRegistry | null = null
 
+// `completion` and `batchCompletion` share one admission lane per model: all
+// requests — single completions and batches alike — compete for the model's
+// `parallel` sequence slots first-come-first-serve, so they contend for one
+// slot pool rather than each getting an independent lane.
+const LLAMACPP_COMPLETION_SLOT_GROUP = 'llamacppCompletion'
+
 // Completions that persist a disk KV-cache share process-global cache
 // bookkeeping (the `.bin` file plus the `initializedCaches` /
 // `cachedMessageCounts` maps) and would corrupt it if two decoded at once.
-// The completionStream handler routes them onto this dedicated cap-1 lane so
-// they serialize against each other, while plain completions of the same kind
-// go N-way on the default `completion` lane.
+// When the model runs N-way (`parallel > 1`) the handler routes them onto this
+// dedicated cap-1 lane so they serialize against each other while plain
+// completions go concurrent; at `parallel = 1` everything is already serial on
+// the shared lane, so this lane is unused.
 export const LLAMACPP_COMPLETION_CACHED_SLOT_GROUP = 'llamacppCompletionCached'
 
 function installDefaultPolicies(r: RequestRegistry): void {
-  // Single completions on one model decode concurrently (continuous batching)
-  // up to the model's own `parallel` slot count. That count is per-model, so
-  // the completionStream handler passes it per request as
-  // `maxConcurrentPerModel`; the value here is only the fallback for a caller
-  // that supplies none (serialize, matching a model loaded without `parallel`).
-  // Overflow waits FIFO; the depth cap bounds queue memory.
+  // completion + batchCompletion admit up to the model's own `parallel` jobs
+  // concurrently (continuous batching), then queue the surplus FCFS. The cap is
+  // per-model, so the handlers pass it per request as `maxConcurrentPerModel`;
+  // the value here is only the fallback for a caller that supplies none. The
+  // shared slot group makes a completion and a batch on the same model contend
+  // for one pool; the depth cap bounds queue memory.
   r.policy({
     kind: 'completion',
     maxConcurrentPerModel: 1,
     onOverflow: 'queue',
-    maxQueueDepthPerModel: 64
+    maxQueueDepthPerModel: 64,
+    sharedSlotGroup: LLAMACPP_COMPLETION_SLOT_GROUP
   })
-  // A batch already occupies the model's sequence slots, so it stays
-  // one-at-a-time per model on its own lane. It no longer shares a lane with
-  // `completion`: a batch and single completions may overlap, and the addon's
-  // multi-job scheduler admits them together, queuing any surplus sequences.
   r.policy({
     kind: 'batchCompletion',
     maxConcurrentPerModel: 1,
     onOverflow: 'queue',
-    maxQueueDepthPerModel: 64
+    maxQueueDepthPerModel: 64,
+    sharedSlotGroup: LLAMACPP_COMPLETION_SLOT_GROUP
   })
 }
 
