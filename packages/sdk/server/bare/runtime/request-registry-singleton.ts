@@ -16,37 +16,36 @@ import {
  */
 let registry: RequestRegistry | null = null
 
-// `completion` and `batchCompletion` both run on the same `@qvac/llm-llamacpp`
-// instance, which funnels every `run()` (single-prompt and batch alike) through
-// one per-instance exclusive run queue plus a single-job native runner. They
-// therefore can't actually execute at once on the same model. Sharing one
-// admission lane makes the SDK queue reflect that reality: a completion and a
-// batch on the same model serialize FIFO at the SDK layer instead of both being
-// admitted and silently serializing inside the addon (which hides them from the
-// registry's queue-depth accounting, `requestId` diagnostics, and cancel).
-const LLAMACPP_COMPLETION_SLOT_GROUP = 'llamacppCompletion'
+// Completions that persist a disk KV-cache share process-global cache
+// bookkeeping (the `.bin` file plus the `initializedCaches` /
+// `cachedMessageCounts` maps) and would corrupt it if two decoded at once.
+// The completionStream handler routes them onto this dedicated cap-1 lane so
+// they serialize against each other, while plain completions of the same kind
+// go N-way on the default `completion` lane.
+export const LLAMACPP_COMPLETION_CACHED_SLOT_GROUP = 'llamacppCompletionCached'
 
 function installDefaultPolicies(r: RequestRegistry): void {
-  // A loaded model is a single native context (one KV-cache, single-slot
-  // decode), so two same-model completions can't run in parallel. Serialize
-  // rather than reject: the second waits FIFO. maxConcurrentPerModel: 1 is
-  // today's reality — raise it once continuous batching lands. The depth cap
-  // bounds queue memory. The shared slot group extends that serialization
-  // across `completion` + `batchCompletion` on the same model (see note
-  // above).
+  // Single completions on one model decode concurrently (continuous batching)
+  // up to the model's own `parallel` slot count. That count is per-model, so
+  // the completionStream handler passes it per request as
+  // `maxConcurrentPerModel`; the value here is only the fallback for a caller
+  // that supplies none (serialize, matching a model loaded without `parallel`).
+  // Overflow waits FIFO; the depth cap bounds queue memory.
   r.policy({
     kind: 'completion',
     maxConcurrentPerModel: 1,
     onOverflow: 'queue',
-    maxQueueDepthPerModel: 64,
-    sharedSlotGroup: LLAMACPP_COMPLETION_SLOT_GROUP
+    maxQueueDepthPerModel: 64
   })
+  // A batch already occupies the model's sequence slots, so it stays
+  // one-at-a-time per model on its own lane. It no longer shares a lane with
+  // `completion`: a batch and single completions may overlap, and the addon's
+  // multi-job scheduler admits them together, queuing any surplus sequences.
   r.policy({
     kind: 'batchCompletion',
     maxConcurrentPerModel: 1,
     onOverflow: 'queue',
-    maxQueueDepthPerModel: 64,
-    sharedSlotGroup: LLAMACPP_COMPLETION_SLOT_GROUP
+    maxQueueDepthPerModel: 64
   })
 }
 

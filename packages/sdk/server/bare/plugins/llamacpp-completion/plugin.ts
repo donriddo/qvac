@@ -36,7 +36,11 @@ import { attachModelExecutionMs } from '@/profiling/model-execution'
 import { getModelConfig } from '@/server/bare/registry/model-registry'
 import { createCompletionNormalizer } from '@/server/utils/completion-normalizer'
 import { detectToolDialect } from '@/server/utils/tool-integration'
-import { getRequestRegistry, withRequestContext } from '@/server/bare/runtime'
+import {
+  getRequestRegistry,
+  withRequestContext,
+  LLAMACPP_COMPLETION_CACHED_SLOT_GROUP
+} from '@/server/bare/runtime'
 import { generateServerRequestId } from '@/server/bare/runtime/request-id'
 import { getServerLogger } from '@/logging'
 import { ContextOverflowError } from '@/utils/errors-server'
@@ -317,7 +321,10 @@ export const llmPlugin = definePlugin({
       requestSchema: completionStreamRequestSchema,
       responseSchema: completionStreamResponseSchema,
       streaming: true,
-      cancel: { scope: 'model', hard: true },
+      // Per-request cancel: aborting one completion cancels only its own
+      // native job (via the response), leaving concurrent completions on the
+      // same model running.
+      cancel: { scope: 'request', hard: true },
 
       handler: async function* (request) {
         const filteredHistory = request.history.map(({ role, content, attachments }) => ({
@@ -353,10 +360,18 @@ export const llmPlugin = definePlugin({
         // client can target this run with `cancel({ requestId })`.
         // Falls back to a server-generated id if the client (e.g. an
         // older release) didn't send one.
+        // Continuous batching: admit up to the model's own `parallel` slots so
+        // independent completions on this model decode together. A completion
+        // that persists a disk KV-cache is instead pinned to a dedicated cap-1
+        // lane — concurrent cache turns would corrupt shared on-disk state.
+        const parallel = Number((modelCfg as { parallel?: number }).parallel) || 1
+        const usesDiskCache = Boolean(request.kvCache)
         await using ctx = await getRequestRegistry().begin({
           requestId: request.requestId ?? generateServerRequestId(),
           kind: 'completion',
-          modelId: request.modelId
+          modelId: request.modelId,
+          maxConcurrentPerModel: usesDiskCache ? 1 : parallel,
+          ...(usesDiskCache && { slotGroup: LLAMACPP_COMPLETION_CACHED_SLOT_GROUP })
         })
 
         const requestLogger = withRequestContext(getServerLogger(), ctx)
