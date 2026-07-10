@@ -46,6 +46,7 @@ type AddonBatchResponse = {
   stats?: LlmStats
   iterate(): AsyncIterable<unknown>
   await(): Promise<BatchModelResult[]>
+  cancel(): Promise<void>
 }
 
 type BatchModelEvent = { type: 'ids'; ids: string[] } | { type: 'token'; id: string; token: string }
@@ -159,25 +160,31 @@ export async function* batchCompletion(
     toolsMode: (modelConfig as { toolsMode?: string }).toolsMode
   }
 
-  const onAbort = () => {
-    const addon = model.addon
-    if (addon?.cancel) {
-      addon.cancel.call(addon).catch((err: unknown) => {
-        requestLogger.warn(
-          `[cancel] addon.cancel() rejected during batch abort for modelId=${modelId}: ${err instanceof Error ? err.message : String(err)}`
-        )
-      })
-    }
+  // Cancel via the batch response, mirroring completion(). The addon's batch
+  // response cancel is still whole-model, so this cancels concurrent peers too
+  // until the addon wires the batch response to a per-job cancel; routing
+  // through the response makes it per-batch automatically once that lands.
+  let activeResponse: { cancel(): Promise<void> } | null = null
+  const cancelActive = () => {
+    activeResponse?.cancel().catch((err: unknown) => {
+      requestLogger.warn(
+        `[cancel] batch response.cancel() rejected during abort for modelId=${modelId}: ${err instanceof Error ? err.message : String(err)}`
+      )
+    })
   }
+  const onAbort = () => cancelActive()
   signal.addEventListener('abort', onAbort, { once: true })
   if (signal.aborted) onAbort()
   scope.defer(() => {
     signal.removeEventListener('abort', onAbort)
+    activeResponse = null
   })
 
   const addonPrompts = prompts.map((prompt) => buildBatchPrompt(prompt, renderOptions))
   const modelStart = nowMs()
   const response = await runBatchModel(model, addonPrompts)
+  activeResponse = response
+  if (signal.aborted) cancelActive()
   const ids = response.ids
 
   yield { type: 'ids', ids }

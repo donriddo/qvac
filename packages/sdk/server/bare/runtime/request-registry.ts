@@ -41,11 +41,10 @@ export interface BeginOpts {
   maxConcurrentPerModel?: number
   /**
    * Per-request override of the admission lane. Defaults to the policy's
-   * `sharedSlotGroup` or the kind. Set it to route a subset of one kind
-   * onto its own serialized lane without minting a new `RequestKind` — e.g.
-   * completions that persist a disk KV-cache share process-global cache
-   * state and must not decode concurrently with each other, while plain
-   * completions of the same kind go N-way on the default lane.
+   * `sharedSlotGroup` or the kind. Routes a subset of one kind onto its own
+   * serialized lane without a new `RequestKind` — e.g. disk-KV-cache
+   * completions serialize so concurrent turns can't corrupt a shared on-disk
+   * cache file, while plain completions of the same kind stay concurrent.
    */
   slotGroup?: string
 }

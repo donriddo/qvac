@@ -9,10 +9,11 @@
  * the time of the slowest one, not the sum of all of them.
  *
  * Each `completion()` returns an independent `CompletionRun`:
- *  - `text`       — a `Promise<string>` of that call's own output.
- *  - `stats`      — a `Promise<CompletionStats>` with THIS call's own figures
- *                   (its own tokens/sec, time-to-first-token). `avgConcurrentSeq`
- *                   stays model-level (how busy the shared backend was).
+ *  - `events`     — an `AsyncIterable` of streamed events for that call.
+ *  - `final`      — a `Promise<CompletionFinal>` with THIS call's own
+ *                   `contentText` and `stats` (its own tokens/sec, TTFT).
+ *                   `stats.avgConcurrentSeq` stays model-level (how busy the
+ *                   shared backend was).
  *  - `requestId`  — cancel just this call with `cancel({ requestId })`; peers
  *                   keep decoding.
  *
@@ -61,11 +62,14 @@ try {
   )
 
   const outputs = await Promise.all(
-    runs.map(async (run, i) => ({
-      id: PROMPTS[i]!.id,
-      text: (await run.text).replace(/\s+/g, ' ').trim(),
-      stats: await run.stats
-    }))
+    runs.map(async (run, i) => {
+      const final = await run.final
+      return {
+        id: PROMPTS[i]!.id,
+        text: final.contentText.replace(/\s+/g, ' ').trim(),
+        stats: final.stats
+      }
+    })
   )
   const elapsed = Date.now() - started
 
@@ -95,11 +99,11 @@ try {
 
   let doomedOutcome = 'completed'
   try {
-    await doomed.text
+    await doomed.final
   } catch {
     doomedOutcome = 'cancelled'
   }
-  const survivorText = (await survivor.text).replace(/\s+/g, ' ').trim()
+  const survivorText = (await survivor.final).contentText.replace(/\s+/g, ' ').trim()
   console.log(`  ▸ cancelled run -> ${doomedOutcome}`)
   console.log(`  ▸ peer run kept decoding -> "${survivorText}"`)
 
