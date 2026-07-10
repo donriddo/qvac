@@ -73,12 +73,8 @@ function createLlmModel(
 
   const modelFiles = expandGGUFIntoShards(modelPath)
 
-  // Overflow policy for the multi-job scheduler: a single-slot model
-  // (`parallel <= 1`) throws when busy, preserving today's single-prompt
-  // behavior; an N-way model queues surplus sequences first-come-first-serve
-  // instead of erroring (e.g. a batch with more prompts than slots runs in
-  // waves). Not exposed on the SDK surface — the SDK models overflow at the
-  // admission layer and this default covers the common cases.
+  // Single-slot models throw when busy (unchanged); N-way models queue the
+  // surplus FCFS instead of erroring. Not exposed on the SDK surface.
   const rejectWhenBusy = (Number(llmConfig.parallel) || 1) <= 1
   const modelOpts = { stats: true, rejectWhenBusy }
 
@@ -194,9 +190,8 @@ export const llmPlugin = definePlugin({
           return normalizer
         }
 
-        // Batches share the completion lane and admit up to the model's own
-        // `parallel` jobs, so a batch and single completions run concurrently
-        // and compete for the model's sequence slots first-come-first-serve.
+        // Batches share the completion lane at the model's `parallel` cap, so a
+        // batch and singles run concurrently.
         const parallel = Number((modelCfg as { parallel?: number }).parallel) || 1
         await using ctx = await getRequestRegistry().begin({
           requestId: request.requestId ?? generateServerRequestId(),
@@ -374,12 +369,8 @@ export const llmPlugin = definePlugin({
         // client can target this run with `cancel({ requestId })`.
         // Falls back to a server-generated id if the client (e.g. an
         // older release) didn't send one.
-        // Continuous batching: admit up to the model's own `parallel` jobs on
-        // the shared completion lane so independent completions decode together.
-        // A disk-KV-cache completion on an N-way model is pinned to a dedicated
-        // cap-1 lane instead — concurrent turns to the same cache file would
-        // corrupt shared on-disk state. At parallel=1 the shared lane is already
-        // serial, so cache turns need no separate lane.
+        // Admit up to the model's `parallel` jobs. Disk-KV-cache turns on an
+        // N-way model go to a cap-1 lane so same-file turns can't corrupt state.
         const parallel = Number((modelCfg as { parallel?: number }).parallel) || 1
         const useCachedLane = Boolean(request.kvCache) && parallel > 1
         await using ctx = await getRequestRegistry().begin({

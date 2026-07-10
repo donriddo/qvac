@@ -16,28 +16,17 @@ import {
  */
 let registry: RequestRegistry | null = null
 
-// `completion` and `batchCompletion` share one admission lane per model: all
-// requests — single completions and batches alike — compete for the model's
-// `parallel` sequence slots first-come-first-serve, so they contend for one
-// slot pool rather than each getting an independent lane.
+// completion + batchCompletion share one lane: singles and batches compete for
+// the model's `parallel` slots first-come-first-serve.
 const LLAMACPP_COMPLETION_SLOT_GROUP = 'llamacppCompletion'
 
-// Completions that persist a disk KV-cache share process-global cache
-// bookkeeping (the `.bin` file plus the `initializedCaches` /
-// `cachedMessageCounts` maps) and would corrupt it if two decoded at once.
-// When the model runs N-way (`parallel > 1`) the handler routes them onto this
-// dedicated cap-1 lane so they serialize against each other while plain
-// completions go concurrent; at `parallel = 1` everything is already serial on
-// the shared lane, so this lane is unused.
+// Concurrent disk-KV-cache turns would corrupt shared on-disk cache state, so on
+// N-way models the handler serializes them on this dedicated cap-1 lane.
 export const LLAMACPP_COMPLETION_CACHED_SLOT_GROUP = 'llamacppCompletionCached'
 
 function installDefaultPolicies(r: RequestRegistry): void {
-  // completion + batchCompletion admit up to the model's own `parallel` jobs
-  // concurrently (continuous batching), then queue the surplus FCFS. The cap is
-  // per-model, so the handlers pass it per request as `maxConcurrentPerModel`;
-  // the value here is only the fallback for a caller that supplies none. The
-  // shared slot group makes a completion and a batch on the same model contend
-  // for one pool; the depth cap bounds queue memory.
+  // Cap is the model's `parallel`, passed per request by the handlers; the value
+  // here is only the fallback when a caller supplies none.
   r.policy({
     kind: 'completion',
     maxConcurrentPerModel: 1,
