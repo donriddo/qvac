@@ -73,10 +73,9 @@ function createLlmModel(
 
   const modelFiles = expandGGUFIntoShards(modelPath)
 
-  // Single-slot models throw when busy (unchanged); N-way models queue the
-  // surplus FCFS instead of erroring. Not exposed on the SDK surface.
+  // Overflow policy on the model: throw at parallel=1 (single slot, legacy
+  // behaviour), queue the surplus FCFS at parallel>1. Not on the SDK surface.
   const rejectWhenBusy = (Number(llmConfig.parallel) || 1) <= 1
-  const modelOpts = { stats: true, rejectWhenBusy }
 
   const model = new LlmLlamacpp({
     files: {
@@ -85,7 +84,7 @@ function createLlmModel(
     },
     config: llmConfigStrings,
     logger,
-    opts: modelOpts
+    opts: { stats: true, rejectWhenBusy }
   })
 
   return { model }
