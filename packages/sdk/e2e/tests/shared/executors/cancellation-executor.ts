@@ -625,9 +625,10 @@ export class CancellationExecutor extends AbstractModelExecutor<typeof sharedTes
       { role: 'user' as const, content: params.prompt }
     ]
 
-    // Fire two completions at the same model in the same tick. This model is
-    // loaded N-way (parallel>1), so both are admitted and decode concurrently
-    // and BOTH must succeed. (A single-slot model would reject the second.)
+    // Fire two completions at the same model in the same tick. The completion
+    // policy serializes same-model requests FIFO instead of rejecting the
+    // second, so BOTH must succeed — the second simply waits for the first to
+    // release the native llama.cpp context, then runs.
     const run1 = completion({ modelId, history, stream: true })
     const run2 = completion({ modelId, history, stream: true })
 
@@ -644,7 +645,7 @@ export class CancellationExecutor extends AbstractModelExecutor<typeof sharedTes
           passed: false,
           output:
             `${label}.final rejected with ${describeError(final.error)} — both same-model ` +
-            'completions on an N-way model must succeed, not reject'
+            'completions must serialize and succeed, not reject'
         }
       }
       if (obs.lastStopReason === 'cancelled' || obs.lastStopReason === 'error') {
