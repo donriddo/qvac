@@ -197,6 +197,8 @@ export const llmPlugin = definePlugin({
         // Batches share the completion lane at the model's `parallel` cap, so a
         // batch and singles run concurrently. A single-slot model rejects a
         // second concurrent request; an N-way model queues the surplus FCFS.
+        // The cap counts admitted requests, not the prompt sequences inside a
+        // batch — the addon schedules those across its own slots.
         const parallel = getModelParallel(modelCfg as { parallel?: number })
         await using ctx = await getRequestRegistry().begin({
           requestId: request.requestId ?? generateServerRequestId(),
