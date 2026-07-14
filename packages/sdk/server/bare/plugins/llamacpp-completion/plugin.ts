@@ -52,6 +52,11 @@ import { isAddonCancelledError } from '@/server/bare/plugins/llamacpp-completion
 import { isMobile } from '@/server/bare/registry/runtime-context-registry'
 import { stripMultiGpuKeys } from '@/server/utils/multi-gpu-mobile'
 
+// The model's concurrent sequence slots. Missing / 0 / NaN all mean single-slot.
+function getModelParallel(config: { parallel?: number | undefined }) {
+  return Number(config.parallel) || 1
+}
+
 function createLlmModel(
   modelId: string,
   modelPath: string,
@@ -73,9 +78,9 @@ function createLlmModel(
 
   const modelFiles = expandGGUFIntoShards(modelPath)
 
-  // Overflow policy on the model: throw at parallel=1 (single slot, legacy
-  // behaviour), queue the surplus FCFS at parallel>1. Not on the SDK surface.
-  const rejectWhenBusy = (Number(llmConfig.parallel) || 1) <= 1
+  // Addon overflow flag: at a single slot the addon throws when driven over
+  // capacity, at parallel>1 it queues the surplus. Not on the SDK surface.
+  const rejectWhenBusy = getModelParallel(llmConfig) <= 1
 
   const model = new LlmLlamacpp({
     files: {
@@ -191,7 +196,7 @@ export const llmPlugin = definePlugin({
 
         // Batches share the completion lane at the model's `parallel` cap, so a
         // batch and singles run concurrently.
-        const parallel = Number((modelCfg as { parallel?: number }).parallel) || 1
+        const parallel = getModelParallel(modelCfg as { parallel?: number })
         await using ctx = await getRequestRegistry().begin({
           requestId: request.requestId ?? generateServerRequestId(),
           kind: 'batchCompletion',
@@ -370,7 +375,7 @@ export const llmPlugin = definePlugin({
         // older release) didn't send one.
         // Admit up to the model's `parallel` jobs. Disk-KV-cache turns on an
         // N-way model go to a cap-1 lane so same-file turns can't corrupt state.
-        const parallel = Number((modelCfg as { parallel?: number }).parallel) || 1
+        const parallel = getModelParallel(modelCfg as { parallel?: number })
         const useCachedLane = Boolean(request.kvCache) && parallel > 1
         await using ctx = await getRequestRegistry().begin({
           requestId: request.requestId ?? generateServerRequestId(),
