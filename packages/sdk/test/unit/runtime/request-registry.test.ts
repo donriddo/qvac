@@ -1121,6 +1121,51 @@ test('policy: per-request maxConcurrentPerModel overrides the kind default and a
   t.is(keyStateProbe(r).__keyStateSize(), 0, 'no KeyState leak after drain')
 })
 
+test('policy: per-request onOverflow "reject" rejects the second same-model request instead of queuing', async (t) => {
+  const r = createRequestRegistry()
+  // Policy default queues; a single-slot model (parallel=1) passes reject
+  // per-request so an over-capacity second call throws rather than serializing.
+  r.policy({ kind: 'completion', maxConcurrentPerModel: 1, onOverflow: 'queue' })
+
+  const opts = (id: string) => ({
+    requestId: id,
+    kind: 'completion' as const,
+    modelId: 'm1',
+    maxConcurrentPerModel: 1,
+    onOverflow: 'reject' as const
+  })
+
+  await using first = await r.begin(opts('r-1'))
+  t.is(first.requestId, 'r-1')
+
+  await t.exception(async () => {
+    await r.begin(opts('r-2'))
+  }, RequestRejectedByPolicyError as unknown as new () => Error)
+
+  t.is(r.list().length, 1, 'the rejected second request leaves no slot behind')
+  t.is(r.get('r-2'), null)
+
+  // A model with parallel>1 (no per-request reject) still queues the surplus.
+  const queued = (id: string) => ({
+    requestId: id,
+    kind: 'completion' as const,
+    modelId: 'm2',
+    maxConcurrentPerModel: 1,
+    onOverflow: 'queue' as const
+  })
+  const a = await r.begin(queued('q-1'))
+  let secondResolved = false
+  const second = r.begin(queued('q-2')).then((ctx) => {
+    secondResolved = true
+    return ctx
+  })
+  await settle()
+  t.is(secondResolved, false, 'the queued policy still waits FIFO rather than rejecting')
+  await a[Symbol.asyncDispose]()
+  const b = await second
+  await b[Symbol.asyncDispose]()
+})
+
 test('policy: per-request maxConcurrentPerModel is scoped per model', async (t) => {
   const r = createRequestRegistry()
   r.policy({ kind: 'completion', maxConcurrentPerModel: 1, onOverflow: 'queue' })

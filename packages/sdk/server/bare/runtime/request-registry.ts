@@ -47,6 +47,13 @@ export interface BeginOpts {
    * cache file, while plain completions of the same kind stay concurrent.
    */
   slotGroup?: string
+  /**
+   * Per-request override of the kind policy's `onOverflow`, evaluated when the
+   * request finds the lane at capacity. Like `maxConcurrentPerModel`, keep it
+   * uniform across a `(lane, modelId)`: handlers derive it from the model's
+   * `parallel` — `"reject"` at a single slot, `"queue"` at `parallel > 1`.
+   */
+  onOverflow?: 'queue' | 'reject'
 }
 
 export interface CancelByRequestId {
@@ -501,7 +508,7 @@ export function createRequestRegistry(options?: {
       return { slotKey: key }
     }
 
-    if (policy.onOverflow === 'reject') {
+    if ((opts.onOverflow ?? policy.onOverflow) === 'reject') {
       throw new RequestRejectedByPolicyError(
         opts.requestId,
         opts.kind,

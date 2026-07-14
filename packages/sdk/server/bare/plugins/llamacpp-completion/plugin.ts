@@ -195,13 +195,15 @@ export const llmPlugin = definePlugin({
         }
 
         // Batches share the completion lane at the model's `parallel` cap, so a
-        // batch and singles run concurrently.
+        // batch and singles run concurrently. A single-slot model rejects a
+        // second concurrent request; an N-way model queues the surplus FCFS.
         const parallel = getModelParallel(modelCfg as { parallel?: number })
         await using ctx = await getRequestRegistry().begin({
           requestId: request.requestId ?? generateServerRequestId(),
           kind: 'batchCompletion',
           modelId: request.modelId,
-          maxConcurrentPerModel: parallel
+          maxConcurrentPerModel: parallel,
+          onOverflow: parallel <= 1 ? 'reject' : 'queue'
         })
         const requestLogger = withRequestContext(getServerLogger(), ctx)
 
@@ -373,8 +375,10 @@ export const llmPlugin = definePlugin({
         // client can target this run with `cancel({ requestId })`.
         // Falls back to a server-generated id if the client (e.g. an
         // older release) didn't send one.
-        // Admit up to the model's `parallel` jobs. Disk-KV-cache turns on an
-        // N-way model go to a cap-1 lane so same-file turns can't corrupt state.
+        // Admit up to the model's `parallel` jobs. A single-slot model rejects
+        // a second concurrent request; an N-way model queues the surplus FCFS.
+        // Disk-KV-cache turns on an N-way model go to a cap-1 lane so same-file
+        // turns can't corrupt state (and queue, since that only happens at >1).
         const parallel = getModelParallel(modelCfg as { parallel?: number })
         const useCachedLane = Boolean(request.kvCache) && parallel > 1
         await using ctx = await getRequestRegistry().begin({
@@ -382,6 +386,7 @@ export const llmPlugin = definePlugin({
           kind: 'completion',
           modelId: request.modelId,
           maxConcurrentPerModel: useCachedLane ? 1 : parallel,
+          onOverflow: parallel <= 1 ? 'reject' : 'queue',
           ...(useCachedLane && { slotGroup: LLAMACPP_COMPLETION_CACHED_SLOT_GROUP })
         })
 
