@@ -96,6 +96,17 @@ export interface SdConfig {
   threads?: NumericLike
   /** Preferred compute device: 'gpu' (default; try GPU backends) or 'cpu' */
   device?: 'gpu' | 'cpu'
+  /**
+   * GPU to pin when `device` is 'gpu': a GPU-device index, `'integrated'`, or
+   * `'dedicated'` (the discrete GPU with the most VRAM). Omit to let the
+   * backend choose (the first enumerated device). Resolved against the addon's
+   * own ggml device enumeration, so it cannot desync from the device list the
+   * backend actually uses. If an explicit request cannot be satisfied (e.g.
+   * `'integrated'` on a host with no integrated GPU, `'dedicated'` with no
+   * discrete GPU, or an out-of-range index) the addon falls back to CPU rather
+   * than substituting a different GPU.
+   */
+  'main-gpu'?: number | 'integrated' | 'dedicated'
   /** Weight quantization type */
   type?: WeightType
   /** RNG type for reproducible generation */
@@ -106,6 +117,8 @@ export interface SdConfig {
   clip_on_cpu?: boolean
   /** Run VAE decoder on CPU even when GPU is available */
   vae_on_cpu?: boolean
+  /** Load only VAE decoder weights. Defaults to false so img2img/fusion can encode input images. */
+  vae_decode_only?: boolean
   /** Enable VAE tiling to reduce VRAM usage */
   vae_tiling?: boolean
   /** Enable flash attention for memory efficiency */
@@ -159,7 +172,10 @@ export interface DiffusionFiles {
   clipG?: string
   /** SD3: absolute path to T5-XXL text encoder */
   t5Xxl?: string
-  /** FLUX.2 [klein]: absolute path to Qwen3 4B text encoder (llm_path) */
+  /**
+   * LLM text encoder (llm_path). FLUX.2 [klein] → Qwen3 4B;
+   * Ideogram 4 → Qwen3-VL 8B Instruct.
+   */
   llm?: string
   /** Absolute path to VAE file */
   vae?: string
@@ -171,6 +187,12 @@ export interface DiffusionFiles {
    * be present as an empty string when unset.
    */
   highNoiseDiffusionModel?: string
+  /**
+   * Ideogram 4 only: unconditional (CFG) diffusion model
+   * (uncond_diffusion_model_path), loaded alongside `model` so real
+   * classifier-free guidance works. Omit for all other models.
+   */
+  uncondModel?: string
 }
 
 export interface EsrganFiles {
