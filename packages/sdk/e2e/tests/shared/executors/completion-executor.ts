@@ -96,9 +96,11 @@ export class CompletionExecutor extends AbstractModelExecutor<typeof completionT
     return ValidationHelpers.validate(text, expectation)
   }
 
-  // Issues several completions against the same model in the same tick and
-  // asserts the registry's FIFO concurrency policy: same-model requests wait
-  // for the native context and all resolve without policy rejections.
+  // Issues several completions against the same single-slot (parallel=1) model
+  // in the same tick and asserts the single-slot admission contract: the model
+  // has one native slot, so the first is admitted and the rest reject with
+  // RequestRejectedByPolicyError. (Load a parallel>1 model to decode them
+  // concurrently instead of rejecting.)
   async concurrentRequests(
     params: CompletionTestParams,
     expectation: Expectation
@@ -123,30 +125,44 @@ export class CompletionExecutor extends AbstractModelExecutor<typeof completionT
     )
     const rejected = settled.filter((s): s is PromiseRejectedResult => s.status === 'rejected')
 
-    if (fulfilled.length !== CONCURRENCY || rejected.length !== 0) {
+    if (fulfilled.length !== 1 || rejected.length !== CONCURRENCY - 1) {
       return {
         passed: false,
         output:
-          `Expected FIFO shape: ${CONCURRENCY} fulfilled and 0 rejected; ` +
+          `Expected single-slot shape: 1 fulfilled and ${CONCURRENCY - 1} rejected; ` +
           `got ${fulfilled.length} fulfilled and ${rejected.length} rejected`
       }
     }
 
-    // Every queued request must still produce a valid response once admitted.
-    const failedResult = fulfilled
-      .map((result) => ValidationHelpers.validate(result.value, expectation))
-      .find((result) => !result.passed)
-    if (failedResult) {
+    // The over-capacity requests must fail with the admission policy error,
+    // not some inference error. Match the policy-rejection message (the error
+    // name is not preserved across the RPC boundary).
+    const wrongReject = rejected.find(
+      (r) =>
+        !/rejected by registry concurrency policy/i.test(
+          String((r.reason as { message?: string } | undefined)?.message ?? r.reason)
+        )
+    )
+    if (wrongReject) {
       return {
         passed: false,
-        output: `Queued completion failed expectation: ${failedResult.output}`
+        output: `A rejection was not a registry concurrency-policy rejection: ${String((wrongReject.reason as Error)?.message ?? wrongReject.reason)}`
+      }
+    }
+
+    // The admitted completion must still produce a valid response.
+    const validation = ValidationHelpers.validate(fulfilled[0]!.value, expectation)
+    if (!validation.passed) {
+      return {
+        passed: false,
+        output: `Admitted completion failed expectation: ${validation.output}`
       }
     }
 
     return {
       passed: true,
       output:
-        `FIFO concurrency policy enforced: ${fulfilled.length} completed, ` +
+        `Single-slot admission enforced: ${fulfilled.length} completed, ` +
         `${rejected.length} rejected (of ${CONCURRENCY} issued)`
     }
   }

@@ -625,48 +625,49 @@ export class CancellationExecutor extends AbstractModelExecutor<typeof sharedTes
       { role: 'user' as const, content: params.prompt }
     ]
 
-    // Fire two completions at the same model in the same tick. The completion
-    // policy serializes same-model requests FIFO instead of rejecting the
-    // second, so BOTH must succeed — the second simply waits for the first to
-    // release the native llama.cpp context, then runs.
+    // Fire two completions at the same single-slot (parallel=1) model in the
+    // same tick. run1 takes the one native slot; the over-capacity run2 rejects
+    // with RequestRejectedByPolicyError. (A parallel>1 model decodes both.)
     const run1 = completion({ modelId, history, stream: true })
     const run2 = completion({ modelId, history, stream: true })
 
-    const [obs1, obs2] = await Promise.all([observeStream(run1.events), observeStream(run2.events)])
+    const [obs1] = await Promise.all([
+      observeStream(run1.events),
+      observeStream(run2.events).catch(() => null)
+    ])
     const [final1, final2] = await Promise.all([captureFinal(run1.final), captureFinal(run2.final)])
 
-    const checks: Array<[string, StreamObservation, FinalOutcome]> = [
-      ['run1', obs1, final1],
-      ['run2', obs2, final2]
-    ]
-    for (const [label, obs, final] of checks) {
-      if (!final.resolved) {
-        return {
-          passed: false,
-          output:
-            `${label}.final rejected with ${describeError(final.error)} — both same-model ` +
-            'completions must serialize and succeed, not reject'
-        }
+    if (!final1.resolved) {
+      return {
+        passed: false,
+        output: `run1.final rejected with ${describeError(final1.error)} — the admitted completion must succeed`
       }
-      if (obs.lastStopReason === 'cancelled' || obs.lastStopReason === 'error') {
-        return {
-          passed: false,
-          output: `${label} ended with stopReason=${JSON.stringify(obs.lastStopReason)}, expected a successful completion`
-        }
+    }
+    if (obs1.contentEvents === 0) {
+      return { passed: false, output: 'run1 produced no content — the admitted completion did not run' }
+    }
+    if (final2.resolved) {
+      return {
+        passed: false,
+        output: 'run2 resolved, but a single-slot model must reject the second concurrent completion'
       }
-      if (obs.contentEvents === 0) {
-        return {
-          passed: false,
-          output: `${label} produced no content — the serialized completion did not actually run`
-        }
+    }
+    if (
+      !/rejected by registry concurrency policy/i.test(
+        String((final2.error as { message?: string } | undefined)?.message ?? final2.error)
+      )
+    ) {
+      return {
+        passed: false,
+        output: `run2 rejected but not with the registry concurrency-policy error: ${describeError(final2.error)}`
       }
     }
 
     return {
       passed: true,
       output:
-        `Serialize-concurrent OK: both same-model completions succeeded ` +
-        `(run1 ${obs1.contentEvents} deltas, run2 ${obs2.contentEvents} deltas)`
+        `Single-slot reject enforced: run1 completed (${obs1.contentEvents} deltas), ` +
+        `run2 rejected with the admission policy error`
     }
   }
 
