@@ -3,7 +3,10 @@
 #include <chrono>
 #include <cstdlib>
 #include <cstring>
+#include <memory>
+#include <optional>
 #include <sstream>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -177,12 +180,6 @@ void SdModel::load() {
   sd_ctx_params_t params{};
   sd_ctx_params_init(&params);
 
-  // Load the VAE encoder as well as the decoder so img2img (encode -> denoise
-  // -> decode) works.  sd_ctx_params_init() sets vae_decode_only = true by
-  // default which skips building the encoder graph and causes:
-  //   GGML_ASSERT(!decode_only || decode_graph) in vae_encode()
-  params.vae_decode_only = false;
-
   // -- Model paths ------------------------------------------------------------
   // For FLUX.2 [klein] the GGUF contains only diffusion weights with no SD
   // version metadata KV pairs, so we must use diffusion_model_path.
@@ -194,6 +191,8 @@ void SdModel::load() {
   params.diffusion_model_path = optPath(config_.diffusionModelPath);
   params.high_noise_diffusion_model_path =
       optPath(config_.highNoiseDiffusionModelPath);
+  params.uncond_diffusion_model_path =
+      optPath(config_.uncondDiffusionModelPath);
   params.clip_l_path = optPath(config_.clipLPath);
   params.clip_g_path = optPath(config_.clipGPath);
   params.t5xxl_path = optPath(config_.t5XxlPath);
@@ -201,6 +200,9 @@ void SdModel::load() {
   params.vae_path = optPath(config_.vaePath);
   params.clip_vision_path = optPath(config_.clipVisionPath);
   params.taesd_path = optPath(config_.taesdPath);
+  // LTX-2 (LTXAV) extras. Null for every non-LTX model.
+  params.audio_vae_path = optPath(config_.audioVaePath);
+  params.embeddings_connectors_path = optPath(config_.embeddingsConnectorsPath);
 
   // -- Compute ----------------------------------------------------------------
   params.n_threads = config_.nThreads;
@@ -214,19 +216,60 @@ void SdModel::load() {
 
   // -- Memory management -----------------------------------------------------
   params.enable_mmap = config_.mmap;
+  params.vae_decode_only = config_.vaeDecodeOnly;
+
+  // Keep reusable ctx semantics explicit. sd.cpp defaults may free parameter
+  // buffers after a generation, but this addon runs many jobs through one
+  // sd_ctx_t.
+  params.free_params_immediately = config_.freeParamsImmediately;
   params.offload_params_to_cpu = config_.offloadToCpu;
+  params.keep_clip_on_cpu = config_.keepClipOnCpu;
+  params.keep_vae_on_cpu = config_.keepVaeOnCpu;
+
+  // Also set the newer backend spec so offload intent survives sd.cpp builds
+  // that route parameter placement through params_backend.
+  params.params_backend = config_.offloadToCpu ? "cpu" : nullptr;
 
   params.preferred_gpu_backend =
       sd_backend_selection::preferredGpuBackendForConfigDevice(config_.device);
+
+  std::string mainGpuBackend;
+  if (!config_.mainGpu.empty() &&
+      sd_backend_selection::parseConfigDeviceString(config_.device) ==
+          sd_backend_selection::ConfigDevice::Gpu) {
+    auto mainGpuSpec = sd_backend_selection::parseMainGpu(config_.mainGpu);
+    if (auto resolved =
+            sd_backend_selection::resolveMainGpuBackendName(*mainGpuSpec);
+        resolved.has_value()) {
+      mainGpuBackend = *resolved;
+      params.backend = mainGpuBackend.c_str();
+      QLOG_IF(
+          qvac_lib_inference_addon_cpp::logger::Priority::INFO,
+          "main-gpu pinning stable-diffusion backend '" + mainGpuBackend + "'");
+    } else {
+      // An explicit main-gpu request (e.g. 'integrated' on a host with no
+      // integrated GPU, 'dedicated' with no discrete GPU, or an out-of-range
+      // index) could not be satisfied. Fall back to CPU instead of silently
+      // using the first enumerated GPU, so the requested device class is never
+      // substituted by a different device. (An unset main-gpu keeps the
+      // backend default, i.e. the first enumerated device.)
+      params.preferred_gpu_backend = SD_BACKEND_PREF_CPU;
+      QLOG_IF(
+          qvac_lib_inference_addon_cpp::logger::Priority::INFO,
+          "main-gpu '" + config_.mainGpu +
+              "' not available; falling back to CPU");
+    }
+  } else if (!config_.mainGpu.empty()) {
+    QLOG_IF(
+        qvac_lib_inference_addon_cpp::logger::Priority::INFO,
+        "main-gpu ignored because device is 'cpu'");
+  }
 
   QLOG_IF(
       qvac_lib_inference_addon_cpp::logger::Priority::INFO,
       "Preferred backend passed to stable-diffusion: " +
           preferredBackendToString(params.preferred_gpu_backend) + " (" +
           std::to_string(static_cast<int>(params.preferred_gpu_backend)) + ")");
-
-  params.keep_clip_on_cpu = config_.keepClipOnCpu;
-  params.keep_vae_on_cpu = config_.keepVaeOnCpu;
 
   // -- Precision -------------------------------------------------------------
   params.wtype = config_.wtype;
@@ -247,9 +290,6 @@ void SdModel::load() {
   params.vae_conv_direct = config_.vaeConvDirect;
   params.force_sdxl_vae_conv_scale = config_.forceSDXLVaeConvScale;
 
-  // -- Internal --------------------------------------------------------------
-  params.free_params_immediately = config_.freeParamsImmediately;
-
   sd_ctx_t* raw = new_sd_ctx(&params);
   if (!raw) {
     const std::string path = config_.diffusionModelPath.empty()
@@ -263,6 +303,10 @@ void SdModel::load() {
   }
 
   sdCtx_.reset(raw);
+
+  // LTX-2 is identified by the embeddings-connectors input, which no other
+  // model family uses. Used for model-aware per-job validation below.
+  isLtxModel_ = !config_.embeddingsConnectorsPath.empty();
 
   stats_.modelLoadMs = std::chrono::duration_cast<std::chrono::milliseconds>(
                            std::chrono::steady_clock::now() - tLoadStart)
@@ -788,6 +832,28 @@ SdModel::processVideo(const GenerationJob& job, const picojson::value& parsed) {
         general_error::InvalidArgument,
         "txt2vid does not accept init_image; use img2vid instead");
 
+  // -- Model-aware frame/dimension validation -------------------------------
+  // The SdVidGenHandlers enforce the Wan rules (video_frames = 4*k+1, dims
+  // multiples of 16). LTX-2 has stricter constraints that the generic
+  // handlers don't capture: frames = 8*k+1 (max 257) and dims multiples of
+  // 32 (32x spatial VAE compression). Every valid 8*k+1 also satisfies
+  // 4*k+1, so the handler accepts LTX-invalid values like 13 -- re-check
+  // here now that we know the model family.
+  if (isLtxModel_) {
+    if (vid.videoFrames < 9 || (vid.videoFrames - 1) % 8 != 0 ||
+        vid.videoFrames > 257)
+      throw StatusError(
+          general_error::InvalidArgument,
+          "LTX-2 video_frames must be of the form (8*k + 1) in [9, 257] "
+          "(9, 17, 25, 33, ..., 257). Got: " +
+              std::to_string(vid.videoFrames));
+    if (vid.width % 32 != 0 || vid.height % 32 != 0)
+      throw StatusError(
+          general_error::InvalidArgument,
+          "LTX-2 width and height must be multiples of 32, got: " +
+              std::to_string(vid.width) + "x" + std::to_string(vid.height));
+  }
+
   // -- Decode init / end / control-frame images -----------------------------
   // sd_image_t::data is allocated by stb_image via malloc(), so we wrap each
   // pixel buffer in unique_ptr with image_codec::FreeDeleter to guarantee
@@ -906,6 +972,8 @@ SdModel::processVideo(const GenerationJob& job, const picojson::value& parsed) {
   vidParams.vae_tiling_params.tile_size_x = vid.vaeTileSizeX;
   vidParams.vae_tiling_params.tile_size_y = vid.vaeTileSizeY;
   vidParams.vae_tiling_params.target_overlap = vid.vaeTileOverlap;
+  // Temporal tiling -- LTX-2 video VAE only; no-op for Wan.
+  vidParams.vae_tiling_params.temporal_tiling = vid.vaeTemporalTiling;
 
   // Step-caching
   sd_cache_params_init(&vidParams.cache);
@@ -916,10 +984,21 @@ SdModel::processVideo(const GenerationJob& job, const picojson::value& parsed) {
   // -- Generate -------------------------------------------------------------
   const auto t0 = std::chrono::steady_clock::now();
 
+  // Upstream's master API returns success as a bool and hands back frames /
+  // audio via out-params. This addon delivers video-only (MJPG AVI), so we
+  // release any audio track the model produced to avoid leaking it.
   int numFramesOut = 0;
-  sd_image_t* rawFrames =
-      generate_video(sdCtx_.get(), &vidParams, &numFramesOut);
+  sd_image_t* rawFrames = nullptr;
+  sd_audio_t* rawAudio = nullptr;
+  const bool genOk = generate_video(
+      sdCtx_.get(), &vidParams, &rawFrames, &numFramesOut, &rawAudio);
   qvac_lib_inference_addon_sd::SdVideoFrames frames(rawFrames, numFramesOut);
+  // RAII ownership of the optional LTX-2 audio waveform (null for Wan and for
+  // LTX runs without an audio VAE). The new 5-arg generate_video() hands the
+  // caller ownership of this buffer; wrap it so every exit path frees it.
+  // It is muxed into the AVI as a second (IEEE-float) stream below.
+  std::unique_ptr<sd_audio_t, decltype(&free_sd_audio)> audio(
+      rawAudio, &free_sd_audio);
 
   // If cancelled during the sampler, surface as an exception for the same
   // reason as the image path: a "successful" completion with zero frames
@@ -928,6 +1007,10 @@ SdModel::processVideo(const GenerationJob& job, const picojson::value& parsed) {
   if (cancelRequested_.load()) {
     throw sd_errors::makeCancelledError();
   }
+
+  if (!genOk)
+    throw StatusError(
+        general_error::InternalError, "processVideo: generate_video() failed");
 
   if (frames.empty())
     throw StatusError(
@@ -947,8 +1030,9 @@ SdModel::processVideo(const GenerationJob& job, const picojson::value& parsed) {
   }
 
   // -- Encode AVI and deliver ----------------------------------------------
+  // audio.get() is null for Wan / silent LTX runs, yielding a video-only AVI.
   auto avi = qvac_lib_inference_addon_sd::encodeFramesToAvi(
-      frames.data(), frames.count(), vid.fps);
+      frames.data(), frames.count(), vid.fps, /*jpegQuality=*/90, audio.get());
 
   if (!avi.empty() && job.outputCallback) {
     job.outputCallback(avi);
@@ -991,6 +1075,10 @@ SdModel::processVideo(const GenerationJob& job, const picojson::value& parsed) {
   lastStats_.emplace_back("seed", vid.seed);
   lastStats_.emplace_back("videoFrames", static_cast<int64_t>(frames.count()));
   lastStats_.emplace_back("fps", static_cast<int64_t>(vid.fps));
+  // LTX-2 audio: 0/1 flag + sample rate (0 when no audio track was produced).
+  lastStats_.emplace_back("hasAudio", audio ? 1 : 0);
+  lastStats_.emplace_back(
+      "audioSampleRate", audio ? static_cast<int64_t>(audio->sample_rate) : 0);
 
   return std::any{};
 }
