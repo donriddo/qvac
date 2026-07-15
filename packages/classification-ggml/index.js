@@ -11,7 +11,7 @@ const { ClassificationInterface, mapAddonEvent } = require('./addon')
 const DEFAULT_WEIGHTS_FILENAME = 'mobilenetv3_3class_v3_fp16.gguf'
 const RUN_BUSY_ERROR_MESSAGE = 'Cannot set new job: a job is already set or being processed'
 
-function resolveDefaultModelPath () {
+function resolveDefaultModelPath() {
   if (env.QVAC_CLASSIFICATION_MODEL_PATH) {
     return env.QVAC_CLASSIFICATION_MODEL_PATH
   }
@@ -36,7 +36,7 @@ class ImageClassifier {
    * @param {Object} [opts.logger] optional `@qvac/logging`-compatible logger.
    * @param {boolean} [opts.nativeLogger=false] forward C++-side log lines through `logger`.
    */
-  constructor (opts = {}) {
+  constructor(opts = {}) {
     const { modelPath, logger = null, nativeLogger = false } = opts
     this._modelPath = modelPath ?? resolveDefaultModelPath()
     this.logger = new QvacLogger(logger)
@@ -50,9 +50,11 @@ class ImageClassifier {
     this.state = { configLoaded: false, destroyed: false }
   }
 
-  getState () { return { ...this.state } }
+  getState() {
+    return { ...this.state }
+  }
 
-  async load () {
+  async load() {
     return this._run(async () => {
       if (this.state.configLoaded) return
       await this._load()
@@ -61,7 +63,7 @@ class ImageClassifier {
     })
   }
 
-  async _load () {
+  async _load() {
     if (!fs.existsSync(this._modelPath)) {
       throw new Error(`MobileNet GGUF weights not found at: ${this._modelPath}`)
     }
@@ -73,21 +75,23 @@ class ImageClassifier {
       config: { backendsDir: path.join(__dirname, 'prebuilds') }
     }
 
-    const disableNativeLogger = !this._nativeLogger ||
-      env.QVAC_CLASSIFICATION_DISABLE_NATIVE_LOGGER === '1'
+    const disableNativeLogger =
+      !this._nativeLogger || env.QVAC_CLASSIFICATION_DISABLE_NATIVE_LOGGER === '1'
 
     try {
       this._addon = this._createAddon(configurationParams, { disableNativeLogger })
       await this._addon.activate()
     } catch (loadError) {
       this.logger.error('Error during model load:', loadError)
-      try { await this._addon?.unload?.() } catch (_) {}
+      try {
+        await this._addon?.unload?.()
+      } catch (_) {}
       this._addon = null
       throw loadError
     }
   }
 
-  _createAddon (configurationParams, opts) {
+  _createAddon(configurationParams, opts) {
     const binding = require('./binding')
     return new ClassificationInterface(
       binding,
@@ -112,11 +116,11 @@ class ImageClassifier {
    *          sorted by `confidence` descending. Always returns all classes
    *          unless `options.topK` is set.
    */
-  async classify (imageInput, options = undefined) {
+  async classify(imageInput, options = undefined) {
     return this._run(() => this._classifyInternal(imageInput, options))
   }
 
-  async _classifyInternal (imageInput, options) {
+  async _classifyInternal(imageInput, options) {
     if (!this._addon || !this.state.configLoaded) {
       throw new Error('Classifier not loaded. Call load() first.')
     }
@@ -153,21 +157,23 @@ class ImageClassifier {
     })
     // QvacResponse collects each Output event into an array; classify
     // emits exactly one, so unwrap to preserve the public shape.
-    return Array.isArray(collected) && Array.isArray(collected[0])
-      ? collected[0]
-      : collected
+    return Array.isArray(collected) && Array.isArray(collected[0]) ? collected[0] : collected
   }
 
-  _handleAddonOutputEvent (eventType, data, error) {
+  _handleAddonOutputEvent(eventType, data, error) {
     if (eventType === 'LogMsg') {
-      const msg = typeof data === 'string' ? data : (data?.message || JSON.stringify(data))
+      const msg = typeof data === 'string' ? data : data?.message || JSON.stringify(data)
       this.logger?.info?.(msg)
       return
     }
     if (eventType === 'Error') {
-      const err = error instanceof Error
-        ? error
-        : new Error((error && error.message) || (typeof error === 'string' ? error : 'Classification failed'))
+      const err =
+        error instanceof Error
+          ? error
+          : new Error(
+              (error && error.message) ||
+                (typeof error === 'string' ? error : 'Classification failed')
+            )
       this._job.fail(err)
     } else if (eventType === 'Output') {
       this._job.output(data)
@@ -176,16 +182,18 @@ class ImageClassifier {
     }
   }
 
-  _addonOutputCallback (addon, event, data, error) {
+  _addonOutputCallback(addon, event, data, error) {
     const mapped = mapAddonEvent(event, data, error)
     if (mapped === null) return
     this._handleAddonOutputEvent(mapped.type, mapped.data, mapped.error)
   }
 
   /** Idempotent. Cancels any in-flight job before destroying the handle. */
-  async unload () {
+  async unload() {
     return this._run(async () => {
-      try { if (this._addon?.cancel) await this._addon.cancel() } catch (_) {}
+      try {
+        if (this._addon?.cancel) await this._addon.cancel()
+      } catch (_) {}
       if (this._job.active) {
         this._job.fail(new Error('Model was unloaded'))
       }
@@ -198,7 +206,7 @@ class ImageClassifier {
     })
   }
 
-  async destroy () {
+  async destroy() {
     await this.unload()
     this.state.destroyed = true
   }

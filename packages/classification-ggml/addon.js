@@ -5,7 +5,7 @@
 let _loggerInstalled = false
 let _activeLoggerSink = null
 
-function _ensureLoggerInstalled (binding) {
+function _ensureLoggerInstalled(binding) {
   if (_loggerInstalled) return
   const levels = ['error', 'warn', 'info', 'debug']
   binding.setLogger((priority, message) => {
@@ -13,14 +13,18 @@ function _ensureLoggerInstalled (binding) {
     if (!sink) return
     const level = levels[priority] || 'info'
     if (typeof sink[level] === 'function') {
-      try { sink[level](message) } catch (_) {}
+      try {
+        sink[level](message)
+      } catch (_) {}
     }
   })
   _loggerInstalled = true
 }
 
-function _setActiveLoggerSink (sink) { _activeLoggerSink = sink }
-function _clearActiveLoggerSink (sink) {
+function _setActiveLoggerSink(sink) {
+  _activeLoggerSink = sink
+}
+function _clearActiveLoggerSink(sink) {
   if (_activeLoggerSink === sink) _activeLoggerSink = null
 }
 
@@ -31,7 +35,7 @@ function _clearActiveLoggerSink (sink) {
  * name (no `JobEnded` substring), so an array → `Output` and a plain
  * object → terminal `JobEnded`.
  */
-function mapAddonEvent (rawEvent, rawData, rawError) {
+function mapAddonEvent(rawEvent, rawData, rawError) {
   if (typeof rawEvent === 'string') {
     if (rawEvent.includes('Error')) {
       return { type: 'Error', data: rawData, error: rawError }
@@ -64,7 +68,7 @@ function mapAddonEvent (rawEvent, rawData, rawError) {
  * stays 1:1 with the C++ schema (no JS-only `__`-prefixed flags).
  */
 class ClassificationInterface {
-  constructor (binding, configurationParams, outputCb, logger = null, opts = {}) {
+  constructor(binding, configurationParams, outputCb, logger = null, opts = {}) {
     this._binding = binding
     this._handle = null
     this._logger = logger
@@ -77,22 +81,22 @@ class ClassificationInterface {
     this._handle = this._binding.createInstance(this, configurationParams, outputCb)
   }
 
-  async activate () {
+  async activate() {
     if (!this._handle) throw new Error('Classification addon is not initialized')
     this._binding.activate(this._handle)
   }
 
-  async runJob (input) {
+  async runJob(input) {
     if (!this._handle) throw new Error('Classification addon is not initialized')
     return this._binding.runJob(this._handle, input)
   }
 
-  async cancel () {
+  async cancel() {
     if (!this._handle) return
     await this._binding.cancel(this._handle)
   }
 
-  async unload () {
+  async unload() {
     if (this._handle === null) return
     if (this._logger) _clearActiveLoggerSink(this._logger)
     try {
