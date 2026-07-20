@@ -11,3 +11,6 @@ test/results
 addon
 third-party
 test/mobile/integration.auto.cjs
+*.d.ts
+index.js
+addon.js
