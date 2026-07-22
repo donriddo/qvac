@@ -1,6 +1,6 @@
 import QvacLogger = require("@qvac/logging");
 import { type QvacResponse } from "@qvac/infer-base";
-import { BertInterface, type GGMLConfig } from "./addon";
+import { type Addon, type GGMLConfig } from "./addon";
 export type { GGMLConfig, NumericLike, AddonConfigurationParams, RuntimeStats, Addon } from "./addon";
 export { BertInterface } from "./addon";
 export type { QvacResponse };
@@ -22,7 +22,7 @@ export interface GGMLBertArgs {
 export declare function pickPrimaryGgufPath(files: string[]): string;
 /** BERT client wrapping the native BertInterface for embedding generation. */
 export declare class GGMLBert {
-    protected addon: BertInterface | null;
+    protected addon: Addon | null;
     logger: QvacLogger;
     opts: {
         stats?: boolean;

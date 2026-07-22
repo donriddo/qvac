@@ -39,6 +39,7 @@
     "test:all": "npm run test:unit && npm run test:integration && npm run test:cpp",
     "test:mobile:generate": "npm run generate:benchmark-shards && bare ./scripts/generate-mobile-integration-tests.js",
     "test:mobile:validate": "npm run generate:benchmark-shards && node scripts/validate-mobile-tests.js",
+    "test": "npm run test:types && npm run test:unit && npm run test:integration",
     "test:types": "npm run typecheck && npm run check:generated",
     "test:dts": "npm run test:types",
     "benchmarks": "./benchmarks/run-benchmarks.sh",

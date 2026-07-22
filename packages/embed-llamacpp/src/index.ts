@@ -12,6 +12,7 @@ import {
 import {
   BertInterface,
   mapAddonEvent,
+  type Addon,
   type AddonConfigurationParams,
   type BertBinding,
   type BertJobInput,
@@ -46,7 +47,7 @@ export function pickPrimaryGgufPath(files: string[]): string {
 
 /** BERT client wrapping the native BertInterface for embedding generation. */
 export class GGMLBert {
-  protected addon: BertInterface | null;
+  protected addon: Addon | null;
   logger: QvacLogger;
   opts: { stats?: boolean };
   state: { configLoaded: boolean };
