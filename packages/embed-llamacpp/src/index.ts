@@ -41,6 +41,9 @@ export interface GGMLBertArgs {
  * in `GGUFShards::expandGGUFIntoShards`.
  */
 export function pickPrimaryGgufPath(files: string[]): string {
+  if (files.length === 0) {
+    throw new TypeError("files must be a non-empty array of paths");
+  }
   const SHARD_REGEX = /-\d+-of-\d+\.gguf$/;
   return files.find((p) => SHARD_REGEX.test(p)) || files[0];
 }

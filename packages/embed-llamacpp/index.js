@@ -18,6 +18,9 @@ const RUN_BUSY_ERROR_MESSAGE = "Cannot set new job: a job is already set or bein
  * in `GGUFShards::expandGGUFIntoShards`.
  */
 function pickPrimaryGgufPath(files) {
+    if (files.length === 0) {
+        throw new TypeError("files must be a non-empty array of paths");
+    }
     const SHARD_REGEX = /-\d+-of-\d+\.gguf$/;
     return files.find((p) => SHARD_REGEX.test(p)) || files[0];
 }
