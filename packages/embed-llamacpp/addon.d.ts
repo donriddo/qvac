@@ -39,7 +39,7 @@ export interface RuntimeStats {
     context_size: number;
     backendDevice: "cpu" | "gpu";
 }
-export type AddonOutputCallback = (addon: BertInterface, event: unknown, data: unknown, error: unknown) => void;
+export type AddonOutputCallback = (addon: unknown, event: string, data: unknown, error?: Error) => void;
 export interface BertBinding {
     createInstance(owner: BertInterface, configurationParams: AddonConfigurationParams, outputCallback: AddonOutputCallback): object;
     activate(handle: unknown): Promise<void> | void;
@@ -78,7 +78,7 @@ export declare function mapAddonEvent(rawEvent: unknown, rawData: unknown, rawEr
 export declare class BertInterface implements Addon {
     private readonly _binding;
     private _handle;
-    constructor(binding: BertBinding, configurationParams: AddonConfigurationParams, outputCb: AddonOutputCallback);
+    constructor(binding: unknown, configurationParams: AddonConfigurationParams, outputCb: AddonOutputCallback);
     /** Cancel current inference process. Resolves when the job has stopped. */
     cancel(): Promise<void>;
     /**

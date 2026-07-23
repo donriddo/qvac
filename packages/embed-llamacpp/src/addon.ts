@@ -50,10 +50,10 @@ export interface RuntimeStats {
 }
 
 export type AddonOutputCallback = (
-  addon: BertInterface,
-  event: unknown,
+  addon: unknown,
+  event: string,
   data: unknown,
-  error: unknown,
+  error?: Error,
 ) => void;
 
 export interface BertBinding {
@@ -128,17 +128,17 @@ export class BertInterface implements Addon {
   private _handle: object | null;
 
   constructor(
-    binding: BertBinding,
+    binding: unknown,
     configurationParams: AddonConfigurationParams,
     outputCb: AddonOutputCallback,
   ) {
-    this._binding = binding;
+    this._binding = binding as BertBinding;
 
     if (!configurationParams.backendsDir) {
       configurationParams.backendsDir = path.join(__dirname, "prebuilds");
     }
 
-    this._handle = binding.createInstance(this, configurationParams, outputCb);
+    this._handle = this._binding.createInstance(this, configurationParams, outputCb);
   }
 
   /** Cancel current inference process. Resolves when the job has stopped. */
@@ -167,10 +167,10 @@ export class BertInterface implements Addon {
   }
 
   /** Stops the addon process and clears resources (including memory). */
-  unload(): Promise<void> {
-    if (!this._handle) return Promise.resolve();
+  // eslint-disable-next-line @typescript-eslint/require-await -- async so a synchronous destroyInstance throw surfaces as a rejected promise, matching the pre-migration contract
+  async unload(): Promise<void> {
+    if (!this._handle) return;
     this._binding.destroyInstance(this._handle);
     this._handle = null;
-    return Promise.resolve();
   }
 }

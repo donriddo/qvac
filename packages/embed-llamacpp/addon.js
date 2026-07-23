@@ -45,7 +45,7 @@ class BertInterface {
         if (!configurationParams.backendsDir) {
             configurationParams.backendsDir = path.join(__dirname, "prebuilds");
         }
-        this._handle = binding.createInstance(this, configurationParams, outputCb);
+        this._handle = this._binding.createInstance(this, configurationParams, outputCb);
     }
     /** Cancel current inference process. Resolves when the job has stopped. */
     async cancel() {
@@ -70,12 +70,12 @@ class BertInterface {
         await this._binding.activate(this._handle);
     }
     /** Stops the addon process and clears resources (including memory). */
-    unload() {
+    // eslint-disable-next-line @typescript-eslint/require-await -- async so a synchronous destroyInstance throw surfaces as a rejected promise, matching the pre-migration contract
+    async unload() {
         if (!this._handle)
-            return Promise.resolve();
+            return;
         this._binding.destroyInstance(this._handle);
         this._handle = null;
-        return Promise.resolve();
     }
 }
 exports.BertInterface = BertInterface;

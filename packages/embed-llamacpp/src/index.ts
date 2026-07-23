@@ -182,7 +182,7 @@ export class GGMLBert {
   }
 
   private _addonOutputCallback(
-    _addon: BertInterface,
+    _addon: unknown,
     event: unknown,
     data: unknown,
     error: unknown,
